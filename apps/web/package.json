@@ -1,0 +1,39 @@
+{
+  "name": "@cupai/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.ts,.tsx",
+    "lint:fix": "eslint . --ext .vue,.ts,.tsx --fix",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@cupai/constants": "workspace:*",
+    "@cupai/types": "workspace:*",
+    "@cupai/utils": "workspace:*",
+    "@element-plus/icons-vue": "^2.3.2",
+    "axios": "^1.9.0",
+    "echarts": "^5.6.0",
+    "element-plus": "^2.9.0",
+    "flag-icons": "^7.3.0",
+    "markdown-it": "^14.1.0",
+    "pinia": "^3.0.0",
+    "socket.io-client": "^4.8.0",
+    "vue": "^3.5.0",
+    "vue-i18n": "^11.0.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "typescript": "^5.8.0",
+    "unplugin-auto-import": "^19.0.0",
+    "unplugin-vue-components": "^28.0.0",
+    "vite": "^6.3.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

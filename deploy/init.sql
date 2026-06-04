@@ -58,3 +58,93 @@ INSERT INTO matches (id, league_name, stage, home_team_id, away_team_id, start_t
 ('match-006', 'FIFA World Cup 2026', '小组赛C组', 'team-ger', 'team-cro', '2026-06-14 21:00:00', 'upcoming', 'AT&T Stadium', '裁判F', 26.0, 42.0, '晴', 7.0, 'FIFA'),
 ('match-007', 'FIFA World Cup 2026', '小组赛D组', 'team-por', 'team-ned', '2026-06-15 03:00:00', 'upcoming', 'Mercedes-Benz Stadium', '裁判G', 25.0, 52.0, '多云', 10.0, 'FIFA'),
 ('match-008', 'FIFA World Cup 2026', '小组赛D组', 'team-ita', 'team-bel', '2026-06-15 21:00:00', 'upcoming', 'Lincoln Financial Field', '裁判H', 23.0, 47.0, '晴', 9.0, 'FIFA');
+
+-- ============================================
+-- 种子数据：默认 Prompt 模板（平台内置）
+-- ============================================
+
+INSERT INTO prompt_templates (id, user_id, name, scene, content, adapted_model, adapted_stage, is_public, collect_count, use_count, like_count, is_original) VALUES
+('prompt-default-preview', 'system', '赛事前瞻分析', 'match_preview', '你是一位专业的世界杯赛事分析师。请根据以下数据和权重配置，对即将进行的比赛进行全面前瞻分析。
+
+## 权重配置
+{{weights}}
+
+## 赛事数据
+{{matchData}}
+
+## 分析要求
+1. 根据权重配置，重点分析权重较高的因子
+2. 结合历史交锋记录和近期状态
+3. 分析双方战术风格和克制关系
+4. 评估环境因素（天气、场地、裁判）的影响
+5. 给出综合分析结论和关键看点
+
+分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true),
+
+('prompt-default-compare', 'system', '球队实力对比', 'team_compare', '你是一位专业的世界杯赛事分析师。请对以下两支球队进行全方位实力对比分析。
+
+## 权重配置
+{{weights}}
+
+## 赛事数据
+{{matchData}}
+
+## 对比分析要求
+1. 历史战绩对比（交锋记录、大赛经验）
+2. 球队实力对比（FIFA排名、阵容深度、攻防数据）
+3. 核心球星状态对比
+4. 战术风格对比与克制关系
+5. 综合评估双方优劣势
+
+分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true),
+
+('prompt-default-player', 'system', '球星状态分析', 'player_analysis', '你是一位专业的世界杯赛事分析师。请对以下赛事中核心球星的状态进行深入分析。
+
+## 权重配置
+{{weights}}
+
+## 赛事数据
+{{matchData}}
+
+## 分析要求
+1. 核心球星近期状态评估（进球、助攻、伤病）
+2. 球星在国家队 vs 俱乐部表现差异
+3. 球星对比赛走势的关键影响
+4. 对位球员对比分析
+5. 球星心理状态和压力评估
+
+分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true),
+
+('prompt-default-qualify', 'system', '出线形势推演', 'qualification_predict', '你是一位专业的世界杯赛事分析师。请根据以下数据和权重配置，推演小组出线形势。
+
+## 权重配置
+{{weights}}
+
+## 赛事数据
+{{matchData}}
+
+## 推演要求
+1. 当前小组积分形势分析
+2. 各队剩余赛程难度评估
+3. 关键比赛结果对出线的影响
+4. 各种出线情景概率推演
+5. 最可能出线球队及理由
+
+分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true),
+
+('prompt-default-sentiment', 'system', '舆情情绪研判', 'sentiment_analysis', '你是一位专业的世界杯赛事分析师。请根据以下数据和权重配置，研判赛事相关的社交舆情和情绪走势。
+
+## 权重配置
+{{weights}}
+
+## 赛事数据
+{{matchData}}
+
+## 研判要求
+1. 双方球迷情绪走势分析
+2. 媒体舆论倾向评估
+3. 社交平台热度对比
+4. 舆论压力对球队表现的可能影响
+5. 关键舆情事件解读
+
+分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true);

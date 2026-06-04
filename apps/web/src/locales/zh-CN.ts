@@ -26,6 +26,7 @@ export default {
     analysisSquare: '分析广场',
     profile: '个人中心',
     ranking: '排行榜',
+    standings: '积分榜',
   },
   home: {
     hotMatches: '热门赛事',

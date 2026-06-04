@@ -81,4 +81,28 @@ export class InteractionService {
       await this.reportRepo.decrement({ id: reportId }, field as any, 1)
     }
   }
+
+  /**
+   * 获取用户收藏列表（含报告内容）
+   */
+  async getUserCollections(userId: string) {
+    const collections = await this.interactionRepo.find({
+      where: { userId, type: 'collect' },
+      order: { createdAt: 'DESC' },
+    })
+
+    const reportIds = collections.map((c) => c.reportId)
+    if (reportIds.length === 0) return []
+
+    const reports = await this.reportRepo
+      .createQueryBuilder('r')
+      .where('r.id IN (:...ids)', { ids: reportIds })
+      .getMany()
+
+    // 合并收藏时间和报告内容
+    return reports.map((r) => ({
+      ...r,
+      collectedAt: collections.find((c) => c.reportId === r.id)?.createdAt,
+    }))
+  }
 }

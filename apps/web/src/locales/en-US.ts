@@ -26,6 +26,7 @@ export default {
     analysisSquare: 'Analysis Square',
     profile: 'Profile',
     ranking: 'Ranking',
+    standings: 'Standings',
   },
   home: {
     hotMatches: 'Hot Matches',

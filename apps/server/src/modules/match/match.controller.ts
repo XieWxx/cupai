@@ -1,12 +1,16 @@
 import { Controller, Get, Param, Query } from '@nestjs/common'
 import { MatchService } from './match.service'
+import { StandingService } from './standing.service'
 
 /**
  * 赛事数据控制器
  */
 @Controller('match')
 export class MatchController {
-  constructor(private readonly matchService: MatchService) {}
+  constructor(
+    private readonly matchService: MatchService,
+    private readonly standingService: StandingService,
+  ) {}
 
   // 获取赛事列表
   @Get()
@@ -41,5 +45,23 @@ export class MatchController {
   @Get('players/:id')
   async getPlayerDetail(@Param('id') id: string) {
     return this.matchService.getPlayerDetail(id)
+  }
+
+  // 获取小组积分榜
+  @Get('standings/:group')
+  async getStandings(@Param('group') group: string) {
+    return this.standingService.getStandings(group)
+  }
+
+  // 获取所有小组积分榜
+  @Get('standings')
+  async getAllStandings() {
+    return this.standingService.getStandings()
+  }
+
+  // 获取出线形势分析
+  @Get('advance/:group')
+  async getAdvanceAnalysis(@Param('group') group: string) {
+    return this.standingService.getAdvanceAnalysis(group)
   }
 }

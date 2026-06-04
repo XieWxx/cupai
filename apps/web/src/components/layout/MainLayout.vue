@@ -27,13 +27,19 @@
         <!-- 语言切换 -->
         <el-dropdown @command="switchLocale" class="locale-switch">
           <span class="locale-label">
-            {{ currentLocale === 'zh-CN' ? '中文' : 'EN' }}
+            {{ localeLabels[currentLocale] || '中文' }}
             <el-icon><ArrowDown /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="zh-CN">简体中文</el-dropdown-item>
               <el-dropdown-item command="en-US">English</el-dropdown-item>
+              <el-dropdown-item command="es-ES">Español</el-dropdown-item>
+              <el-dropdown-item command="fr-FR">Français</el-dropdown-item>
+              <el-dropdown-item command="pt-BR">Português</el-dropdown-item>
+              <el-dropdown-item command="ar-SA">العربية</el-dropdown-item>
+              <el-dropdown-item command="ja-JP">日本語</el-dropdown-item>
+              <el-dropdown-item command="ko-KR">한국어</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -88,6 +94,18 @@ const activeMenu = computed(() => route.path)
 
 // 当前语言
 const currentLocale = computed(() => locale.value)
+
+// 语言标签映射
+const localeLabels: Record<string, string> = {
+  'zh-CN': '中文',
+  'en-US': 'English',
+  'es-ES': 'Español',
+  'fr-FR': 'Français',
+  'pt-BR': 'Português',
+  'ar-SA': 'العربية',
+  'ja-JP': '日本語',
+  'ko-KR': '한국어',
+}
 
 // 切换语言
 function switchLocale(lang: string) {

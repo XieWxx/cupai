@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { AgentService } from './agent.service'
+import { AlgorithmService } from './algorithm.service'
 import { CreateReportDto } from './dto/create-report.dto'
 
 /**
@@ -8,7 +9,10 @@ import { CreateReportDto } from './dto/create-report.dto'
  */
 @Controller('analysis')
 export class AgentController {
-  constructor(private readonly agentService: AgentService) {}
+  constructor(
+    private readonly agentService: AgentService,
+    private readonly algorithmService: AlgorithmService,
+  ) {}
 
   // 手动生成分析报告（需登录）
   @Post('manual')
@@ -58,5 +62,37 @@ export class AgentController {
   @UseGuards(AuthGuard('jwt'))
   async deleteReport(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.agentService.deleteReport(req.user.id, id)
+  }
+
+  // ============ 算法接口 ============
+
+  // 权重处理流程（归一化+制衡+自适应）
+  @Post('algorithm/weights')
+  @UseGuards(AuthGuard('jwt'))
+  async processWeights(
+    @Body() body: { weights: Record<string, number>; stage?: string; isDerby?: boolean; isNeutral?: boolean },
+  ) {
+    return this.algorithmService.autoProcessWeights(
+      body.weights,
+      body.stage || '小组赛',
+      body.isDerby,
+      body.isNeutral,
+    )
+  }
+
+  // 数据降噪
+  @Post('algorithm/denoise')
+  @UseGuards(AuthGuard('jwt'))
+  async denoiseData(@Body() body: { data: number[]; windowSize?: number }) {
+    return { denoised: this.algorithmService.processDataDenoise(body.data, body.windowSize) }
+  }
+
+  // 舆情分析
+  @Post('algorithm/sentiment')
+  @UseGuards(AuthGuard('jwt'))
+  async analyzeSentiment(
+    @Body() body: { positiveWords: Record<string, number>; negativeWords: Record<string, number>; text: string },
+  ) {
+    return this.algorithmService.analyzeSentiment(body.positiveWords, body.negativeWords, body.text)
   }
 }

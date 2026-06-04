@@ -25,6 +25,9 @@ export class MatchEntity {
   @Column({ length: 50, comment: '赛事阶段' })
   stage: string
 
+  @Column({ name: 'group_name', length: 10, nullable: true, comment: '小组名称（小组赛时使用）' })
+  groupName: string
+
   @Column({ name: 'home_team_id', type: 'uuid', comment: '主队ID' })
   homeTeamId: string
 

@@ -10,11 +10,24 @@ import { CreatePromptDto } from './dto/create-prompt.dto'
 export class PromptController {
   constructor(private readonly promptService: PromptService) {}
 
-  // 创建模板（需登录）
+  // 创建模板（需登录，带变量校验）
   @Post()
   @UseGuards(AuthGuard('jwt'))
   async create(@Req() req: { user: { id: string } }, @Body() dto: CreatePromptDto) {
-    return this.promptService.create(req.user.id, dto)
+    return this.promptService.createWithValidation(req.user.id, dto)
+  }
+
+  // 校验 Prompt 模板变量
+  @Post('validate')
+  async validateTemplate(@Body() body: { content: string }) {
+    return this.promptService.validateTemplate(body.content)
+  }
+
+  // 预览 Prompt 模板（用示例数据填充）
+  @Post('preview')
+  async previewTemplate(@Body() body: { content: string }) {
+    const preview = this.promptService.previewTemplate(body.content)
+    return { preview }
   }
 
   // 获取个人模板（需登录）

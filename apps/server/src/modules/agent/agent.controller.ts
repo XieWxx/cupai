@@ -150,4 +150,11 @@ export class AgentController {
   ) {
     return this.interactionService.getUserInteractions(req.user.id, body.reportIds)
   }
+
+  // 获取我的收藏列表
+  @Get('interactions/collections')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyCollections(@Req() req: { user: { id: string } }) {
+    return this.interactionService.getUserCollections(req.user.id)
+  }
 }

@@ -126,6 +126,34 @@
           </el-table>
         </el-card>
       </el-tab-pane>
+
+      <!-- 我的收藏 -->
+      <el-tab-pane label="我的收藏" name="collections">
+        <el-card>
+          <el-table :data="collections" stripe>
+            <el-table-column label="报告内容" min-width="200">
+              <template #default="{ row }">{{ row.content?.substring(0, 100) }}...</template>
+            </el-table-column>
+            <el-table-column prop="llmType" label="模型" width="100" />
+            <el-table-column label="来源" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.source === 'agent' ? 'warning' : 'primary'" size="small">
+                  {{ row.source === 'agent' ? 'Agent' : '用户' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="收藏时间" width="180">
+              <template #default="{ row }">{{ new Date(row.collectedAt).toLocaleString('zh-CN') }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="80" align="center">
+              <template #default="{ row }">
+                <el-button text type="warning" size="small" @click="uncollect(row.id)">取消收藏</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="collections.length === 0" description="暂无收藏" />
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 编辑信息弹窗 -->
@@ -162,6 +190,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useAnalysisStore } from '@/stores/analysis'
 import { usePromptStore } from '@/stores/prompt'
+import { http } from '@/api/request'
 
 const userStore = useUserStore()
 const analysisStore = useAnalysisStore()
@@ -169,6 +198,7 @@ const promptStore = usePromptStore()
 
 const activeTab = ref('info')
 const showEditDialog = ref(false)
+const collections = ref<any[]>([])
 
 const editForm = reactive({
   nickname: '',
@@ -186,6 +216,27 @@ async function saveProfile() {
   }
 }
 
+// 加载我的收藏
+async function loadCollections() {
+  try {
+    const res = await http.get<any[]>('/analysis/interactions/collections')
+    collections.value = res || []
+  } catch {
+    // 未登录或查询失败
+  }
+}
+
+// 取消收藏
+async function uncollect(reportId: string) {
+  try {
+    await http.post('/analysis/interaction', { reportId, type: 'collect' })
+    collections.value = collections.value.filter((c: any) => c.id !== reportId)
+    ElMessage.success('已取消收藏')
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
+
 onMounted(async () => {
   try {
     await Promise.all([
@@ -194,6 +245,7 @@ onMounted(async () => {
       analysisStore.fetchWeightModels(),
       analysisStore.fetchMyReports(),
       promptStore.fetchMyTemplates(),
+      loadCollections(),
     ])
     // 填充编辑表单
     editForm.nickname = userStore.user?.nickname || ''

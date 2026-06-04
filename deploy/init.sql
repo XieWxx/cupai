@@ -150,6 +150,30 @@ INSERT INTO prompt_templates (id, user_id, name, scene, content, adapted_model, 
 分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true);
 
 -- ============================================
+-- 积分榜种子数据（A组示例）
+-- ============================================
+
+INSERT INTO group_standings (id, group_name, team_id, played, wins, draws, losses, goals_for, goals_against, goal_difference, points, rank_position, advance_probability) VALUES
+('gs-a1', 'A', 'team-arg', 2, 2, 0, 0, 4, 1, 3, 6, 1, 95.00),
+('gs-a2', 'A', 'team-fra', 2, 1, 1, 0, 3, 1, 2, 4, 2, 70.00),
+('gs-a3', 'A', 'team-bra', 2, 0, 1, 1, 2, 3, -1, 1, 3, 25.00),
+('gs-a4', 'A', 'team-eng', 2, 0, 0, 2, 1, 5, -4, 0, 4, 5.00);
+
+-- ============================================
+-- 敏感词种子数据
+-- ============================================
+
+INSERT INTO sensitive_words (id, word, category, created_by) VALUES
+('sw-1', '博彩', 'gambling', 'system'),
+('sw-2', '下注', 'gambling', 'system'),
+('sw-3', '赌球', 'gambling', 'system'),
+('sw-4', '盘口', 'gambling', 'system'),
+('sw-5', '赔率', 'gambling', 'system'),
+('sw-6', '投注', 'gambling', 'system'),
+('sw-7', '买球', 'gambling', 'system'),
+('sw-8', '滚球', 'gambling', 'system');
+
+-- ============================================
 -- 互动表和评论表（TypeORM synchronize 自动创建）
 -- 以下为手动建表参考（Docker 首次启动时由 TypeORM 自动同步）
 -- ============================================

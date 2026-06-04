@@ -30,12 +30,11 @@
             </div>
           </div>
         </template>
-        <div class="report-content">
-          {{ report.content?.substring(0, 300) }}{{ report.content?.length > 300 ? '...' : '' }}
-        </div>
+        <div class="report-content markdown-body" v-html="renderMarkdown(report.content?.substring(0, 600))"></div>
         <div class="report-footer">
           <span class="report-model">模型: {{ report.llmType }}</span>
           <span class="report-lang">语言: {{ report.displayLanguage }}</span>
+          <span class="report-source" v-if="report.weightSnapshot">权重快照: {{ formatWeights(report.weightSnapshot) }}</span>
           <!-- 点赞/收藏按钮 -->
           <div class="report-actions">
             <el-button
@@ -69,6 +68,23 @@ import { ElMessage } from 'element-plus'
 import { useAnalysisStore } from '@/stores/analysis'
 import { http } from '@/api/request'
 import { subscribeSquare } from '@/api/websocket'
+import MarkdownIt from 'markdown-it'
+
+const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
+
+// 渲染 Markdown 内容
+function renderMarkdown(content: string | undefined): string {
+  if (!content) return ''
+  return md.render(content)
+}
+
+// 格式化权重快照
+function formatWeights(weights: Record<string, number>): string {
+  if (!weights) return ''
+  return Object.entries(weights)
+    .map(([k, v]) => `${k}: ${v}%`)
+    .join(', ')
+}
 
 const analysisStore = useAnalysisStore()
 
@@ -204,6 +220,31 @@ onUnmounted(() => {
   line-height: 1.8;
   color: #333;
   font-size: 14px;
+}
+
+.report-content.markdown-body :deep(h1),
+.report-content.markdown-body :deep(h2),
+.report-content.markdown-body :deep(h3) {
+  margin: 8px 0 4px;
+  font-weight: 700;
+}
+
+.report-content.markdown-body :deep(ul),
+.report-content.markdown-body :deep(ol) {
+  padding-left: 20px;
+}
+
+.report-content.markdown-body :deep(p) {
+  margin: 4px 0;
+}
+
+.report-source {
+  color: #999;
+  font-size: 11px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .report-footer {

@@ -166,6 +166,12 @@
           <el-select v-model="editForm.language">
             <el-option label="简体中文" value="zh-CN" />
             <el-option label="English" value="en-US" />
+            <el-option label="Español" value="es-ES" />
+            <el-option label="Français" value="fr-FR" />
+            <el-option label="Português" value="pt-BR" />
+            <el-option label="العربية" value="ar-SA" />
+            <el-option label="日本語" value="ja-JP" />
+            <el-option label="한국어" value="ko-KR" />
           </el-select>
         </el-form-item>
         <el-form-item label="时区">

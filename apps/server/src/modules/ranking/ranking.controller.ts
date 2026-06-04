@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, UseGuards, Req } from '@nestjs/common'
+import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { RankingService } from './ranking.service'
 import { CreateWeightModelDto } from './dto/create-weight-model.dto'
@@ -47,5 +47,37 @@ export class RankingController {
   @UseGuards(AuthGuard('jwt'))
   async setDefault(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return this.rankingService.setDefaultModel(req.user.id, id)
+  }
+
+  // ============ 排行榜 ============
+
+  // 用户预测准确率排行
+  @Get('users')
+  async getUserRankings(
+    @Query('seasonId') seasonId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.rankingService.getUserRankings(seasonId, Number(page) || 1, Number(pageSize) || 20)
+  }
+
+  // 大模型准确率排行
+  @Get('models')
+  async getModelRankings(
+    @Query('seasonId') seasonId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.rankingService.getModelRankings(seasonId, Number(page) || 1, Number(pageSize) || 20)
+  }
+
+  // 个人排行（需登录）
+  @Get('my')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyRanking(
+    @Req() req: { user: { id: string } },
+    @Query('seasonId') seasonId?: string,
+  ) {
+    return this.rankingService.getMyRanking(req.user.id, seasonId)
   }
 }

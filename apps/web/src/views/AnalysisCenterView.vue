@@ -278,13 +278,63 @@ function editWeightModel(model: any) {
   showWeightDialog.value = true
 }
 
-// 开始分析
+// 开始分析（完整闭环：选赛事→选配置→选权重→选Prompt→调AI→生成报告）
 async function startAnalysis() {
+  // 表单校验
+  if (!analysisForm.matchId) {
+    ElMessage.warning('请选择赛事')
+    return
+  }
+  if (!analysisForm.modelId) {
+    ElMessage.warning('请选择 AI 配置')
+    return
+  }
+
+  // 从 localStorage 解密 API Key
+  const selectedConfig = analysisStore.aiConfigs.find((c: any) => c.id === analysisForm.modelId)
+  if (!selectedConfig) {
+    ElMessage.error('AI 配置不存在')
+    return
+  }
+
+  const encryptedKey = localStorage.getItem(`cupai_apikey_${selectedConfig.modelName}`)
+  if (!encryptedKey) {
+    ElMessage.warning('未找到该 AI 配置的 API Key，请重新配置')
+    return
+  }
+
+  const apiKey = atob(encryptedKey)
+
   analyzing.value = true
+  analysisResult.value = ''
   try {
-    // 实际调用 AI 中转接口
-    ElMessage.info('正在生成分析报告...')
-    analysisResult.value = '分析报告生成中，请稍候...\n\n（需连接后端 AI 中转服务后生效）'
+    ElMessage.info('正在生成分析报告，请稍候...')
+
+    const result = await analysisStore.generateAnalysis({
+      matchId: analysisForm.matchId,
+      aiConfigId: analysisForm.modelId,
+      weightModelId: analysisForm.weightModelId || undefined,
+      promptTemplateId: analysisForm.promptTemplateId || undefined,
+      apiKey,
+      isPublic: false,
+      displayLanguage: navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US',
+    })
+
+    // 展示 AI 生成的分析结果
+    analysisResult.value = result?.content || '分析报告生成完成，但内容为空'
+    ElMessage.success('分析报告生成成功')
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || err?.message || '分析生成失败'
+    // 分类错误提示
+    if (msg.includes('密钥') || msg.includes('401') || msg.includes('403')) {
+      ElMessage.error('API 密钥无效或无权限，请检查配置')
+    } else if (msg.includes('超时') || msg.includes('timeout')) {
+      ElMessage.error('AI 调用超时，请稍后重试')
+    } else if (msg.includes('重试')) {
+      ElMessage.error('AI 调用失败（已重试多次），请检查网络或更换模型')
+    } else {
+      ElMessage.error(msg)
+    }
   } finally {
     analyzing.value = false
   }

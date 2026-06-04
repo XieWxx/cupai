@@ -56,14 +56,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMatchStore } from '@/stores/match'
+import { subscribeMatch } from '@/api/websocket'
 
 const route = useRoute()
 const matchStore = useMatchStore()
 const loading = ref(false)
 const match = ref<any>(null)
+let unsubscribe: (() => void) | null = null
 
 function formatTime(dateStr: string) {
   if (!dateStr) return '-'
@@ -74,9 +76,27 @@ onMounted(async () => {
   loading.value = true
   try {
     match.value = await matchStore.fetchMatchDetail(route.params.id as string)
+
+    // 订阅赛事 WebSocket 实时更新
+    unsubscribe = subscribeMatch(route.params.id as string, (data: any) => {
+      if (data.type === 'live_update' && match.value) {
+        // 实时更新比分
+        if (data.homeScore !== undefined) match.value.homeScore = data.homeScore
+        if (data.awayScore !== undefined) match.value.awayScore = data.awayScore
+      }
+      if (data.type === 'match:update') {
+        // 全量更新赛事数据
+        Object.assign(match.value, data)
+      }
+    })
   } finally {
     loading.value = false
   }
+})
+
+onUnmounted(() => {
+  // 离开页面时取消订阅
+  unsubscribe?.()
 })
 </script>
 

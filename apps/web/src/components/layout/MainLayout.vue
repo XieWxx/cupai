@@ -20,6 +20,7 @@
         <el-menu-item index="/analysis">{{ $t('nav.analysisCenter') }}</el-menu-item>
         <el-menu-item index="/prompt-market">{{ $t('nav.promptMarket') }}</el-menu-item>
         <el-menu-item index="/square">{{ $t('nav.analysisSquare') }}</el-menu-item>
+        <el-menu-item index="/ranking">排行榜</el-menu-item>
       </el-menu>
       <div class="header-right">
         <!-- 语言切换 -->

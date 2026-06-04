@@ -84,4 +84,15 @@ export class PromptService {
   async useTemplate(templateId: string) {
     await this.promptRepo.increment({ id: templateId }, 'useCount', 1)
   }
+
+  /**
+   * 获取系统默认 Prompt 模板
+   * userId='system' 的公开模板，作为新手兜底模板
+   */
+  async getSystemDefaults() {
+    return this.promptRepo.find({
+      where: { userId: 'system', isPublic: true },
+      order: { useCount: 'DESC' },
+    })
+  }
 }

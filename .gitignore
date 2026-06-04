@@ -1,0 +1,60 @@
+# 依赖 / Dependencies
+node_modules/
+.pnpm-store/
+
+# 构建产物 / Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# 环境变量 / Environment variables
+.env
+.env.local
+.env.*.local
+
+# 日志 / Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE 配置 / IDE configs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 测试 / Testing
+coverage/
+.nyc_output/
+
+# 数据库 / Database
+*.sqlite
+*.sqlite3
+data/
+
+# Docker
+.docker/
+
+# 临时文件 / Temp files
+tmp/
+temp/
+*.tmp
+
+# 密钥与证书 / Keys & certs
+*.pem
+*.key
+*.crt
+*.csr
+
+# 上传文件 / Uploads
+uploads/
+
+# 操作系统 / OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini

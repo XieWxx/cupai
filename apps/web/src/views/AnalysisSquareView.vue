@@ -64,10 +64,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue'
+import { reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAnalysisStore } from '@/stores/analysis'
 import { http } from '@/api/request'
+import { subscribeSquare } from '@/api/websocket'
 
 const analysisStore = useAnalysisStore()
 
@@ -143,8 +144,20 @@ async function toggleCollect(reportId: string) {
   }
 }
 
+let unsubscribeSquare: (() => void) | null = null
+
 onMounted(() => {
   loadReports()
+  // 订阅广场 WebSocket 新报告推送
+  unsubscribeSquare = subscribeSquare((data: any) => {
+    if (data.type === 'new_report') {
+      ElMessage.info('有新的分析报告发布，点击刷新查看')
+    }
+  })
+})
+
+onUnmounted(() => {
+  unsubscribeSquare?.()
 })
 </script>
 

@@ -35,6 +35,12 @@ export class PromptController {
     return this.promptService.getPublicMarket(scene, sortBy, Number(page) || 1, Number(pageSize) || 20)
   }
 
+  // 获取系统默认模板（新手可用）
+  @Get('defaults')
+  async getDefaults() {
+    return this.promptService.getSystemDefaults()
+  }
+
   // 更新模板（需登录）
   @Put(':id')
   @UseGuards(AuthGuard('jwt'))

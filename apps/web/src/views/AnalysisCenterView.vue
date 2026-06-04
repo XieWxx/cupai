@@ -122,18 +122,25 @@
     </el-dialog>
 
     <!-- 权重模型弹窗 -->
-    <el-dialog v-model="showWeightDialog" title="权重模型配置" width="600px">
-      <el-form :model="weightForm" label-width="120px">
-        <el-form-item label="模型名称">
-          <el-input v-model="weightForm.name" placeholder="如：均衡模型、进攻偏好" />
-        </el-form-item>
-        <el-form-item v-for="factor in factorList" :key="factor.key" :label="factor.label">
-          <el-slider v-model="weightForm[factor.key]" :min="0" :max="60" :step="1" show-input />
-        </el-form-item>
-        <el-form-item>
-          <el-alert :title="`权重总和: ${weightSum}%（需等于 100%）`" :type="weightSum === 100 ? 'success' : 'error'" show-icon :closable="false" />
-        </el-form-item>
-      </el-form>
+    <el-dialog v-model="showWeightDialog" title="权重模型配置" width="700px">
+      <el-row :gutter="24">
+        <el-col :span="14">
+          <el-form :model="weightForm" label-width="120px">
+            <el-form-item label="模型名称">
+              <el-input v-model="weightForm.name" placeholder="如：均衡模型、进攻偏好" />
+            </el-form-item>
+            <el-form-item v-for="factor in factorList" :key="factor.key" :label="factor.label">
+              <el-slider v-model="weightForm[factor.key]" :min="0" :max="60" :step="1" show-input />
+            </el-form-item>
+            <el-form-item>
+              <el-alert :title="`权重总和: ${weightSum}%（需等于 100%）`" :type="weightSum === 100 ? 'success' : 'error'" show-icon :closable="false" />
+            </el-form-item>
+          </el-form>
+        </el-col>
+        <el-col :span="10">
+          <EChartsView :option="radarOption" width="100%" height="320px" />
+        </el-col>
+      </el-row>
       <template #footer>
         <el-button @click="showWeightDialog = false">取消</el-button>
         <el-button type="primary" :disabled="weightSum !== 100" @click="saveWeightModel">保存</el-button>
@@ -149,6 +156,8 @@ import { useAnalysisStore } from '@/stores/analysis'
 import { useMatchStore } from '@/stores/match'
 import { usePromptStore } from '@/stores/prompt'
 import { FACTOR_LABELS, FACTOR_KEYS } from '@cupai/constants'
+import { renderMarkdown } from '@/utils/markdown'
+import EChartsView from '@/components/common/EChartsView.vue'
 
 const analysisStore = useAnalysisStore()
 const matchStore = useMatchStore()
@@ -199,9 +208,31 @@ const weightSum = computed(() => {
 
 // 渲染 Markdown 结果
 const renderedResult = computed(() => {
-  // 简单渲染，后续接入 markdown-it
-  return analysisResult.value.replace(/\n/g, '<br>')
+  return renderMarkdown(analysisResult.value)
 })
+
+// 权重雷达图配置
+const radarOption = computed(() => ({
+  tooltip: { trigger: 'item' },
+  radar: {
+    indicator: FACTOR_KEYS.map((key) => ({
+      name: FACTOR_LABELS[key],
+      max: 60,
+    })),
+  },
+  series: [
+    {
+      type: 'radar',
+      data: [
+        {
+          value: FACTOR_KEYS.map((key) => Number(weightForm[key]) || 0),
+          name: weightForm.name || '当前模型',
+          areaStyle: { opacity: 0.3 },
+        },
+      ],
+    },
+  ],
+}))
 
 // 保存 AI 配置
 async function saveAiConfig() {

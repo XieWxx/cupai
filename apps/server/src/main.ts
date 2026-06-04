@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
 import { AppModule } from './app.module'
+import { TransformInterceptor } from './common/interceptors/transform.interceptor'
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -16,6 +18,12 @@ async function bootstrap() {
       transform: true, // 自动类型转换
     }),
   )
+
+  // 全局响应格式拦截器 - 统一包装为 { code, message, data }
+  app.useGlobalInterceptors(new TransformInterceptor())
+
+  // 全局异常过滤器 - 统一错误响应格式
+  app.useGlobalFilters(new AllExceptionsFilter())
 
   // 跨域配置 - 适配海外用户访问
   app.enableCors({

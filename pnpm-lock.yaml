@@ -140,6 +140,9 @@ importers:
       '@cupai/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@element-plus/icons-vue':
+        specifier: ^2.3.2
+        version: 2.3.2(vue@3.5.35(typescript@5.9.3))
       axios:
         specifier: ^1.9.0
         version: 1.17.0

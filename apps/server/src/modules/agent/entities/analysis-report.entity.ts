@@ -58,9 +58,6 @@ export class AnalysisReportEntity {
   @Column({ name: 'collect_count', type: 'int', default: 0, comment: '收藏数' })
   collectCount: number
 
-  @Column({ name: 'comment_count', type: 'int', default: 0, comment: '评论数' })
-  commentCount: number
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date
 

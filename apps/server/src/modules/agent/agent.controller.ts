@@ -2,7 +2,10 @@ import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, Req 
 import { AuthGuard } from '@nestjs/passport'
 import { AgentService } from './agent.service'
 import { AlgorithmService } from './algorithm.service'
+import { InteractionService } from './interaction.service'
 import { CreateReportDto } from './dto/create-report.dto'
+import { GenerateAnalysisDto } from './dto/generate-analysis.dto'
+import { InteractionDto } from './dto/interaction.dto'
 
 /**
  * Agent 与分析报告控制器
@@ -12,7 +15,15 @@ export class AgentController {
   constructor(
     private readonly agentService: AgentService,
     private readonly algorithmService: AlgorithmService,
+    private readonly interactionService: InteractionService,
   ) {}
+
+  // 生成分析报告（完整闭环：组装Prompt → 调AI → 保存报告）
+  @Post('generate')
+  @UseGuards(AuthGuard('jwt'))
+  async generate(@Req() req: { user: { id: string } }, @Body() dto: GenerateAnalysisDto) {
+    return this.agentService.generateAnalysis(req.user.id, dto)
+  }
 
   // 手动生成分析报告（需登录）
   @Post('manual')
@@ -94,5 +105,24 @@ export class AgentController {
     @Body() body: { positiveWords: Record<string, number>; negativeWords: Record<string, number>; text: string },
   ) {
     return this.algorithmService.analyzeSentiment(body.positiveWords, body.negativeWords, body.text)
+  }
+
+  // ============ 社区互动接口 ============
+
+  // 点赞/收藏（toggle 模式）
+  @Post('interaction')
+  @UseGuards(AuthGuard('jwt'))
+  async toggleInteraction(@Req() req: { user: { id: string } }, @Body() dto: InteractionDto) {
+    return this.interactionService.toggleInteraction(req.user.id, dto)
+  }
+
+  // 查询用户对多份报告的互动状态
+  @Post('interactions/check')
+  @UseGuards(AuthGuard('jwt'))
+  async checkInteractions(
+    @Req() req: { user: { id: string } },
+    @Body() body: { reportIds: string[] },
+  ) {
+    return this.interactionService.getUserInteractions(req.user.id, body.reportIds)
   }
 }

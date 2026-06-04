@@ -71,6 +71,22 @@ export const useAnalysisStore = defineStore('analysis', () => {
 
   // ---- 分析报告 ----
 
+  /**
+   * 生成分析报告（完整闭环）
+   * 前端解密 API Key 后传入，后端组装 Prompt → 调 AI → 保存报告
+   */
+  async function generateAnalysis(data: {
+    matchId: string
+    aiConfigId: string
+    weightModelId?: string
+    promptTemplateId?: string
+    apiKey: string
+    isPublic?: boolean
+    displayLanguage?: string
+  }) {
+    return http.post<any>('/analysis/generate', data)
+  }
+
   async function createManualReport(data: any) {
     return http.post('/analysis/manual', data)
   }
@@ -122,6 +138,7 @@ export const useAnalysisStore = defineStore('analysis', () => {
     setDefaultModel,
     createManualReport,
     createAgentReport,
+    generateAnalysis,
     fetchMyReports,
     fetchPublicReports,
     toggleReportVisibility,

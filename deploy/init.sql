@@ -148,3 +148,8 @@ INSERT INTO prompt_templates (id, user_id, name, scene, content, adapted_model, 
 5. 关键舆情事件解读
 
 分析时间: {{timestamp}}', NULL, NULL, true, 0, 0, 0, true);
+
+-- ============================================
+-- 互动表和评论表（TypeORM synchronize 自动创建）
+-- 以下为手动建表参考（Docker 首次启动时由 TypeORM 自动同步）
+-- ============================================

@@ -1,18 +1,211 @@
-import { Injectable, ForbiddenException } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { AnalysisReportEntity } from './entities/analysis-report.entity'
 import { CreateReportDto } from './dto/create-report.dto'
+import { GenerateAnalysisDto } from './dto/generate-analysis.dto'
+import { AlgorithmService } from './algorithm.service'
+import { AiService } from '../ai/ai.service'
+import { MatchEntity } from '../match/entities/match.entity'
+import { UserAiConfigEntity } from '../ai/entities/user-ai-config.entity'
+import { WeightModelEntity } from '../ranking/entities/weight-model.entity'
+import { PromptTemplateEntity } from '../prompt/entities/prompt-template.entity'
 
 /**
  * Agent 服务 - 分析报告生成与管理
  */
 @Injectable()
 export class AgentService {
+  private readonly logger = new Logger(AgentService.name)
+
   constructor(
     @InjectRepository(AnalysisReportEntity)
     private readonly reportRepo: Repository<AnalysisReportEntity>,
+    @InjectRepository(MatchEntity)
+    private readonly matchRepo: Repository<MatchEntity>,
+    @InjectRepository(UserAiConfigEntity)
+    private readonly aiConfigRepo: Repository<UserAiConfigEntity>,
+    @InjectRepository(WeightModelEntity)
+    private readonly weightModelRepo: Repository<WeightModelEntity>,
+    @InjectRepository(PromptTemplateEntity)
+    private readonly promptTemplateRepo: Repository<PromptTemplateEntity>,
+    private readonly algorithmService: AlgorithmService,
+    private readonly aiService: AiService,
   ) {}
+
+  /**
+   * 生成分析报告（完整闭环流程）
+   * 1. 获取赛事数据 + AI配置 + 权重模型 + Prompt模板
+   * 2. 算法处理权重（归一化→极值修正→跨因子制衡→场景自适应）
+   * 3. 组装完整 Prompt
+   * 4. 调用 AI 中转服务生成分析
+   * 5. 保存报告并返回
+   */
+  async generateAnalysis(userId: string, dto: GenerateAnalysisDto) {
+    // 步骤1：获取赛事数据
+    const match = await this.matchRepo.findOne({
+      where: { id: dto.matchId },
+      relations: ['homeTeam', 'awayTeam'],
+    })
+    if (!match) throw new NotFoundException('赛事不存在')
+
+    // 获取 AI 配置
+    const aiConfig = await this.aiConfigRepo.findOne({
+      where: { id: dto.aiConfigId, userId },
+    })
+    if (!aiConfig) throw new NotFoundException('AI 配置不存在')
+
+    // 获取权重模型（可选）
+    let weightModel: WeightModelEntity | null = null
+    let rawWeights: Record<string, number> = {}
+    if (dto.weightModelId) {
+      weightModel = await this.weightModelRepo.findOne({
+        where: { id: dto.weightModelId, userId },
+      })
+      if (!weightModel) throw new NotFoundException('权重模型不存在')
+      rawWeights = {
+        historicalRecord: Number(weightModel.historicalRecord),
+        teamStrength: Number(weightModel.teamStrength),
+        playerStatus: Number(weightModel.playerStatus),
+        realtimeDynamic: Number(weightModel.realtimeDynamic),
+        environment: Number(weightModel.environment),
+        tacticalCounter: Number(weightModel.tacticalCounter),
+        socialSentiment: Number(weightModel.socialSentiment),
+        hiddenFactors: Number(weightModel.hiddenFactors),
+      }
+    }
+
+    // 获取 Prompt 模板（可选）
+    let promptTemplate = ''
+    if (dto.promptTemplateId) {
+      const template = await this.promptTemplateRepo.findOne({
+        where: { id: dto.promptTemplateId },
+      })
+      if (!template) throw new NotFoundException('Prompt 模板不存在')
+      promptTemplate = template.content
+    }
+
+    // 步骤2：算法处理权重
+    let finalWeights = rawWeights
+    if (Object.keys(rawWeights).length > 0) {
+      const processed = this.algorithmService.autoProcessWeights(
+        rawWeights,
+        match.stage || '小组赛',
+      )
+      finalWeights = processed.final
+      this.logger.log(`权重处理完成: ${JSON.stringify(finalWeights)}`)
+    }
+
+    // 步骤3：组装完整 Prompt
+    const matchData = {
+      league: match.leagueName,
+      stage: match.stage,
+      homeTeam: match.homeTeam?.name || '未知',
+      awayTeam: match.awayTeam?.name || '未知',
+      startTime: match.startTime,
+      venue: match.venue,
+      weather: {
+        temperature: match.temperature,
+        humidity: match.humidity,
+        condition: match.weatherCondition,
+        windSpeed: match.windSpeed,
+      },
+      referee: {
+        name: match.refereeName,
+        nationality: match.refereeNationality,
+        style: match.refereeStyle,
+      },
+      attendance: {
+        home: match.homeAttendance,
+        away: match.awayAttendance,
+        total: match.totalAttendance,
+      },
+      score: {
+        home: match.homeScore,
+        away: match.awayScore,
+      },
+      detailedData: match.matchData,
+    }
+
+    // 如果没有自定义模板，使用默认分析模板
+    if (!promptTemplate) {
+      promptTemplate = this.getDefaultPromptTemplate()
+    }
+
+    const fullPrompt = this.algorithmService.generateAnalysisPrompt(
+      promptTemplate,
+      finalWeights,
+      matchData,
+    )
+
+    // 步骤4：调用 AI 中转服务
+    this.logger.log(`开始调用 AI 中转服务: ${aiConfig.modelName}`)
+    const aiPayload = {
+      model: aiConfig.modelName,
+      messages: [
+        {
+          role: 'system',
+          content: '你是一位专业的足球赛事分析师，擅长基于多维度数据进行深度分析和预测。请用专业但易懂的语言撰写分析报告。',
+        },
+        { role: 'user', content: fullPrompt },
+      ],
+      temperature: Number(aiConfig.temperature) || 0.7,
+      max_tokens: aiConfig.maxTokens || 4096,
+    }
+
+    const aiResponse = await this.aiService.proxyAiRequest(
+      aiConfig.apiEndpoint,
+      dto.apiKey,
+      aiPayload,
+    )
+
+    // 提取 AI 生成的内容
+    const content =
+      (aiResponse as any)?.choices?.[0]?.message?.content ||
+      (aiResponse as any)?.output?.text ||
+      (typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse))
+
+    // 步骤5：保存报告
+    const report = new AnalysisReportEntity()
+    report.userId = userId
+    report.matchId = dto.matchId
+    report.modelId = (dto.weightModelId || undefined) as any
+    report.promptTemplateId = (dto.promptTemplateId || undefined) as any
+    report.llmType = aiConfig.modelName
+    report.weightSnapshot = finalWeights
+    report.content = content
+    report.isPublic = dto.isPublic ?? false
+    report.source = 'manual'
+    report.isAuthorized = false
+    report.displayLanguage = dto.displayLanguage || 'zh-CN'
+
+    const savedReport = await this.reportRepo.save(report)
+    this.logger.log(`分析报告已生成: ${savedReport.id}`)
+
+    return savedReport
+  }
+
+  /**
+   * 获取默认分析 Prompt 模板
+   * 当用户未选择自定义模板时使用
+   */
+  private getDefaultPromptTemplate(): string {
+    return `请基于以下赛事数据和权重配置，生成一份专业的赛事分析报告。
+
+## 权重配置
+{{weights}}
+
+## 赛事数据
+{{matchData}}
+
+## 分析要求
+1. 按权重优先级逐项分析各维度数据
+2. 给出双方优势与劣势对比
+3. 综合分析后给出预测结论
+4. 标注数据置信度和关键不确定性因素
+
+分析时间: {{timestamp}}`
+  }
 
   /**
    * 手动生成分析报告

@@ -5,6 +5,7 @@ import { AlgorithmService } from './algorithm.service'
 import { InteractionService } from './interaction.service'
 import { CreateReportDto } from './dto/create-report.dto'
 import { GenerateAnalysisDto } from './dto/generate-analysis.dto'
+import { TriggerAgentDto } from './dto/trigger-agent.dto'
 import { InteractionDto } from './dto/interaction.dto'
 
 /**
@@ -23,6 +24,30 @@ export class AgentController {
   @UseGuards(AuthGuard('jwt'))
   async generate(@Req() req: { user: { id: string } }, @Body() dto: GenerateAnalysisDto) {
     return this.agentService.generateAnalysis(req.user.id, dto)
+  }
+
+  // 用户手动触发 Agent 分析（需同意授权协议，报告强制公开）
+  @Post('agent/trigger')
+  @UseGuards(AuthGuard('jwt'))
+  async triggerAgent(@Req() req: { user: { id: string } }, @Body() dto: TriggerAgentDto) {
+    return this.agentService.triggerAgentAnalysis(req.user.id, dto)
+  }
+
+  // 获取 Agent 授权协议文本
+  @Get('agent/agreement')
+  async getAgentAgreement() {
+    return {
+      title: 'CupAI Agent 分析授权协议',
+      version: '1.0',
+      content: `在使用 CupAI Agent 自动分析功能前，请您仔细阅读并同意以下条款：
+
+1. **公开授权**：您理解并同意，通过 Agent 功能生成的分析报告将自动设为公开，所有用户可见。
+2. **不可逆规则**：Agent 生成的公开内容不可设为私密，此权限不可逆。
+3. **内容归属**：Agent 分析报告基于您选择的 AI 模型和权重配置生成，内容版权归您所有，但平台有权在广场等公共区域展示。
+4. **合规声明**：所有分析内容仅供体育赛事数据娱乐参考，不构成任何投注及博弈建议。
+5. **内容审核**：Agent 生成的内容将经过平台风控系统自动审核，违规内容将被过滤或删除。
+6. **责任声明**：AI 生成内容可能存在偏差，您应对分析结果的使用自行判断和负责。`,
+    }
   }
 
   // 手动生成分析报告（需登录）

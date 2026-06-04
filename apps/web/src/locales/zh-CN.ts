@@ -25,6 +25,7 @@ export default {
     promptMarket: 'Prompt 模板市场',
     analysisSquare: '分析广场',
     profile: '个人中心',
+    ranking: '排行榜',
   },
   home: {
     hotMatches: '热门赛事',
@@ -54,6 +55,15 @@ export default {
     promptTemplate: 'Prompt 模板管理',
     manualAnalysis: '手动分析',
     agentAnalysis: 'Agent 自动分析',
+    agentTrigger: '一键 Agent 分析',
+    agentAgreement: 'Agent 授权协议',
+    agentAgreementRequired: '使用 Agent 分析需同意授权协议',
+    like: '点赞',
+    liked: '已赞',
+    collect: '收藏',
+    collected: '已收藏',
+    generateSuccess: '分析报告生成成功',
+    generateFail: '分析生成失败',
   },
   prompt: {
     create: '创建模板',
@@ -77,5 +87,15 @@ export default {
   },
   compliance: {
     disclaimer: '本分析仅为体育赛事数据娱乐分析，不构成任何投注及博弈建议，严禁用于非法用途。',
+  },
+  ranking: {
+    userRanking: '用户排行',
+    modelRanking: '大模型排行',
+    myRanking: '我的排行',
+    totalPredictions: '总预测',
+    exactMatches: '精准匹配',
+    basicMatches: '基本匹配',
+    totalScore: '总积分',
+    accuracyRate: '准确率',
   },
 }

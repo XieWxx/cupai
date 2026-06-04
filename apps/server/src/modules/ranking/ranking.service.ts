@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { WeightModelEntity } from './entities/weight-model.entity'
+import { UserRankingEntity } from './entities/user-ranking.entity'
+import { ModelRankingEntity } from './entities/model-ranking.entity'
 import { CreateWeightModelDto } from './dto/create-weight-model.dto'
 import { WEIGHT_SUM } from '@cupai/constants'
 
@@ -13,6 +15,10 @@ export class RankingService {
   constructor(
     @InjectRepository(WeightModelEntity)
     private readonly weightModelRepo: Repository<WeightModelEntity>,
+    @InjectRepository(UserRankingEntity)
+    private readonly userRankingRepo: Repository<UserRankingEntity>,
+    @InjectRepository(ModelRankingEntity)
+    private readonly modelRankingRepo: Repository<ModelRankingEntity>,
   ) {}
 
   // 创建权重模型
@@ -82,5 +88,75 @@ export class RankingService {
     await this.weightModelRepo.update({ userId, isDefault: true }, { isDefault: false })
     // 设置新默认
     await this.weightModelRepo.update({ id: modelId, userId }, { isDefault: true })
+  }
+
+  // ============ 排行榜 ============
+
+  /**
+   * 获取用户预测准确率排行
+   * 按总积分降序，支持赛季筛选
+   */
+  async getUserRankings(seasonId?: string, page = 1, pageSize = 20) {
+    const query = this.userRankingRepo
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.user', 'user')
+
+    if (seasonId) {
+      query.andWhere('r.seasonId = :seasonId', { seasonId })
+    }
+
+    query.orderBy('r.totalScore', 'DESC')
+    query.addOrderBy('r.accuracyRate', 'DESC')
+
+    const [list, total] = await query
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount()
+
+    return { list, total, page, pageSize }
+  }
+
+  /**
+   * 获取大模型准确率排行
+   * 按总积分降序
+   */
+  async getModelRankings(seasonId?: string, page = 1, pageSize = 20) {
+    const query = this.modelRankingRepo.createQueryBuilder('r')
+
+    if (seasonId) {
+      query.andWhere('r.seasonId = :seasonId', { seasonId })
+    }
+
+    query.orderBy('r.totalScore', 'DESC')
+    query.addOrderBy('r.accuracyRate', 'DESC')
+
+    const [list, total] = await query
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount()
+
+    return { list, total, page, pageSize }
+  }
+
+  /**
+   * 获取用户个人排行信息
+   */
+  async getMyRanking(userId: string, seasonId?: string) {
+    const where: any = { userId }
+    if (seasonId) where.seasonId = seasonId
+
+    const ranking = await this.userRankingRepo.findOne({ where })
+    if (!ranking) {
+      return {
+        totalPredictions: 0,
+        exactMatches: 0,
+        basicMatches: 0,
+        deviations: 0,
+        totalMisses: 0,
+        totalScore: 0,
+        accuracyRate: 0,
+      }
+    }
+    return ranking
   }
 }

@@ -60,7 +60,7 @@
 | ⚡ **实时通信** | Socket.io | 实时比分、即时推送 |
 | 📊 **图表** | ECharts | 准确率趋势、权重分布、舆情评分 |
 | 🌐 **国际化** | vue-i18n (8 语言) | 多语言、多时区、全球适配 |
-| 🔧 **后端** | Node.js + NestJS (TypeScript) | 模块化 API、AI 中转、数据处理 |
+| 🔧 **后端** | NestJS + TypeORM (TypeScript) | 模块化 API、AI 中转、数据处理 |
 | 🗄️ **数据库** | MySQL 8.0 | 结构化数据：用户、模板、报告、排行 |
 | ⚡ **缓存** | Redis | 实时缓存、API 限流、热数据 |
 | ⏰ **调度** | node-schedule | Agent 自动扫描、报告生成、数据巡检 |

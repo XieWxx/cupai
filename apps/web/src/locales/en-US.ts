@@ -25,6 +25,7 @@ export default {
     promptMarket: 'Prompt Market',
     analysisSquare: 'Analysis Square',
     profile: 'Profile',
+    ranking: 'Ranking',
   },
   home: {
     hotMatches: 'Hot Matches',
@@ -54,6 +55,15 @@ export default {
     promptTemplate: 'Prompt Template',
     manualAnalysis: 'Manual Analysis',
     agentAnalysis: 'Agent Analysis',
+    agentTrigger: 'One-Click Agent',
+    agentAgreement: 'Agent Agreement',
+    agentAgreementRequired: 'Agent analysis requires agreement acceptance',
+    like: 'Like',
+    liked: 'Liked',
+    collect: 'Collect',
+    collected: 'Collected',
+    generateSuccess: 'Analysis generated successfully',
+    generateFail: 'Analysis generation failed',
   },
   prompt: {
     create: 'Create Template',
@@ -78,5 +88,15 @@ export default {
   compliance: {
     disclaimer:
       'This analysis is for sports data entertainment and tactical reference only. It does not constitute any betting or gambling advice. Unauthorized use is strictly prohibited.',
+  },
+  ranking: {
+    userRanking: 'User Ranking',
+    modelRanking: 'Model Ranking',
+    myRanking: 'My Ranking',
+    totalPredictions: 'Total Predictions',
+    exactMatches: 'Exact Matches',
+    basicMatches: 'Basic Matches',
+    totalScore: 'Total Score',
+    accuracyRate: 'Accuracy',
   },
 }

@@ -1,9 +1,10 @@
-import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException, Logger, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { AnalysisReportEntity } from './entities/analysis-report.entity'
 import { CreateReportDto } from './dto/create-report.dto'
 import { GenerateAnalysisDto } from './dto/generate-analysis.dto'
+import { TriggerAgentDto } from './dto/trigger-agent.dto'
 import { AlgorithmService } from './algorithm.service'
 import { AiService } from '../ai/ai.service'
 import { MatchEntity } from '../match/entities/match.entity'
@@ -182,6 +183,120 @@ export class AgentService {
     const savedReport = await this.reportRepo.save(report)
     this.logger.log(`分析报告已生成: ${savedReport.id}`)
 
+    return savedReport
+  }
+
+  /**
+   * 用户手动触发 Agent 分析
+   * 必须同意授权协议，报告强制公开
+   */
+  async triggerAgentAnalysis(userId: string, dto: TriggerAgentDto) {
+    // 校验授权协议
+    if (!dto.isAuthorized) {
+      throw new BadRequestException('使用 Agent 分析必须同意公开授权协议')
+    }
+
+    // 复用 generateAnalysis 的核心流程，但标记为 agent 来源
+    const match = await this.matchRepo.findOne({
+      where: { id: dto.matchId },
+      relations: ['homeTeam', 'awayTeam'],
+    })
+    if (!match) throw new NotFoundException('赛事不存在')
+
+    const aiConfig = await this.aiConfigRepo.findOne({
+      where: { id: dto.aiConfigId, userId },
+    })
+    if (!aiConfig) throw new NotFoundException('AI 配置不存在')
+
+    // 获取权重模型（可选）
+    let rawWeights: Record<string, number> = {}
+    if (dto.weightModelId) {
+      const weightModel = await this.weightModelRepo.findOne({
+        where: { id: dto.weightModelId, userId },
+      })
+      if (!weightModel) throw new NotFoundException('权重模型不存在')
+      rawWeights = {
+        historicalRecord: Number(weightModel.historicalRecord),
+        teamStrength: Number(weightModel.teamStrength),
+        playerStatus: Number(weightModel.playerStatus),
+        realtimeDynamic: Number(weightModel.realtimeDynamic),
+        environment: Number(weightModel.environment),
+        tacticalCounter: Number(weightModel.tacticalCounter),
+        socialSentiment: Number(weightModel.socialSentiment),
+        hiddenFactors: Number(weightModel.hiddenFactors),
+      }
+    }
+
+    // 获取 Prompt 模板（可选）
+    let promptTemplate = ''
+    if (dto.promptTemplateId) {
+      const template = await this.promptTemplateRepo.findOne({
+        where: { id: dto.promptTemplateId },
+      })
+      if (!template) throw new NotFoundException('Prompt 模板不存在')
+      promptTemplate = template.content
+    }
+
+    // 算法处理权重
+    let finalWeights = rawWeights
+    if (Object.keys(rawWeights).length > 0) {
+      const processed = this.algorithmService.autoProcessWeights(rawWeights, match.stage || '小组赛')
+      finalWeights = processed.final
+    }
+
+    // 组装赛事数据
+    const matchData = {
+      league: match.leagueName,
+      stage: match.stage,
+      homeTeam: match.homeTeam?.name || '未知',
+      awayTeam: match.awayTeam?.name || '未知',
+      startTime: match.startTime,
+      venue: match.venue,
+      weather: { temperature: match.temperature, humidity: match.humidity, condition: match.weatherCondition, windSpeed: match.windSpeed },
+      referee: { name: match.refereeName, nationality: match.refereeNationality, style: match.refereeStyle },
+      attendance: { home: match.homeAttendance, away: match.awayAttendance, total: match.totalAttendance },
+      score: { home: match.homeScore, away: match.awayScore },
+    }
+
+    if (!promptTemplate) promptTemplate = this.getDefaultPromptTemplate()
+
+    const fullPrompt = this.algorithmService.generateAnalysisPrompt(promptTemplate, finalWeights, matchData)
+
+    // 调用 AI 中转
+    this.logger.log(`Agent 分析: 用户 ${userId} 触发赛事 ${dto.matchId}`)
+    const aiPayload = {
+      model: aiConfig.modelName,
+      messages: [
+        { role: 'system', content: '你是 CupAI 平台的赛事分析师。请基于提供的数据和权重，生成客观、专业的赛事分析报告。' },
+        { role: 'user', content: fullPrompt },
+      ],
+      temperature: Number(aiConfig.temperature) || 0.7,
+      max_tokens: aiConfig.maxTokens || 4096,
+    }
+
+    const aiResponse = await this.aiService.proxyAiRequest(aiConfig.apiEndpoint, dto.apiKey, aiPayload)
+
+    const content =
+      (aiResponse as any)?.choices?.[0]?.message?.content ||
+      (aiResponse as any)?.output?.text ||
+      (typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse))
+
+    // 保存 Agent 报告（强制公开 + 授权）
+    const report = new AnalysisReportEntity()
+    report.userId = userId
+    report.matchId = dto.matchId
+    report.modelId = (dto.weightModelId || undefined) as any
+    report.promptTemplateId = (dto.promptTemplateId || undefined) as any
+    report.llmType = aiConfig.modelName
+    report.weightSnapshot = finalWeights
+    report.content = content
+    report.isPublic = true // Agent 报告强制公开
+    report.source = 'agent'
+    report.isAuthorized = true // 用户已同意授权
+    report.displayLanguage = dto.displayLanguage || 'zh-CN'
+
+    const savedReport = await this.reportRepo.save(report)
+    this.logger.log(`Agent 分析报告已生成: ${savedReport.id}`)
     return savedReport
   }
 

@@ -1,0 +1,29 @@
+{
+  "name": "cupai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "世界杯自定义 AI 赛事分析预测平台 · World Cup Custom AI Match Analysis Platform",
+  "scripts": {
+    "dev:web": "pnpm --filter @cupai/web dev",
+    "dev:server": "pnpm --filter @cupai/server dev",
+    "build:web": "pnpm --filter @cupai/web build",
+    "build:server": "pnpm --filter @cupai/server build",
+    "build": "pnpm build:web && pnpm build:server",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "format": "prettier --write \"apps/**/src/**/*.{ts,vue}\" \"packages/**/src/**/*.ts\"",
+    "test": "pnpm -r test"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@11.1.2",
+  "license": "Apache-2.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "esbuild"
+    ]
+  }
+}

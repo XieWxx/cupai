@@ -1,0 +1,68 @@
+export default {
+  common: {
+    appName: 'CupAI',
+    appSlogan: 'World Cup Custom AI Match Analysis Platform',
+    loading: 'Loading...',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+    save: 'Save',
+    delete: 'Delete',
+    edit: 'Edit',
+    search: 'Search',
+    more: 'More',
+    back: 'Back',
+  },
+  nav: {
+    home: 'Home',
+    matchCenter: 'Match Center',
+    analysisCenter: 'AI Analysis Center',
+    promptMarket: 'Prompt Market',
+    analysisSquare: 'Analysis Square',
+    profile: 'Profile',
+  },
+  home: {
+    hotMatches: 'Hot Matches',
+    latestAnalysis: 'Latest AI Analysis',
+    featuredContent: 'Featured Content',
+    dataOverview: 'Data Overview',
+    agentEntry: 'Agent Analysis',
+  },
+  match: {
+    allTeams: 'All Teams',
+    playerData: 'Player Data',
+    matchHistory: 'Match History',
+    liveUpdates: 'Live Updates',
+    standings: 'Standings',
+  },
+  analysis: {
+    apiConfig: 'API Key Config',
+    weightModel: 'Weight Model',
+    promptTemplate: 'Prompt Template',
+    manualAnalysis: 'Manual Analysis',
+    agentAnalysis: 'Agent Analysis',
+  },
+  prompt: {
+    create: 'Create Template',
+    myTemplates: 'My Templates',
+    publicMarket: 'Public Market',
+    collections: 'Collections',
+  },
+  square: {
+    allAnalysis: 'All Analysis',
+    agentAnalysis: 'Agent Analysis',
+    userAnalysis: 'User Analysis',
+    hotRanking: 'Hot Ranking',
+  },
+  profile: {
+    myApi: 'My API Config',
+    myModels: 'Custom Models',
+    myTemplates: 'Prompt Templates',
+    myAnalysis: 'Analysis Records',
+    privateContent: 'Private Content',
+    authRecords: 'Auth Records',
+  },
+  compliance: {
+    disclaimer:
+      'This analysis is for sports data entertainment and tactical reference only. It does not constitute any betting or gambling advice. Unauthorized use is strictly prohibited.',
+  },
+}

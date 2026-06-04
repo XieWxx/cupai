@@ -58,3 +58,7 @@ uploads/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# 项目内部文档（不纳入版本控制）
+*PRD*.md
+*技术栈选型*.md

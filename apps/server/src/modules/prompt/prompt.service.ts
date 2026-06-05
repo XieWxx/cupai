@@ -74,14 +74,17 @@ export class PromptService {
 
     if (scene) query.andWhere('t.scene = :scene', { scene })
 
-    // 排序：使用量/收藏量/最新
-    const sortMap: Record<string, string> = {
-      useCount: 't.useCount DESC',
-      collectCount: 't.collectCount DESC',
-      latest: 't.createdAt DESC',
-      likeCount: 't.likeCount DESC',
+    // 排序：使用量/收藏量/最新 - 注意 TypeORM 0.3 orderBy 必须用「列名, 方向」两参数形式
+    // 单字符串参数（如 't.useCount DESC'）会被解析为列名 't.useCount' + 默认 ASC，
+    // 导致 SQL 出现「DESC ASC」非法语法
+    const sortMap: Record<string, { column: string; direction: 'ASC' | 'DESC' }> = {
+      useCount: { column: 't.useCount', direction: 'DESC' },
+      collectCount: { column: 't.collectCount', direction: 'DESC' },
+      latest: { column: 't.createdAt', direction: 'DESC' },
+      likeCount: { column: 't.likeCount', direction: 'DESC' },
     }
-    query.orderBy(sortMap[sortBy] || sortMap.useCount)
+    const sort = sortMap[sortBy] || sortMap.useCount
+    query.orderBy(sort.column, sort.direction)
 
     const [list, total] = await query
       .skip((page - 1) * pageSize)
@@ -91,13 +94,17 @@ export class PromptService {
     return { list, total, page, pageSize }
   }
 
-  // 收藏模板（增加收藏计数）
+  // 收藏模板（增加收藏计数）。先校验存在性，避免对不存在的 ID 静默返回成功
   async collectTemplate(templateId: string) {
+    const template = await this.promptRepo.findOne({ where: { id: templateId } })
+    if (!template) throw new NotFoundException('模板不存在')
     await this.promptRepo.increment({ id: templateId }, 'collectCount', 1)
   }
 
-  // 使用模板（增加使用计数）
+  // 使用模板（增加使用计数）。同上，先校验存在性
   async useTemplate(templateId: string) {
+    const template = await this.promptRepo.findOne({ where: { id: templateId } })
+    if (!template) throw new NotFoundException('模板不存在')
     await this.promptRepo.increment({ id: templateId }, 'useCount', 1)
   }
 

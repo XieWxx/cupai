@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '积分榜' },
       },
       {
+        path: 'sentiment',
+        name: 'Sentiment',
+        component: () => import('@/views/SentimentView.vue'),
+        meta: { title: '海外舆情看板' },
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/ProfileView.vue'),

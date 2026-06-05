@@ -2,10 +2,10 @@
   <div class="match-detail-view" v-loading="loading">
     <el-page-header @back="$router.back()" :title="$t('common.back')">
       <template #content>
-        <span>{{ match?.homeTeam?.name }} VS {{ match?.awayTeam?.name }}</span>
-        <el-tag v-if="match?.status === 'live'" type="danger" size="small" style="margin-left: 8px">LIVE</el-tag>
-        <el-tag v-else-if="match?.status === 'finished'" type="success" size="small" style="margin-left: 8px">已结束</el-tag>
-        <el-tag v-else type="info" size="small" style="margin-left: 8px">未开始</el-tag>
+        <span>{{ match?.homeTeam?.name }} {{ $t('common.vs') }} {{ match?.awayTeam?.name }}</span>
+        <el-tag v-if="match?.status === 'live'" type="danger" size="small" style="margin-left: 8px">{{ $t('match.live') }}</el-tag>
+        <el-tag v-else-if="match?.status === 'finished'" type="success" size="small" style="margin-left: 8px">{{ $t('match.finished') }}</el-tag>
+        <el-tag v-else type="info" size="small" style="margin-left: 8px">{{ $t('match.upcoming') }}</el-tag>
       </template>
     </el-page-header>
 
@@ -27,7 +27,7 @@
         </div>
       </div>
       <div class="half-time" v-if="match?.halfTimeHome !== null">
-        半场 {{ match.halfTimeHome }} : {{ match.halfTimeAway }}
+        {{ $t('match.halfTime') }} {{ match.halfTimeHome }} : {{ match.halfTimeAway }}
       </div>
     </el-card>
 
@@ -35,35 +35,35 @@
       <el-col :span="16">
         <!-- 赛事基础信息 -->
         <el-card>
-          <template #header>赛事信息</template>
+          <template #header>{{ $t('match.matchInfo') }}</template>
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="赛事">{{ match?.leagueName }}</el-descriptions-item>
-            <el-descriptions-item label="阶段">{{ match?.stage }}</el-descriptions-item>
-            <el-descriptions-item label="开赛时间">{{ formatTime(match?.startTime) }}</el-descriptions-item>
-            <el-descriptions-item label="场馆">{{ match?.venue || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="裁判">{{ match?.refereeName || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="裁判国籍">{{ match?.refereeNationality || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="裁判风格">{{ match?.refereeStyle || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.match')">{{ match?.leagueName }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.stage')">{{ stageLabel(match?.stage) }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.startTime')">{{ formatTime(match?.startTime) }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.venue')">{{ match?.venue || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.referee')">{{ match?.refereeName || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.refereeNationality')">{{ match?.refereeNationality || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.refereeStyle')">{{ match?.refereeStyle || '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-card>
 
         <!-- 临场环境 -->
         <el-card style="margin-top: 16px" v-if="match?.temperature || match?.humidity">
-          <template #header>临场环境</template>
+          <template #header>{{ $t('match.environment') }}</template>
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="温度">{{ match?.temperature ?? '-' }}℃</el-descriptions-item>
-            <el-descriptions-item label="湿度">{{ match?.humidity ?? '-' }}%</el-descriptions-item>
-            <el-descriptions-item label="天气">{{ match?.weatherCondition || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="风速">{{ match?.windSpeed ?? '-' }} km/h</el-descriptions-item>
-            <el-descriptions-item label="主队球迷">{{ match?.homeAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="客队球迷">{{ match?.awayAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="总观众">{{ match?.totalAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.temperature')">{{ match?.temperature ?? '-' }}℃</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.humidity')">{{ match?.humidity ?? '-' }}%</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.weather')">{{ match?.weatherCondition || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.windSpeed')">{{ match?.windSpeed ?? '-' }} km/h</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.homeFans')">{{ match?.homeAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.awayFans')">{{ match?.awayAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.totalAttendance')">{{ match?.totalAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-card>
 
         <!-- 8 因子数据 -->
         <el-card style="margin-top: 16px" v-if="match?.matchData">
-          <template #header>全维度因子数据</template>
+          <template #header>{{ $t('match.factorData') }}</template>
           <el-descriptions :column="2" border>
             <el-descriptions-item
               v-for="(value, key) in match.matchData"
@@ -77,10 +77,10 @@
 
         <!-- 数据源溯源 -->
         <el-card style="margin-top: 16px" v-if="match?.dataSource">
-          <template #header>数据来源</template>
+          <template #header>{{ $t('match.dataSource') }}</template>
           <el-descriptions :column="1" border>
-            <el-descriptions-item label="数据源">{{ match.dataSource }}</el-descriptions-item>
-            <el-descriptions-item label="来源链接" v-if="match.dataSourceUrl">
+            <el-descriptions-item :label="$t('match.dataSource')">{{ match.dataSource }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('match.sourceLink')" v-if="match.dataSourceUrl">
               <a :href="match.dataSourceUrl" target="_blank" rel="noopener noreferrer">{{ match.dataSourceUrl }}</a>
             </el-descriptions-item>
           </el-descriptions>
@@ -90,8 +90,8 @@
         <el-card style="margin-top: 16px">
           <template #header>
             <div style="display: flex; justify-content: space-between; align-items: center">
-              <span>赛事舆情</span>
-              <el-button type="primary" link @click="$router.push('/sentiment')">查看完整看板</el-button>
+              <span>{{ $t('sentiment.matchSentiment') }}</span>
+              <el-button type="primary" link @click="$router.push('/sentiment')">{{ $t('sentiment.viewFull') }}</el-button>
             </div>
           </template>
           <div v-loading="sentimentLoading">
@@ -99,7 +99,7 @@
               <el-col :span="6">
                 <div class="mini-stat">
                   <div class="mini-value">{{ matchSentiment.sampleCount || 0 }}</div>
-                  <div class="mini-label">舆情总量</div>
+                  <div class="mini-label">{{ $t('sentiment.totalCount') }}</div>
                 </div>
               </el-col>
               <el-col :span="6">
@@ -107,24 +107,24 @@
                   <div class="mini-value" :style="{ color: getSentimentColor(matchSentiment.avgScore) }">
                     {{ Number(matchSentiment.avgScore || 0).toFixed(3) }}
                   </div>
-                  <div class="mini-label">情绪分</div>
+                  <div class="mini-label">{{ $t('sentiment.sentimentScore') }}</div>
                 </div>
               </el-col>
               <el-col :span="6">
                 <div class="mini-stat">
                   <div class="mini-value" style="color: #67c23a">{{ ((matchSentiment.positiveRatio || 0) * 100).toFixed(1) }}%</div>
-                  <div class="mini-label">正面比例</div>
+                  <div class="mini-label">{{ $t('sentiment.positiveRatio') }}</div>
                 </div>
               </el-col>
               <el-col :span="6">
                 <div class="mini-stat">
                   <div class="mini-value" style="color: #f56c6c">{{ ((matchSentiment.negativeRatio || 0) * 100).toFixed(1) }}%</div>
-                  <div class="mini-label">负面比例</div>
+                  <div class="mini-label">{{ $t('sentiment.negativeRatio') }}</div>
                 </div>
               </el-col>
             </el-row>
             <div ref="miniChartRef" style="height: 200px; margin-top: 12px"></div>
-            <el-empty v-if="!matchSentiment && !sentimentLoading" description="暂无舆情数据" :image-size="60" />
+            <el-empty v-if="!matchSentiment && !sentimentLoading" :description="$t('sentiment.noData')" :image-size="60" />
           </div>
         </el-card>
       </el-col>
@@ -132,16 +132,16 @@
       <!-- 快捷操作 -->
       <el-col :span="8">
         <el-card>
-          <template #header>快捷操作</template>
+          <template #header>{{ $t('match.quickActions') }}</template>
           <div class="quick-actions">
             <el-button type="primary" style="width: 100%; margin-bottom: 12px" @click="$router.push('/analysis')">
-              AI 分析此赛事
+              {{ $t('match.analyzeMatch') }}
             </el-button>
             <el-button style="width: 100%; margin-bottom: 12px" @click="$router.push('/square')">
-              查看相关分析
+              {{ $t('match.viewRelatedAnalysis') }}
             </el-button>
             <el-button style="width: 100%" @click="$router.push('/ranking')">
-              查看排行榜
+              {{ $t('match.viewRanking') }}
             </el-button>
           </div>
         </el-card>
@@ -151,14 +151,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useMatchStore } from '@/stores/match'
 import { subscribeMatch } from '@/api/websocket'
 import { http } from '@/api/request'
 import * as echarts from 'echarts'
 
 const route = useRoute()
+const { t, locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
 const loading = ref(false)
 const match = ref<any>(null)
@@ -170,30 +172,30 @@ const sentimentLoading = ref(false)
 const miniChartRef = ref<HTMLElement>()
 let miniChart: echarts.ECharts | null = null
 
-// 8 因子字段中文映射
-const factorLabels: Record<string, string> = {
-  shots: '射门次数',
-  shotsOnTarget: '射正次数',
-  possession: '控球率',
-  corners: '角球',
-  fouls: '犯规',
-  offsides: '越位',
-  yellowCards: '黄牌',
-  redCards: '红牌',
-  passes: '传球',
-  passAccuracy: '传球成功率',
-  historicalRecord: '历史战绩',
-  teamStrength: '球队实力',
-  playerStatus: '球员状态',
-  realtimeDynamic: '实时动态',
-  environment: '环境因素',
-  tacticalCounter: '战术克制',
-  socialSentiment: '舆情情绪',
-  hiddenFactors: '隐藏因素',
-}
+// 8 因子字段映射（响应式）
+const factorLabels = computed<Record<string, string>>(() => ({
+  shots: t('match.shots'),
+  shotsOnTarget: t('match.shotsOnTarget'),
+  possession: t('match.possession'),
+  corners: t('match.corners'),
+  fouls: t('match.fouls'),
+  offsides: t('match.offsides'),
+  yellowCards: t('match.yellowCards'),
+  redCards: t('match.redCards'),
+  passes: t('match.passes'),
+  passAccuracy: t('match.passAccuracy'),
+  historicalRecord: t('match.historicalRecord'),
+  teamStrength: t('match.teamStrength'),
+  playerStatus: t('match.playerStatus'),
+  realtimeDynamic: t('match.realtimeDynamic'),
+  environment: t('match.environmentFactor'),
+  tacticalCounter: t('match.tacticalCounter'),
+  socialSentiment: t('match.socialSentiment'),
+  hiddenFactors: t('match.hiddenFactors'),
+}))
 
 function factorLabel(key: string): string {
-  return factorLabels[key] || key
+  return factorLabels.value[key] || key
 }
 
 function formatFactorValue(value: unknown): string {
@@ -204,7 +206,7 @@ function formatFactorValue(value: unknown): string {
 
 function formatTime(dateStr: string) {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
+  return new Date(dateStr).toLocaleString(i18nLocale.value)
 }
 
 // 舆情情绪分颜色映射
@@ -227,7 +229,7 @@ async function loadMatchSentiment(matchId: string) {
       if (!miniChart) miniChart = echarts.init(miniChartRef.value)
       miniChart.setOption({
         tooltip: { trigger: 'axis' },
-        xAxis: { type: 'category', data: ['情绪分', '正面比', '负面比', '压力指数'] },
+        xAxis: { type: 'category', data: [t('sentiment.sentimentScore'), t('sentiment.positiveRatio'), t('sentiment.negativeRatio'), t('sentiment.pressureIndex')] },
         yAxis: { type: 'value', min: 0, max: 1 },
         series: [{
           type: 'bar',

@@ -25,5 +25,8 @@
       "@nestjs/core",
       "esbuild"
     ]
+  },
+  "dependencies": {
+    "tsx": "^4.22.4"
   }
 }

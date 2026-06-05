@@ -1,24 +1,24 @@
 <template>
   <div class="ranking-view">
-    <h1>排行榜</h1>
+    <h1>{{ $t('nav.ranking') }}</h1>
 
     <el-tabs v-model="activeTab" @tab-change="loadData">
       <!-- 用户排行 -->
-      <el-tab-pane label="用户排行" name="users">
+      <el-tab-pane :label="$t('ranking.userRanking')" name="users">
         <el-table :data="userRankings" stripe v-loading="loading">
-          <el-table-column label="排名" width="80">
+          <el-table-column :label="$t('ranking.rank')" width="80">
             <template #default="{ $index }">
               <span :class="['rank-badge', $index < 3 ? `rank-${$index + 1}` : '']">
                 {{ $index + 1 }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="用户" prop="user.nickname" />
-          <el-table-column label="总预测" prop="totalPredictions" width="90" />
-          <el-table-column label="精准匹配" prop="exactMatches" width="100" />
-          <el-table-column label="基本匹配" prop="basicMatches" width="100" />
-          <el-table-column label="总积分" prop="totalScore" width="90" />
-          <el-table-column label="准确率" width="100">
+          <el-table-column :label="$t('ranking.user')" prop="user.nickname" />
+          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="90" />
+          <el-table-column :label="$t('ranking.exactMatches')" prop="exactMatches" width="100" />
+          <el-table-column :label="$t('ranking.basicMatches')" prop="basicMatches" width="100" />
+          <el-table-column :label="$t('ranking.totalScore')" prop="totalScore" width="90" />
+          <el-table-column :label="$t('ranking.accuracyRate')" width="100">
             <template #default="{ row }">
               {{ Number(row.accuracyRate).toFixed(1) }}%
             </template>
@@ -27,21 +27,21 @@
       </el-tab-pane>
 
       <!-- 大模型排行 -->
-      <el-tab-pane label="大模型排行" name="models">
+      <el-tab-pane :label="$t('ranking.modelRanking')" name="models">
         <el-table :data="modelRankings" stripe v-loading="loading">
-          <el-table-column label="排名" width="80">
+          <el-table-column :label="$t('ranking.rank')" width="80">
             <template #default="{ $index }">
               <span :class="['rank-badge', $index < 3 ? `rank-${$index + 1}` : '']">
                 {{ $index + 1 }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="模型" prop="modelName" />
-          <el-table-column label="总预测" prop="totalPredictions" width="90" />
-          <el-table-column label="精准匹配" prop="exactMatches" width="100" />
-          <el-table-column label="基本匹配" prop="basicMatches" width="100" />
-          <el-table-column label="总积分" prop="totalScore" width="90" />
-          <el-table-column label="准确率" width="100">
+          <el-table-column :label="$t('common.model')" prop="modelName" />
+          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="90" />
+          <el-table-column :label="$t('ranking.exactMatches')" prop="exactMatches" width="100" />
+          <el-table-column :label="$t('ranking.basicMatches')" prop="basicMatches" width="100" />
+          <el-table-column :label="$t('ranking.totalScore')" prop="totalScore" width="90" />
+          <el-table-column :label="$t('ranking.accuracyRate')" width="100">
             <template #default="{ row }">
               {{ Number(row.accuracyRate).toFixed(1) }}%
             </template>
@@ -52,13 +52,13 @@
 
     <!-- 个人排行卡片 -->
     <el-card v-if="myRanking" class="my-ranking-card" shadow="hover">
-      <template #header>我的排行</template>
+      <template #header>{{ $t('ranking.myRanking') }}</template>
       <el-descriptions :column="4" border>
-        <el-descriptions-item label="总预测">{{ myRanking.totalPredictions }}</el-descriptions-item>
-        <el-descriptions-item label="精准匹配">{{ myRanking.exactMatches }}</el-descriptions-item>
-        <el-descriptions-item label="基本匹配">{{ myRanking.basicMatches }}</el-descriptions-item>
-        <el-descriptions-item label="总积分">{{ myRanking.totalScore }}</el-descriptions-item>
-        <el-descriptions-item label="准确率">{{ Number(myRanking.accuracyRate).toFixed(1) }}%</el-descriptions-item>
+        <el-descriptions-item :label="$t('ranking.totalPredictions')">{{ myRanking.totalPredictions }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('ranking.exactMatches')">{{ myRanking.exactMatches }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('ranking.basicMatches')">{{ myRanking.basicMatches }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('ranking.totalScore')">{{ myRanking.totalScore }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('ranking.accuracyRate')">{{ Number(myRanking.accuracyRate).toFixed(1) }}%</el-descriptions-item>
       </el-descriptions>
     </el-card>
   </div>

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
+import i18n from '@/locales'
 
 // 路由配置 - 使用 MainLayout 布局
 const routes: RouteRecordRaw[] = [
@@ -11,61 +12,61 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'Home',
         component: () => import('@/views/HomeView.vue'),
-        meta: { title: '首页' },
+        meta: { title: 'page.home' },
       },
       {
         path: 'match',
         name: 'MatchCenter',
         component: () => import('@/views/MatchCenterView.vue'),
-        meta: { title: '赛事数据中心' },
+        meta: { title: 'page.matchCenter' },
       },
       {
         path: 'match/:id',
         name: 'MatchDetail',
         component: () => import('@/views/MatchDetailView.vue'),
-        meta: { title: '赛事详情' },
+        meta: { title: 'page.matchDetail' },
       },
       {
         path: 'analysis',
         name: 'AnalysisCenter',
         component: () => import('@/views/AnalysisCenterView.vue'),
-        meta: { title: 'AI 自定义分析中心' },
+        meta: { title: 'page.analysisCenter' },
       },
       {
         path: 'prompt-market',
         name: 'PromptMarket',
         component: () => import('@/views/PromptMarketView.vue'),
-        meta: { title: 'Prompt 模板市场' },
+        meta: { title: 'page.promptMarket' },
       },
       {
         path: 'square',
         name: 'AnalysisSquare',
         component: () => import('@/views/AnalysisSquareView.vue'),
-        meta: { title: '分析广场' },
+        meta: { title: 'page.analysisSquare' },
       },
       {
         path: 'ranking',
         name: 'Ranking',
         component: () => import('@/views/RankingView.vue'),
-        meta: { title: '排行榜' },
+        meta: { title: 'page.ranking' },
       },
       {
         path: 'standings',
         name: 'Standings',
         component: () => import('@/views/StandingsView.vue'),
-        meta: { title: '积分榜' },
+        meta: { title: 'page.standings' },
       },
       {
         path: 'sentiment',
         name: 'Sentiment',
         component: () => import('@/views/SentimentView.vue'),
-        meta: { title: '海外舆情看板' },
+        meta: { title: 'page.sentiment' },
       },
       {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/ProfileView.vue'),
-        meta: { title: '个人中心', requiresAuth: true },
+        meta: { title: 'page.profile', requiresAuth: true },
       },
     ],
   },
@@ -73,7 +74,7 @@ const routes: RouteRecordRaw[] = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/LoginView.vue'),
-    meta: { title: '登录' },
+    meta: { title: 'page.login' },
   },
 ]
 
@@ -84,8 +85,9 @@ const router = createRouter({
 
 // 全局路由守卫
 router.beforeEach((to, _from, next) => {
-  // 设置页面标题
-  const title = to.meta.title as string
+  // 设置页面标题（支持 i18n key）
+  const titleKey = to.meta.title as string
+  const title = titleKey ? i18n.global.t(titleKey) : ''
   document.title = title ? `${title} - CupAI` : 'CupAI'
 
   // 需要登录的页面检查

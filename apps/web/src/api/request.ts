@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
+import i18n from '@/locales'
 
 /**
  * 统一响应格式
@@ -10,6 +11,9 @@ interface ApiResponse<T = unknown> {
   message: string
   data: T
 }
+
+// 快捷获取国际化翻译函数
+const t = (key: string) => i18n.global.t(key)
 
 // 创建 Axios 实例
 const request: AxiosInstance = axios.create({
@@ -43,7 +47,7 @@ request.interceptors.response.use(
     }
 
     // code !== 0 表示业务错误
-    const errorMsg = res.message || '请求失败'
+    const errorMsg = res.message || t('common.requestFailed')
     ElMessage.error(errorMsg)
     return Promise.reject(new Error(errorMsg))
   },
@@ -51,7 +55,7 @@ request.interceptors.response.use(
     const { response } = error
     if (response) {
       const data = response.data as ApiResponse
-      const errorMsg = data?.message || '请求失败'
+      const errorMsg = data?.message || t('common.requestFailed')
 
       switch (response.status) {
         case 401:
@@ -59,16 +63,16 @@ request.interceptors.response.use(
           window.location.href = '/login'
           break
         case 403:
-          ElMessage.error('无权限访问')
+          ElMessage.error(t('common.noPermission'))
           break
         case 500:
-          ElMessage.error('服务器内部错误')
+          ElMessage.error(t('common.serverError'))
           break
         default:
           ElMessage.error(errorMsg)
       }
     } else {
-      ElMessage.error('网络连接失败')
+      ElMessage.error(t('common.networkError'))
     }
     return Promise.reject(error)
   },

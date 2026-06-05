@@ -1,14 +1,16 @@
 import { Module, Global } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Redis from 'ioredis'
+import { RedisCacheService } from './redis-cache.service'
 
 /**
  * Redis 全局模块
- * 提供全局可注入的 Redis 客户端实例
+ * 提供全局可注入的 Redis 客户端实例和缓存服务
  */
 @Global()
 @Module({
   providers: [
+    RedisCacheService,
     {
       provide: 'REDIS_CLIENT',
       useFactory: (configService: ConfigService) => {
@@ -40,6 +42,6 @@ import Redis from 'ioredis'
       inject: [ConfigService],
     },
   ],
-  exports: ['REDIS_CLIENT'],
+  exports: ['REDIS_CLIENT', RedisCacheService],
 })
 export class RedisModule {}

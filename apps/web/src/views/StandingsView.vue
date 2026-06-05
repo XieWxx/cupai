@@ -1,16 +1,16 @@
 <template>
   <div class="standings-view">
-    <h1>积分榜</h1>
+    <h1>{{ $t('standings.title') }}</h1>
 
     <!-- 小组选择 -->
     <el-row :gutter="16" class="filter-bar">
       <el-col :span="6">
-        <el-select v-model="selectedGroup" placeholder="选择小组" clearable @change="loadStandings">
-          <el-option v-for="g in groups" :key="g" :label="g + '组'" :value="g" />
+        <el-select v-model="selectedGroup" :placeholder="$t('standings.selectGroup')" clearable @change="loadStandings">
+          <el-option v-for="g in groups" :key="g" :label="g + $t('standings.group')" :value="g" />
         </el-select>
       </el-col>
       <el-col :span="6">
-        <el-button type="primary" @click="loadAllStandings">查看全部小组</el-button>
+        <el-button type="primary" @click="loadAllStandings">{{ $t('standings.viewAllGroups') }}</el-button>
       </el-col>
     </el-row>
 
@@ -19,38 +19,38 @@
       <el-card>
         <template #header>
           <div class="group-header">
-            <span class="group-name">{{ group }}组</span>
-            <el-button text type="primary" size="small" @click="loadAdvance(group as string)">出线形势</el-button>
+            <span class="group-name">{{ group }}{{ $t('standings.group') }}</span>
+            <el-button text type="primary" size="small" @click="loadAdvance(group as string)">{{ $t('standings.advanceAnalysis') }}</el-button>
           </div>
         </template>
         <el-table :data="teams" stripe border size="small">
-          <el-table-column label="排名" width="60" align="center">
+          <el-table-column :label="$t('standings.rank')" width="60" align="center">
             <template #default="{ $index }">
               <span :class="{ 'rank-top': $index < 2 }">{{ $index + 1 }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="球队" min-width="120">
-            <template #default="{ row }">{{ row.team?.name || '未知' }}</template>
+          <el-table-column :label="$t('standings.team')" min-width="120">
+            <template #default="{ row }">{{ row.team?.name || $t('standings.unknown') }}</template>
           </el-table-column>
-          <el-table-column prop="played" label="赛" width="50" align="center" />
-          <el-table-column prop="wins" label="胜" width="50" align="center" />
-          <el-table-column prop="draws" label="平" width="50" align="center" />
-          <el-table-column prop="losses" label="负" width="50" align="center" />
-          <el-table-column prop="goalsFor" label="进" width="50" align="center" />
-          <el-table-column prop="goalsAgainst" label="失" width="50" align="center" />
-          <el-table-column prop="goalDifference" label="净胜" width="60" align="center">
+          <el-table-column prop="played" :label="$t('standings.played')" width="50" align="center" />
+          <el-table-column prop="wins" :label="$t('standings.won')" width="50" align="center" />
+          <el-table-column prop="draws" :label="$t('standings.drawn')" width="50" align="center" />
+          <el-table-column prop="losses" :label="$t('standings.lost')" width="50" align="center" />
+          <el-table-column prop="goalsFor" :label="$t('standings.goalsFor')" width="50" align="center" />
+          <el-table-column prop="goalsAgainst" :label="$t('standings.goalsAgainst')" width="50" align="center" />
+          <el-table-column prop="goalDifference" :label="$t('standings.goalDifference')" width="60" align="center">
             <template #default="{ row }">
               <span :style="{ color: row.goalDifference > 0 ? '#67c23a' : row.goalDifference < 0 ? '#f56c6c' : '#999' }">
                 {{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="points" label="积分" width="60" align="center">
+          <el-table-column prop="points" :label="$t('standings.points')" width="60" align="center">
             <template #default="{ row }">
               <strong>{{ row.points }}</strong>
             </template>
           </el-table-column>
-          <el-table-column label="出线概率" width="100" align="center">
+          <el-table-column :label="$t('standings.advanceProbability')" width="100" align="center">
             <template #default="{ row }">
               <el-progress
                 v-if="row.advanceProbability"
@@ -66,12 +66,12 @@
     </div>
 
     <!-- 出线形势弹窗 -->
-    <el-dialog v-model="showAdvanceDialog" :title="advanceData.groupName + '组 出线形势'" width="600px">
+    <el-dialog v-model="showAdvanceDialog" :title="advanceData.groupName + $t('standings.group') + ' ' + $t('standings.advanceAnalysis')" width="600px">
       <div v-for="team in advanceData.teams" :key="team.teamId" class="advance-team">
         <div class="advance-rank">{{ team.rank }}</div>
         <div class="advance-info">
           <span class="advance-name">{{ team.teamName }}</span>
-          <span class="advance-record">{{ team.wins }}胜 {{ team.draws }}平 {{ team.losses }}负</span>
+          <span class="advance-record">{{ team.wins }}{{ $t('standings.won') }} {{ team.draws }}{{ $t('standings.drawn') }} {{ team.losses }}{{ $t('standings.lost') }}</span>
         </div>
         <div class="advance-prob">
           <el-progress
@@ -80,13 +80,13 @@
             :color="getProgressColor(team.advanceProbability)"
           />
         </div>
-        <el-tag :type="team.status === '出线区' ? 'success' : team.status === '有望出线' ? 'warning' : 'danger'" size="small">
+        <el-tag :type="getAdvanceTagType(team.advanceProbability)" size="small">
           {{ team.status }}
         </el-tag>
       </div>
     </el-dialog>
 
-    <el-empty v-if="Object.keys(standings.groups).length === 0 && !loading" description="暂无积分数据" />
+    <el-empty v-if="Object.keys(standings.groups).length === 0 && !loading" :description="$t('standings.noData')" />
   </div>
 </template>
 
@@ -147,6 +147,13 @@ function getProgressColor(percentage: number): string {
   if (percentage >= 70) return '#67c23a'
   if (percentage >= 40) return '#e6a23c'
   return '#f56c6c'
+}
+
+// 根据出线概率确定标签类型（避免依赖翻译文本比较）
+function getAdvanceTagType(probability: number): 'success' | 'warning' | 'danger' {
+  if (probability >= 70) return 'success'
+  if (probability >= 30) return 'warning'
+  return 'danger'
 }
 
 onMounted(() => {

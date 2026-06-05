@@ -85,6 +85,48 @@
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
+
+        <!-- 赛事舆情卡片 -->
+        <el-card style="margin-top: 16px">
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center">
+              <span>赛事舆情</span>
+              <el-button type="primary" link @click="$router.push('/sentiment')">查看完整看板</el-button>
+            </div>
+          </template>
+          <div v-loading="sentimentLoading">
+            <el-row :gutter="16" v-if="matchSentiment">
+              <el-col :span="6">
+                <div class="mini-stat">
+                  <div class="mini-value">{{ matchSentiment.sampleCount || 0 }}</div>
+                  <div class="mini-label">舆情总量</div>
+                </div>
+              </el-col>
+              <el-col :span="6">
+                <div class="mini-stat">
+                  <div class="mini-value" :style="{ color: getSentimentColor(matchSentiment.avgScore) }">
+                    {{ Number(matchSentiment.avgScore || 0).toFixed(3) }}
+                  </div>
+                  <div class="mini-label">情绪分</div>
+                </div>
+              </el-col>
+              <el-col :span="6">
+                <div class="mini-stat">
+                  <div class="mini-value" style="color: #67c23a">{{ ((matchSentiment.positiveRatio || 0) * 100).toFixed(1) }}%</div>
+                  <div class="mini-label">正面比例</div>
+                </div>
+              </el-col>
+              <el-col :span="6">
+                <div class="mini-stat">
+                  <div class="mini-value" style="color: #f56c6c">{{ ((matchSentiment.negativeRatio || 0) * 100).toFixed(1) }}%</div>
+                  <div class="mini-label">负面比例</div>
+                </div>
+              </el-col>
+            </el-row>
+            <div ref="miniChartRef" style="height: 200px; margin-top: 12px"></div>
+            <el-empty v-if="!matchSentiment && !sentimentLoading" description="暂无舆情数据" :image-size="60" />
+          </div>
+        </el-card>
       </el-col>
 
       <!-- 快捷操作 -->
@@ -109,16 +151,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMatchStore } from '@/stores/match'
 import { subscribeMatch } from '@/api/websocket'
+import { http } from '@/api/request'
+import * as echarts from 'echarts'
 
 const route = useRoute()
 const matchStore = useMatchStore()
 const loading = ref(false)
 const match = ref<any>(null)
 let unsubscribe: (() => void) | null = null
+
+// 舆情相关
+const matchSentiment = ref<any>(null)
+const sentimentLoading = ref(false)
+const miniChartRef = ref<HTMLElement>()
+let miniChart: echarts.ECharts | null = null
 
 // 8 因子字段中文映射
 const factorLabels: Record<string, string> = {
@@ -157,13 +207,56 @@ function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
+// 舆情情绪分颜色映射
+function getSentimentColor(score: number): string {
+  if (score > 0.3) return '#67c23a'
+  if (score > 0) return '#e6a23c'
+  if (score > -0.3) return '#f56c6c'
+  return '#c45656'
+}
+
+// 加载赛事舆情数据
+async function loadMatchSentiment(matchId: string) {
+  sentimentLoading.value = true
+  try {
+    const res = await http.get<any>(`/sentiment/match/${matchId}`)
+    matchSentiment.value = res || null
+    // 渲染迷你趋势图
+    if (res && miniChartRef.value) {
+      await nextTick()
+      if (!miniChart) miniChart = echarts.init(miniChartRef.value)
+      miniChart.setOption({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: ['情绪分', '正面比', '负面比', '压力指数'] },
+        yAxis: { type: 'value', min: 0, max: 1 },
+        series: [{
+          type: 'bar',
+          data: [
+            { value: Math.abs(Number(res.avgScore || 0)), itemStyle: { color: getSentimentColor(res.avgScore) } },
+            { value: Number(res.positiveRatio || 0), itemStyle: { color: '#67c23a' } },
+            { value: Number(res.negativeRatio || 0), itemStyle: { color: '#f56c6c' } },
+            { value: Number(res.pressureIndex || 0), itemStyle: { color: '#e6a23c' } },
+          ],
+          barWidth: 40,
+        }],
+        grid: { left: 40, right: 20, bottom: 30, top: 20 },
+      })
+    }
+  } catch {
+    // 舆情接口未就绪
+  } finally {
+    sentimentLoading.value = false
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
-    match.value = await matchStore.fetchMatchDetail(route.params.id as string)
+    const matchId = route.params.id as string
+    match.value = await matchStore.fetchMatchDetail(matchId)
 
     // 订阅赛事 WebSocket 实时更新
-    unsubscribe = subscribeMatch(route.params.id as string, (data: any) => {
+    unsubscribe = subscribeMatch(matchId, (data: any) => {
       if (data.type === 'live_update' && match.value) {
         if (data.homeScore !== undefined) match.value.homeScore = data.homeScore
         if (data.awayScore !== undefined) match.value.awayScore = data.awayScore
@@ -172,6 +265,9 @@ onMounted(async () => {
         Object.assign(match.value, data)
       }
     })
+
+    // 加载赛事舆情
+    await loadMatchSentiment(matchId)
   } finally {
     loading.value = false
   }
@@ -179,6 +275,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribe?.()
+  miniChart?.dispose()
 })
 </script>
 
@@ -240,5 +337,22 @@ onUnmounted(() => {
 .quick-actions {
   display: flex;
   flex-direction: column;
+}
+
+.mini-stat {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.mini-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a2e;
+}
+
+.mini-label {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
 }
 </style>

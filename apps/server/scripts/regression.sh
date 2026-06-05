@@ -70,15 +70,21 @@ check "GET /prompt/market?sortBy=latest" 200 $H
 
 # === 5. 风控 ===
 echo "[5] 风控（risk.controller）"
-# 已知问题：POST /risk/review 因 reviewAiContent 的 text 字段未解析报 500（P0 范围外）
+# reviewContent 接收 { content: string } 字段（非 text）
+# POST 默认返回 201 Created（NestJS @Post 装饰器默认状态码）
 H=$(curl -s -o /dev/null -w "%{http_code}" -m 5 -X POST "$B/risk/review" \
   -H "Content-Type: application/json" \
-  -d '{"text":"测试纯绿色安全文本"}')
-check "POST /risk/review (clean) [已知问题]" 500 $H
+  -d '{"content":"测试纯绿色安全文本"}')
+check "POST /risk/review (clean)" 201 $H
 H=$(curl -s -o /dev/null -w "%{http_code}" -m 5 -X POST "$B/risk/review" \
   -H "Content-Type: application/json" \
-  -d '{"text":"赌博"}')
-check "POST /risk/review (sensitive) [已知问题]" 500 $H
+  -d '{"content":"赌博"}')
+check "POST /risk/review (sensitive)" 201 $H
+# 验证空值保护
+H=$(curl -s -o /dev/null -w "%{http_code}" -m 5 -X POST "$B/risk/review" \
+  -H "Content-Type: application/json" \
+  -d '{}')
+check "POST /risk/review (empty body)" 201 $H
 H=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "$B/risk/sensitive-words" -H "Authorization: Bearer $TOKEN")
 check "GET /risk/sensitive-words (auth)" 200 $H
 

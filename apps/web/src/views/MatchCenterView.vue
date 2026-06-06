@@ -25,7 +25,7 @@
       <el-table-column :label="$t('match.homeTeam')" min-width="150">
         <template #default="{ row }">
           <div class="team-cell">
-            <span :class="`fi fi-${row.homeTeam?.countryCode?.toLowerCase()}`"></span>
+            <span v-if="getFlagClass(row.homeTeam?.countryCode)" :class="getFlagClass(row.homeTeam?.countryCode)"></span>
             <span>{{ row.homeTeam?.name }}</span>
           </div>
         </template>
@@ -39,7 +39,7 @@
       <el-table-column :label="$t('match.awayTeam')" min-width="150">
         <template #default="{ row }">
           <div class="team-cell">
-            <span :class="`fi fi-${row.awayTeam?.countryCode?.toLowerCase()}`"></span>
+            <span v-if="getFlagClass(row.awayTeam?.countryCode)" :class="getFlagClass(row.awayTeam?.countryCode)"></span>
             <span>{{ row.awayTeam?.name }}</span>
           </div>
         </template>
@@ -69,6 +69,7 @@
 import { reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMatchStore } from '@/stores/match'
+import { getFlagClass } from '@/utils/flag'
 
 const { locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()

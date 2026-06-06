@@ -56,7 +56,7 @@
           <div class="score-row">
             <div class="team-info">
               <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
-              <span :class="`team-flag fi fi-${match?.homeTeam?.countryCode?.toLowerCase()}`" />
+              <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
               <span class="team-name">{{ match?.homeTeam?.name }}</span>
               <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
             </div>
@@ -67,7 +67,7 @@
             </div>
             <div class="team-info">
               <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
-              <span :class="`team-flag fi fi-${match?.awayTeam?.countryCode?.toLowerCase()}`" />
+              <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
               <span class="team-name">{{ match?.awayTeam?.name }}</span>
               <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
             </div>
@@ -82,7 +82,7 @@
           <div class="score-row">
             <div class="team-info">
               <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
-              <span :class="`team-flag fi fi-${match?.homeTeam?.countryCode?.toLowerCase()}`" />
+              <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
               <span class="team-name">{{ match?.homeTeam?.name }}</span>
               <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
             </div>
@@ -91,7 +91,7 @@
             </div>
             <div class="team-info">
               <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
-              <span :class="`team-flag fi fi-${match?.awayTeam?.countryCode?.toLowerCase()}`" />
+              <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
               <span class="team-name">{{ match?.awayTeam?.name }}</span>
               <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
             </div>
@@ -265,13 +265,13 @@
 
           <div v-loading="reportsLoading">
             <EmptyState
-              v-if="!reportsLoading && dimensionReports.length === 0"
+              v-if="!reportsLoading && allSectionDimsEmpty"
               :title="$t('match.userReportsEmpty')"
               :description="$t('match.userReportsEmptyDesc')"
               variant="document"
             />
             <!-- 动态渲染该板块下所有维度的图表（2 列布局，每图自带复制指令按钮） -->
-            <div v-else class="dim-charts-grid">
+            <div class="dim-charts-grid">
               <div
                 v-for="dim in sectionDims(section.key)"
                 :key="dim.key"
@@ -331,7 +331,7 @@
             <div v-if="activeTeam" class="team-profile">
               <div class="team-profile__header">
                 <div class="team-profile__name">
-                  <span :class="`team-flag fi fi-${activeTeam?.countryCode?.toLowerCase()}`" />
+                  <span v-if="getFlagClass(activeTeam?.countryCode)" :class="`team-flag ${getFlagClass(activeTeam?.countryCode)}`" />
                   <span>{{ activeTeam?.name }}</span>
                   <el-tag v-if="activeTeam?.fifaRank" size="small" type="info" effect="plain" round>
                     FIFA #{{ activeTeam.fifaRank }}
@@ -750,6 +750,7 @@ import {
   MOCK_TEAM_PLAYERS,
   MOCK_DIMENSION_REPORTS,
 } from '@/api/mockData'
+import { getFlagClass } from '@/utils/flag'
 import * as echarts from 'echarts'
 import SkeletonCard from '@/components/common/SkeletonCard.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
@@ -913,6 +914,11 @@ function sectionDims(sectionKey: string): DimensionDef[] {
   return (Object.values(DIMENSIONS) as DimensionDef[]).filter((d) => d.section === sectionKey)
 }
 
+
+/** 所有维度板块是否全部无数据（用于决定是否显示 EmptyState） */
+const allSectionDimsEmpty = computed(() => {
+  return dimensionReports.value.every((r) => !r?.distribution || Object.keys(r.distribution).length === 0)
+})
 /**
  * 设置维度图表容器的 DOM ref（模板中 :ref="(el) => setDimChartRef(...)"）
  */
@@ -1301,13 +1307,18 @@ function aggregateDimension(dimKey: DimensionKey) {
 }
 
 /**
- * 推断图表类型（按选项数量自适应）
+ * 推断图表类型（按维度 key + 选项数量自适应）
+ * - 板块五 (corner) 维度：3+ 项使用雷达图（PRD 6 · 边角趣味数据 → 多维雷达分布图）
  * - 2 项：环形图（环形对比）
  * - 3-4 项：饼图
  * - 5+ 项：横向条形图（按值倒序）
  */
-function pickChartType(n: number): 'ring' | 'pie' | 'bar-h' | 'bar-v' {
+type ChartKind = 'ring' | 'pie' | 'bar-h' | 'bar-v' | 'radar'
+
+function pickChartType(dimKey: DimensionKey, n: number): ChartKind {
   if (n === 0) return 'bar-h'
+  // PRD 6：板块五 边角趣味数据 → 多维雷达分布图
+  if (dimKey.startsWith('corner_') && n >= 3) return 'radar'
   if (n === 2) return 'ring'
   if (n <= 4) return 'pie'
   return 'bar-h'
@@ -1418,7 +1429,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
   const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`
   // fmtName 仍保留兼容路径（数据无 labelByKey 时回落原 key）
   const fmtName = (name: string) => labelByKey[name] || name
-  const chartType = pickChartType(data.length)
+  const chartType = pickChartType(dimKey, data.length)
 
   const baseTooltip = {
     trigger: chartType === 'bar-h' || chartType === 'bar-v' ? 'axis' : 'item',
@@ -1446,6 +1457,40 @@ function renderDimensionChart(dimKey: DimensionKey) {
           color: '#334155', fontSize: 12,
         },
         data,
+      }],
+    })
+  } else if (chartType === 'radar') {
+    // 雷达图（PRD 6 · 板块五 边角趣味数据 → 多维雷达分布图）
+    // 3+ 候选项的概率分布映射到雷达轴上
+    chart.setOption({
+      tooltip: baseTooltip,
+      legend: {
+        bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8,
+        textStyle: { color: '#475569', fontSize: 12 },
+        data: [t('dimSection.cornerTitle') || '边角趣味数据'],
+      },
+      radar: {
+        center: ['50%', '46%'],
+        radius: '64%',
+        splitNumber: 4,
+        axisName: { color: '#475569', fontSize: 11 },
+        splitLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.18)' } },
+        splitArea: { areaStyle: { color: ['rgba(91, 143, 249, 0.04)', 'rgba(91, 143, 249, 0.08)'] } },
+        axisLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.25)' } },
+        // 雷达指标 = 各候选项；max 按最高概率 *1.2 自适应
+        indicator: data.map((d) => ({ name: d.name, max: Math.max(0.1, Math.ceil(d.value * 12) / 10) })),
+      },
+      series: [{
+        type: 'radar',
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { color: '#5b8ff9', width: 2 },
+        itemStyle: { color: '#5b8ff9' },
+        areaStyle: { color: 'rgba(91, 143, 249, 0.22)' },
+        data: [{
+          value: data.map((d) => Number((d.value * 100).toFixed(1))),
+          name: t('dimSection.cornerTitle') || '边角趣味数据',
+        }],
       }],
     })
   } else if (chartType === 'pie') {

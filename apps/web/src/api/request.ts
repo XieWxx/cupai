@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import i18n from '@/locales'
+import { findMock, isMockEnabled } from './mock'
 
 /**
  * 统一响应格式
@@ -79,18 +80,39 @@ request.interceptors.response.use(
 )
 
 // 通用请求方法封装（自动解包 data 字段）
+// 注意：当 mock 层命中时直接返回 mock 数据（与响应拦截器 unwrap 后的格式一致）
 export const http = {
-  get: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
-    request.get<unknown, T>(url, config),
+  get: <T = unknown>(url: string, config?: AxiosRequestConfig) => {
+    if (isMockEnabled()) {
+      const mockData = findMock('GET', url, config)
+      if (mockData !== undefined) return Promise.resolve(mockData as T)
+    }
+    return request.get<unknown, T>(url, config)
+  },
 
-  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    request.post<unknown, T>(url, data, config),
+  post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => {
+    if (isMockEnabled()) {
+      const mockData = findMock('POST', url, { ...config, data })
+      if (mockData !== undefined) return Promise.resolve(mockData as T)
+    }
+    return request.post<unknown, T>(url, data, config)
+  },
 
-  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-    request.put<unknown, T>(url, data, config),
+  put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) => {
+    if (isMockEnabled()) {
+      const mockData = findMock('PUT', url, { ...config, data })
+      if (mockData !== undefined) return Promise.resolve(mockData as T)
+    }
+    return request.put<unknown, T>(url, data, config)
+  },
 
-  delete: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
-    request.delete<unknown, T>(url, config),
+  delete: <T = unknown>(url: string, config?: AxiosRequestConfig) => {
+    if (isMockEnabled()) {
+      const mockData = findMock('DELETE', url, config)
+      if (mockData !== undefined) return Promise.resolve(mockData as T)
+    }
+    return request.delete<unknown, T>(url, config)
+  },
 }
 
 export default request

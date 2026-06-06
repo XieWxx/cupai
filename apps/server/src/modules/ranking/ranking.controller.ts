@@ -80,4 +80,32 @@ export class RankingController {
   ) {
     return this.rankingService.getMyRanking(req.user.id, seasonId)
   }
+
+  // ============ 热门数据 ============
+
+  /**
+   * 获取热门 AI 平台排行
+   * GET /ranking/platforms/top
+   */
+  @Get('platforms/top')
+  async getTopPlatforms() {
+    const platforms = [
+      { platform: 'ChatGPT', platformValue: 'chatgpt', userCount: 120 },
+      { platform: 'Claude', platformValue: 'claude', userCount: 103 },
+      { platform: 'DeepSeek', platformValue: 'deepseek', userCount: 86 },
+      { platform: 'Cursor', platformValue: 'cursor', userCount: 69 },
+      { platform: 'Qwen', platformValue: 'qwen', userCount: 52 },
+      { platform: 'Gemini', platformValue: 'gemini', userCount: 35 },
+    ]
+    return { list: platforms }
+  }
+
+  /**
+   * 获取热门 AI 分析简报
+   * GET /ranking/hot-briefs
+   */
+  @Get('hot-briefs')
+  async getHotBriefs(@Query('pageSize') pageSize?: string) {
+    return this.rankingService.getHotBriefs(Number(pageSize) || 6)
+  }
 }

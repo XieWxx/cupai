@@ -32,6 +32,19 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   /**
+   * 获取淘汰赛对阵图数据
+   */
+  async function fetchBracket() {
+    loading.value = true
+    try {
+      const res = await http.get('/match/bracket')
+      return res
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * 获取赛事详情
    */
   async function fetchMatchDetail(matchId: string) {
@@ -80,6 +93,7 @@ export const useMatchStore = defineStore('match', () => {
     currentTeam,
     loading,
     fetchMatches,
+    fetchBracket,
     fetchMatchDetail,
     fetchTeams,
     fetchTeamDetail,

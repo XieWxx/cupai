@@ -30,12 +30,12 @@ export default defineConfig({
     proxy: {
       // 开发环境代理后端 API
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3002',
         changeOrigin: true,
       },
       // WebSocket 代理
       '/socket.io': {
-        target: 'ws://localhost:3001',
+        target: 'ws://localhost:3002',
         ws: true,
       },
     },

@@ -15,6 +15,7 @@ import { PromptModule } from './modules/prompt/prompt.module'
 import { RankingModule } from './modules/ranking/ranking.module'
 import { AgentModule } from './modules/agent/agent.module'
 import { RiskModule } from './modules/risk/risk.module'
+import { BsdcModule } from './modules/bsd/bsd.module'
 
 // 根模块 - 注册全局配置与业务模块
 @Module({
@@ -44,6 +45,7 @@ import { RiskModule } from './modules/risk/risk.module'
     RankingModule,
     AgentModule,
     RiskModule,
+    BsdcModule,
   ],
   controllers: [AppController],
   providers: [

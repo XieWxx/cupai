@@ -4,6 +4,7 @@ import { Repository } from 'typeorm'
 import { WeightModelEntity } from './entities/weight-model.entity'
 import { UserRankingEntity } from './entities/user-ranking.entity'
 import { ModelRankingEntity } from './entities/model-ranking.entity'
+import { AnalysisReportEntity } from '../agent/entities/analysis-report.entity'
 import { CreateWeightModelDto } from './dto/create-weight-model.dto'
 import { WEIGHT_SUM } from '@cupai/constants'
 
@@ -19,6 +20,8 @@ export class RankingService {
     private readonly userRankingRepo: Repository<UserRankingEntity>,
     @InjectRepository(ModelRankingEntity)
     private readonly modelRankingRepo: Repository<ModelRankingEntity>,
+    @InjectRepository(AnalysisReportEntity)
+    private readonly reportRepo: Repository<AnalysisReportEntity>,
   ) {}
 
   // 创建权重模型
@@ -95,11 +98,14 @@ export class RankingService {
   /**
    * 获取用户预测准确率排行
    * 按总积分降序，支持赛季筛选
+   * 关联用户的默认 AI 配置（denormalize 为 defaultAiConfig）
    */
   async getUserRankings(seasonId?: string, page = 1, pageSize = 20) {
     const query = this.userRankingRepo
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.user', 'user')
+      // 关联用户的 AI 配置列表（用于 denormalize 默认配置）
+      .leftJoinAndSelect('user.aiConfigs', 'aiCfg')
 
     if (seasonId) {
       query.andWhere('r.seasonId = :seasonId', { seasonId })
@@ -113,7 +119,20 @@ export class RankingService {
       .take(pageSize)
       .getManyAndCount()
 
-    return { list, total, page, pageSize }
+    // 后处理：denormalize 用户默认 AI 配置（前端可直接读取 platform + modelName）
+    const enrichedList = list.map((r) => {
+      const defaultCfg = r.user?.aiConfigs?.find((c) => c.isDefault) || null
+      return {
+        ...r,
+        user: {
+          ...r.user,
+          // 默认 AI 配置（agentPlatform 推断 + modelName 取自此处）
+          defaultAiConfig: defaultCfg,
+        },
+      }
+    })
+
+    return { list: enrichedList, total, page, pageSize }
   }
 
   /**
@@ -158,5 +177,71 @@ export class RankingService {
       }
     }
     return ranking
+  }
+
+  /**
+   * 获取热门 AI 分析简报
+   * 按 match_id 聚合分析报告，取分析数量最多的赛事
+   */
+  async getHotBriefs(pageSize = 6) {
+    // 按赛事聚合：统计每个赛事的分析数量、点赞总数、最常用模型
+    const rows = await this.reportRepo
+      .createQueryBuilder('r')
+      .select('r.matchId', 'matchId')
+      .addSelect('COUNT(*)', 'analysisCount')
+      .addSelect('SUM(r.likeCount)', 'totalLikes')
+      .addSelect('(SELECT r2.llm_type FROM analysis_reports r2 WHERE r2.match_id = r.match_id AND r2.is_public = 1 ORDER BY r2.like_count DESC LIMIT 1)', 'topModel')
+      .addSelect('(SELECT r3.content FROM analysis_reports r3 WHERE r3.match_id = r.match_id AND r3.is_public = 1 ORDER BY r3.like_count DESC LIMIT 1)', 'topConclusion')
+      .where('r.isPublic = :isPublic', { isPublic: true })
+      .groupBy('r.matchId')
+      .orderBy('COUNT(*)', 'DESC')
+      .limit(pageSize)
+      .getRawMany()
+
+    if (rows.length === 0) {
+      return { list: [] }
+    }
+
+    // 关联赛事和球队信息
+    const matchIds = rows.map((r) => r.matchId)
+    const matches = await this.reportRepo.manager
+      .createQueryBuilder()
+      .select([
+        'm.id AS matchId',
+        'm.league_name AS leagueName',
+        'ht.name AS homeTeamName',
+        'ht.country_code AS homeCountryCode',
+        'at.name AS awayTeamName',
+        'at.country_code AS awayCountryCode',
+      ])
+      .from('matches', 'm')
+      .leftJoin('teams', 'ht', 'ht.id = m.home_team_id')
+      .leftJoin('teams', 'at', 'at.id = m.away_team_id')
+      .where('m.id IN (:...matchIds)', { matchIds })
+      .getRawMany()
+
+    const matchMap = new Map(matches.map((m) => [m.matchId, m]))
+
+    const list = rows.map((r) => {
+      const match = matchMap.get(r.matchId) || {}
+      // 截取报告内容前 100 字符作为结论摘要
+      const conclusion = r.topConclusion
+        ? r.topConclusion.replace(/[#*\n]/g, ' ').trim().slice(0, 100)
+        : ''
+      return {
+        matchId: r.matchId,
+        homeTeamName: match.homeTeamName || '',
+        homeCountryCode: match.homeCountryCode || 'INT',
+        awayTeamName: match.awayTeamName || '',
+        awayCountryCode: match.awayCountryCode || 'INT',
+        leagueName: match.leagueName || '',
+        topConclusion: conclusion,
+        accuracyRate: 0,
+        analysisCount: Number(r.analysisCount) || 0,
+        topModel: r.topModel || '',
+      }
+    })
+
+    return { list }
   }
 }

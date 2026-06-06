@@ -17,12 +17,7 @@
       >
         <el-menu-item index="/">{{ $t('nav.home') }}</el-menu-item>
         <el-menu-item index="/match">{{ $t('nav.matchCenter') }}</el-menu-item>
-        <el-menu-item index="/analysis">{{ $t('nav.analysisCenter') }}</el-menu-item>
-        <el-menu-item index="/prompt-market">{{ $t('nav.promptMarket') }}</el-menu-item>
-        <el-menu-item index="/square">{{ $t('nav.analysisSquare') }}</el-menu-item>
         <el-menu-item index="/ranking">{{ $t('nav.ranking') }}</el-menu-item>
-        <el-menu-item index="/standings">{{ $t('nav.standings') }}</el-menu-item>
-        <el-menu-item index="/sentiment">{{ $t('nav.sentiment') }}</el-menu-item>
       </el-menu>
       <div class="header-right">
         <!-- 语言切换 -->

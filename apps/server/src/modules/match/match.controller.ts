@@ -1,15 +1,17 @@
 import { Controller, Get, Param, Query } from '@nestjs/common'
 import { MatchService } from './match.service'
 import { StandingService } from './standing.service'
+import { BsdcBusinessService } from '../bsd/bsd.business.service'
 
 /**
  * 赛事数据控制器
  */
-@Controller('match')
+@Controller(['match', 'matches'])
 export class MatchController {
   constructor(
     private readonly matchService: MatchService,
     private readonly standingService: StandingService,
+    private readonly bsdService: BsdcBusinessService,
   ) {}
 
   // 获取赛事列表
@@ -23,10 +25,22 @@ export class MatchController {
     return this.matchService.getMatches(status, stage, Number(page) || 1, Number(pageSize) || 20)
   }
 
+  // 获取淘汰赛对阵图数据（按 bracketStage 分组）
+  @Get('bracket')
+  async getBracketData() {
+    return this.matchService.getBracketData()
+  }
+
   // 获取赛事详情
   @Get(':id')
   async getMatchDetail(@Param('id') id: string) {
     return this.matchService.getMatchDetail(id)
+  }
+
+  // 获取赛事预测
+  @Get(':id/prediction')
+  async getMatchPrediction(@Param('id') id: string) {
+    return this.matchService.getMatchPrediction(id)
   }
 
   // 获取所有球队

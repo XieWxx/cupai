@@ -5,20 +5,20 @@
     <!-- 筛选栏 -->
     <el-row :gutter="16" class="filter-bar">
       <el-col :span="6">
-        <el-select v-model="filters.scene" placeholder="适配场景" clearable @change="loadMarket">
-          <el-option label="赛事前瞻" value="match_preview" />
-          <el-option label="球队对比" value="team_compare" />
-          <el-option label="球星分析" value="player_analysis" />
-          <el-option label="出线推演" value="qualification_predict" />
-          <el-option label="舆情研判" value="sentiment_analysis" />
+        <el-select v-model="filters.scene" :placeholder="$t('prompt.scene')" clearable @change="loadMarket">
+          <el-option :label="$t('prompt.scenePreview')" value="match_preview" />
+          <el-option :label="$t('prompt.sceneCompare')" value="team_compare" />
+          <el-option :label="$t('prompt.scenePlayer')" value="player_analysis" />
+          <el-option :label="$t('prompt.sceneAdvance')" value="qualification_predict" />
+          <el-option :label="$t('prompt.sceneSentiment')" value="sentiment_analysis" />
         </el-select>
       </el-col>
       <el-col :span="6">
-        <el-select v-model="filters.sortBy" placeholder="排序方式" @change="loadMarket">
-          <el-option label="最多使用" value="useCount" />
-          <el-option label="最多收藏" value="collectCount" />
-          <el-option label="最新发布" value="latest" />
-          <el-option label="最多点赞" value="likeCount" />
+        <el-select v-model="filters.sortBy" :placeholder="$t('prompt.sortMethod')" @change="loadMarket">
+          <el-option :label="$t('prompt.sortMostUsed')" value="useCount" />
+          <el-option :label="$t('prompt.sortMostCollected')" value="collectCount" />
+          <el-option :label="$t('prompt.sortLatest')" value="latest" />
+          <el-option :label="$t('prompt.sortMostLiked')" value="likeCount" />
         </el-select>
       </el-col>
       <el-col :span="12" style="text-align: right">
@@ -33,7 +33,7 @@
           <template #header>
             <div class="template-header">
               <span class="template-name">{{ template.name }}</span>
-              <el-tag size="small">{{ template.scene }}</el-tag>
+              <el-tag size="small">{{ sceneLabels[template.scene] || template.scene }}</el-tag>
             </div>
           </template>
           <p class="template-content">{{ template.content?.substring(0, 100) }}...</p>
@@ -43,54 +43,65 @@
             <span>🔄 {{ template.useCount }}</span>
           </div>
           <div class="template-actions">
-            <el-button text type="primary" @click="promptStore.collectTemplate(template.id)">收藏</el-button>
-            <el-button text type="primary" @click="useTemplate(template)">使用</el-button>
+            <el-button text type="primary" @click="promptStore.collectTemplate(template.id)">{{ $t('prompt.collections') }}</el-button>
+            <el-button text type="primary" @click="useTemplate(template)">{{ $t('prompt.use') }}</el-button>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-empty v-if="promptStore.marketTemplates.length === 0 && !promptStore.loading" description="暂无公开模板" />
+    <el-empty v-if="promptStore.marketTemplates.length === 0 && !promptStore.loading" :description="$t('prompt.noPublicTemplates')" />
 
     <!-- 创建模板弹窗 -->
-    <el-dialog v-model="showCreateDialog" title="创建 Prompt 模板" width="600px">
+    <el-dialog v-model="showCreateDialog" :title="$t('prompt.create')" width="600px">
       <el-form :model="createForm" label-width="100px">
-        <el-form-item label="模板名称">
-          <el-input v-model="createForm.name" placeholder="如：世界杯决赛前瞻分析" />
+        <el-form-item :label="$t('prompt.templateName')">
+          <el-input v-model="createForm.name" :placeholder="$t('prompt.templateNameHint')" />
         </el-form-item>
-        <el-form-item label="适配场景">
-          <el-select v-model="createForm.scene" placeholder="选择场景">
-            <el-option label="赛事前瞻" value="match_preview" />
-            <el-option label="球队对比" value="team_compare" />
-            <el-option label="球星分析" value="player_analysis" />
-            <el-option label="出线推演" value="qualification_predict" />
-            <el-option label="舆情研判" value="sentiment_analysis" />
+        <el-form-item :label="$t('prompt.scene')">
+          <el-select v-model="createForm.scene" :placeholder="$t('prompt.selectScene')">
+            <el-option :label="$t('prompt.scenePreview')" value="match_preview" />
+            <el-option :label="$t('prompt.sceneCompare')" value="team_compare" />
+            <el-option :label="$t('prompt.scenePlayer')" value="player_analysis" />
+            <el-option :label="$t('prompt.sceneAdvance')" value="qualification_predict" />
+            <el-option :label="$t('prompt.sceneSentiment')" value="sentiment_analysis" />
           </el-select>
         </el-form-item>
-        <el-form-item label="适配模型">
-          <el-input v-model="createForm.adaptedModel" placeholder="如：DeepSeek、GPT-4（可选）" />
+        <el-form-item :label="$t('prompt.adaptModel')">
+          <el-input v-model="createForm.adaptedModel" :placeholder="$t('prompt.adaptModelHint')" />
         </el-form-item>
-        <el-form-item label="模板内容">
-          <el-input v-model="createForm.content" type="textarea" :rows="8" placeholder="输入 Prompt 模板内容，支持变量占位符 {{match}}、{{team}}、{{player}} 等" />
+        <el-form-item :label="$t('prompt.templateContent')">
+          <el-input v-model="createForm.content" type="textarea" :rows="8" :placeholder="$t('prompt.templateContentHint')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="createTemplate">创建</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="createTemplate">{{ $t('prompt.create') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { usePromptStore } from '@/stores/prompt'
 
 const promptStore = usePromptStore()
 const router = useRouter()
+const { t } = useI18n()
 const showCreateDialog = ref(false)
+
+// 场景标签映射（响应式，支持国际化）
+const sceneLabels = computed<Record<string, string>>(() => ({
+  match_preview: t('prompt.scenePreview'),
+  team_compare: t('prompt.sceneCompare'),
+  player_analysis: t('prompt.scenePlayer'),
+  qualification_predict: t('prompt.sceneAdvance'),
+  sentiment_analysis: t('prompt.sceneSentiment'),
+}))
 
 const filters = reactive({
   scene: '',
@@ -115,9 +126,9 @@ async function createTemplate() {
   try {
     await promptStore.createTemplate(createForm)
     showCreateDialog.value = false
-    ElMessage.success('模板创建成功')
+    ElMessage.success(t('prompt.createSuccess'))
   } catch (err: any) {
-    ElMessage.error(err?.response?.data?.message || '创建失败')
+    ElMessage.error(err?.response?.data?.message || t('prompt.createFail'))
   }
 }
 

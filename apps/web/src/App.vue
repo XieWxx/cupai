@@ -10,12 +10,29 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
+import es from 'element-plus/es/locale/lang/es'
+import fr from 'element-plus/es/locale/lang/fr'
+import pt from 'element-plus/es/locale/lang/pt'
+import ar from 'element-plus/es/locale/lang/ar'
+import ja from 'element-plus/es/locale/lang/ja'
+import ko from 'element-plus/es/locale/lang/ko'
 
 const { locale } = useI18n()
 
-// Element Plus 语言包映射
+// Element Plus 语言包映射（支持全部 8 种语言）
+const elementLocaleMap: Record<string, any> = {
+  'zh-CN': zhCn,
+  'en-US': en,
+  'es-ES': es,
+  'fr-FR': fr,
+  'pt-BR': pt,
+  'ar-SA': ar,
+  'ja-JP': ja,
+  'ko-KR': ko,
+}
+
 const elementLocale = computed(() => {
-  return locale.value === 'zh-CN' ? zhCn : en
+  return elementLocaleMap[locale.value] || en
 })
 
 // 暗色主题（暂用默认亮色，后续通过 store 控制）

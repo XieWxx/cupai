@@ -5,10 +5,10 @@
     <!-- 筛选栏 -->
     <el-row :gutter="16" class="filter-bar">
       <el-col :span="6">
-        <el-select v-model="filters.source" placeholder="来源筛选" clearable @change="loadReports">
-          <el-option label="全部" value="" />
-          <el-option label="Agent 官方分析" value="agent" />
-          <el-option label="用户分析" value="manual" />
+        <el-select v-model="filters.source" :placeholder="$t('square.sourceFilter')" clearable @change="loadReports">
+          <el-option :label="$t('square.all')" value="" />
+          <el-option :label="$t('square.agentLabel')" value="agent" />
+          <el-option :label="$t('square.userLabel')" value="manual" />
         </el-select>
       </el-col>
     </el-row>
@@ -20,9 +20,9 @@
           <div class="report-header">
             <div class="report-meta">
               <el-tag :type="report.source === 'agent' ? 'warning' : 'primary'" size="small">
-                {{ report.source === 'agent' ? 'Agent 分析' : '用户分析' }}
+                {{ report.source === 'agent' ? $t('square.agentLabel') : $t('square.userLabel') }}
               </el-tag>
-              <span class="report-time">{{ new Date(report.createdAt).toLocaleString('zh-CN') }}</span>
+              <span class="report-time">{{ new Date(report.createdAt).toLocaleString(i18nLocale) }}</span>
             </div>
             <div class="report-stats">
               <span>👍 {{ report.likeCount }}</span>
@@ -32,9 +32,9 @@
         </template>
         <div class="report-content markdown-body" v-html="renderMarkdown(report.content?.substring(0, 600))"></div>
         <div class="report-footer">
-          <span class="report-model">模型: {{ report.llmType }}</span>
-          <span class="report-lang">语言: {{ report.displayLanguage }}</span>
-          <span class="report-source" v-if="report.weightSnapshot">权重快照: {{ formatWeights(report.weightSnapshot) }}</span>
+          <span class="report-model">{{ $t('square.modelLabel') }} {{ report.llmType }}</span>
+          <span class="report-lang">{{ $t('square.languageLabel') }} {{ displayLanguageLabel(report.displayLanguage) }}</span>
+          <span class="report-source" v-if="report.weightSnapshot">{{ $t('square.weightSnapshot') }} {{ formatWeights(report.weightSnapshot) }}</span>
           <!-- 点赞/收藏按钮 -->
           <div class="report-actions">
             <el-button
@@ -43,7 +43,7 @@
               text
               @click="toggleLike(report.id)"
             >
-              {{ interactionMap[report.id]?.like ? '已赞' : '点赞' }}
+              {{ interactionMap[report.id]?.like ? $t('analysis.liked') : $t('analysis.like') }}
             </el-button>
             <el-button
               :type="interactionMap[report.id]?.collect ? 'warning' : 'default'"
@@ -51,19 +51,20 @@
               text
               @click="toggleCollect(report.id)"
             >
-              {{ interactionMap[report.id]?.collect ? '已收藏' : '收藏' }}
+              {{ interactionMap[report.id]?.collect ? $t('analysis.collected') : $t('analysis.collect') }}
             </el-button>
           </div>
         </div>
       </el-card>
     </div>
 
-    <el-empty v-if="analysisStore.publicReports.length === 0 && !analysisStore.loading" description="暂无公开分析报告" />
+    <el-empty v-if="analysisStore.publicReports.length === 0 && !analysisStore.loading" :description="$t('square.noPublicAnalysis')" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { useAnalysisStore } from '@/stores/analysis'
 import { http } from '@/api/request'
@@ -71,6 +72,7 @@ import { subscribeSquare } from '@/api/websocket'
 import MarkdownIt from 'markdown-it'
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
+const { t, locale: i18nLocale } = useI18n()
 
 // 渲染 Markdown 内容
 function renderMarkdown(content: string | undefined): string {
@@ -138,7 +140,7 @@ async function toggleLike(reportId: string) {
       report.likeCount = (report.likeCount || 0) + (res.action === 'added' ? 1 : -1)
     }
   } catch {
-    ElMessage.error('操作失败，请先登录')
+    ElMessage.error(t('common.loginRequired'))
   }
 }
 
@@ -156,7 +158,7 @@ async function toggleCollect(reportId: string) {
       report.collectCount = (report.collectCount || 0) + (res.action === 'added' ? 1 : -1)
     }
   } catch {
-    ElMessage.error('操作失败，请先登录')
+    ElMessage.error(t('common.loginRequired'))
   }
 }
 
@@ -167,7 +169,7 @@ onMounted(() => {
   // 订阅广场 WebSocket 新报告推送
   unsubscribeSquare = subscribeSquare((data: any) => {
     if (data.type === 'new_report') {
-      ElMessage.info('有新的分析报告发布，点击刷新查看')
+      ElMessage.info(t('square.newAnalysisNotice'))
     }
   })
 })

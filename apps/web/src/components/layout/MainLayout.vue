@@ -28,25 +28,18 @@
         <!-- 语言切换 -->
         <el-dropdown @command="switchLocale" class="locale-switch">
           <span class="locale-label">
-            {{ localeLabels[currentLocale] || '中文' }}
+            {{ localeLabels[currentLocale] }}
             <el-icon><ArrowDown /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="zh-CN">简体中文</el-dropdown-item>
-              <el-dropdown-item command="en-US">English</el-dropdown-item>
-              <el-dropdown-item command="es-ES">Español</el-dropdown-item>
-              <el-dropdown-item command="fr-FR">Français</el-dropdown-item>
-              <el-dropdown-item command="pt-BR">Português</el-dropdown-item>
-              <el-dropdown-item command="ar-SA">العربية</el-dropdown-item>
-              <el-dropdown-item command="ja-JP">日本語</el-dropdown-item>
-              <el-dropdown-item command="ko-KR">한국어</el-dropdown-item>
+              <el-dropdown-item v-for="(label, code) in localeLabels" :key="code" :command="code">{{ label }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
         <!-- 用户入口 -->
         <el-button v-if="!userStore.isLoggedIn" type="primary" @click="router.push('/login')">
-          {{ $t('common.login') || '登录' }}
+          {{ $t('common.login') }}
         </el-button>
         <el-dropdown v-else @command="handleUserCommand">
           <span class="user-info">
@@ -58,7 +51,7 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="profile">{{ $t('nav.profile') }}</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>{{ $t('common.logout') || '退出' }}</el-dropdown-item>
+              <el-dropdown-item command="logout" divided>{{ $t('common.logout') }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -72,7 +65,7 @@
     <el-footer class="main-footer" height="auto">
       <div class="footer-content">
         <p class="disclaimer">{{ $t('compliance.disclaimer') }}</p>
-        <p class="copyright">© {{ new Date().getFullYear() }} CupAI · Apache-2.0 License</p>
+        <p class="copyright">© {{ new Date().getFullYear() }} {{ $t('common.appName') }} · Apache-2.0 License</p>
       </div>
     </el-footer>
   </el-container>
@@ -96,9 +89,9 @@ const activeMenu = computed(() => route.path)
 // 当前语言
 const currentLocale = computed(() => locale.value)
 
-// 语言标签映射
-const localeLabels: Record<string, string> = {
-  'zh-CN': '中文',
+// 语言标签映射（响应式）
+const localeLabels = computed<Record<string, string>>(() => ({
+  'zh-CN': '简体中文',
   'en-US': 'English',
   'es-ES': 'Español',
   'fr-FR': 'Français',
@@ -106,7 +99,7 @@ const localeLabels: Record<string, string> = {
   'ar-SA': 'العربية',
   'ja-JP': '日本語',
   'ko-KR': '한국어',
-}
+}))
 
 // 切换语言
 function switchLocale(lang: string) {

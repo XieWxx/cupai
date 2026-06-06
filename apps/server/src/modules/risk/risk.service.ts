@@ -30,6 +30,11 @@ export class RiskService {
    * @returns 审核结果
    */
   async reviewContent(content: string): Promise<{ passed: boolean; violations: string[] }> {
+    // 防御性空值保护：content 为 null/undefined/非字符串时视为通过（不阻断上层流程）
+    if (!content || typeof content !== 'string') {
+      return { passed: true, violations: [] }
+    }
+
     const violations: string[] = []
     const lowerContent = content.toLowerCase()
 

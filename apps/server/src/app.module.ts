@@ -7,7 +7,6 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { DatabaseModule } from './config/database.config'
 import { RedisModule } from './config/redis.module'
-import { RedisCacheService } from './config/redis-cache.service'
 import { RedisThrottlerStorage } from './common/guards/redis-throttler.storage'
 import { UserModule } from './modules/user/user.module'
 import { AiModule } from './modules/ai/ai.module'
@@ -49,12 +48,10 @@ import { RiskModule } from './modules/risk/risk.module'
   controllers: [AppController],
   providers: [
     AppService,
-    RedisCacheService,
     // Redis 限流存储（覆盖默认内存存储）
     { provide: ThrottlerStorage, useClass: RedisThrottlerStorage },
     // 全局限流守卫（通过 DI 注入，自动获取 ThrottlerStorage）
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
-  exports: [RedisCacheService],
-})
+  })
 export class AppModule {}

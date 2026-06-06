@@ -3,17 +3,17 @@
     <!-- Hero 区域 -->
     <section class="hero-section">
       <div class="hero-content">
-        <h1 class="hero-title">⚽ CupAI</h1>
+        <h1 class="hero-title">⚽ {{ $t('common.appName') }}</h1>
         <p class="hero-subtitle">{{ $t('common.appSlogan') }}</p>
         <p class="hero-desc">
-          {{ $t('home.heroDesc') || '纯数据驱动 + 用户私有AI，全维度赛事因子 + Prompt 模板市场' }}
+          {{ $t('home.heroDesc') }}
         </p>
         <div class="hero-actions">
           <el-button type="primary" size="large" @click="$router.push('/analysis')">
-            {{ $t('home.startAnalysis') || '开始分析' }}
+            {{ $t('home.startAnalysis') }}
           </el-button>
           <el-button size="large" @click="$router.push('/match')">
-            {{ $t('home.viewMatches') || '浏览赛事' }}
+            {{ $t('home.viewMatches') }}
           </el-button>
         </div>
       </div>
@@ -33,7 +33,7 @@
                 <span :class="`fi fi-${match.homeTeam?.countryCode?.toLowerCase()}`"></span>
                 <span class="team-name">{{ match.homeTeam?.name }}</span>
               </div>
-              <div class="match-vs">VS</div>
+              <div class="match-vs">{{ $t('common.vs') }}</div>
               <div class="team-info">
                 <span :class="`fi fi-${match.awayTeam?.countryCode?.toLowerCase()}`"></span>
                 <span class="team-name">{{ match.awayTeam?.name }}</span>
@@ -41,7 +41,7 @@
             </div>
             <div class="match-meta">
               <el-tag :type="match.status === 'live' ? 'danger' : match.status === 'finished' ? 'info' : 'success'" size="small">
-                {{ match.status === 'live' ? '进行中' : match.status === 'finished' ? '已完赛' : '未开赛' }}
+                {{ match.status === 'live' ? $t('home.live') : match.status === 'finished' ? $t('home.finished') : $t('home.upcoming') }}
               </el-tag>
               <span class="match-time">{{ formatTime(match.startTime) }}</span>
             </div>
@@ -55,16 +55,16 @@
       <h2>{{ $t('home.dataOverview') }}</h2>
       <el-row :gutter="16">
         <el-col :xs="12" :sm="6">
-          <el-statistic title="覆盖球队" :value="stats.teams" suffix="+" />
+          <el-statistic :title="$t('home.teamsCovered')" :value="stats.teams" suffix="+" />
         </el-col>
         <el-col :xs="12" :sm="6">
-          <el-statistic title="赛事数据" :value="stats.matches" suffix="+" />
+          <el-statistic :title="$t('home.matchData')" :value="stats.matches" suffix="+" />
         </el-col>
         <el-col :xs="12" :sm="6">
-          <el-statistic title="分析报告" :value="stats.reports" suffix="+" />
+          <el-statistic :title="$t('home.analysisReports')" :value="stats.reports" suffix="+" />
         </el-col>
         <el-col :xs="12" :sm="6">
-          <el-statistic title="Prompt 模板" :value="stats.prompts" suffix="+" />
+          <el-statistic :title="$t('home.promptTemplates')" :value="stats.prompts" suffix="+" />
         </el-col>
       </el-row>
     </section>
@@ -73,10 +73,10 @@
     <section class="section agent-section">
       <el-card shadow="never" class="agent-card">
         <div class="agent-content">
-          <h2>🤖 Agent {{ $t('home.agentEntry') }}</h2>
-          <p>{{ $t('home.agentDesc') || '自动扫描赛事、批量生成分析报告，授权公开共享' }}</p>
+          <h2>🤖 {{ $t('home.agentEntry') }}</h2>
+          <p>{{ $t('home.agentDesc') }}</p>
           <el-button type="primary" @click="$router.push('/analysis')">
-            {{ $t('home.startAgent') || '启动 Agent' }}
+            {{ $t('home.startAgent') }}
           </el-button>
         </div>
       </el-card>
@@ -86,8 +86,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useMatchStore } from '@/stores/match'
 
+const { locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
 
 // 热门赛事数据
@@ -104,7 +106,7 @@ const stats = ref({
 // 格式化时间
 function formatTime(dateStr: string) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleString('zh-CN', {
+  return new Date(dateStr).toLocaleString(i18nLocale.value, {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',

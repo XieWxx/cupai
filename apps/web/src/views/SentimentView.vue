@@ -1,7 +1,7 @@
 <template>
   <div class="sentiment-view">
-    <h1>海外舆情看板</h1>
-    <p class="subtitle">多语言情感分析 · 8 种语言精准识别 · 文化语境修正</p>
+    <h1>{{ $t('sentiment.title') }}</h1>
+    <p class="subtitle">{{ $t('sentiment.subtitle') }}</p>
 
     <!-- 全局概览卡片 -->
     <el-row :gutter="16" class="overview-cards">
@@ -9,7 +9,7 @@
         <el-card shadow="hover">
           <div class="stat-card">
             <div class="stat-value">{{ overview.total || 0 }}</div>
-            <div class="stat-label">舆情总量</div>
+            <div class="stat-label">{{ $t('sentiment.totalCount') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -19,7 +19,7 @@
             <div class="stat-value" :style="{ color: getScoreColor(overview.avgScore) }">
               {{ formatScore(overview.avgScore) }}
             </div>
-            <div class="stat-label">平均情绪分</div>
+            <div class="stat-label">{{ $t('sentiment.avgScore') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -27,7 +27,7 @@
         <el-card shadow="hover">
           <div class="stat-card">
             <div class="stat-value">{{ platformCount }}</div>
-            <div class="stat-label">数据源平台</div>
+            <div class="stat-label">{{ $t('sentiment.platformCount') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -35,7 +35,7 @@
         <el-card shadow="hover">
           <div class="stat-card">
             <div class="stat-value">{{ languageCount }}</div>
-            <div class="stat-label">覆盖语言</div>
+            <div class="stat-label">{{ $t('sentiment.languageCount') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -47,10 +47,10 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>舆情情绪趋势</span>
+              <span>{{ $t('sentiment.trendTitle') }}</span>
               <el-radio-group v-model="trendInterval" size="small" @change="loadTimeline">
-                <el-radio-button value="hour">按小时</el-radio-button>
-                <el-radio-button value="day">按天</el-radio-button>
+                <el-radio-button value="hour">{{ $t('sentiment.byHour') }}</el-radio-button>
+                <el-radio-button value="day">{{ $t('sentiment.byDay') }}</el-radio-button>
               </el-radio-group>
             </div>
           </template>
@@ -61,7 +61,7 @@
       <!-- 语言分布饼图 -->
       <el-col :span="8">
         <el-card>
-          <template #header>语言分布</template>
+          <template #header>{{ $t('sentiment.languageDist') }}</template>
           <div ref="langChartRef" style="height: 350px"></div>
         </el-card>
       </el-col>
@@ -71,7 +71,7 @@
       <!-- 平台统计 -->
       <el-col :span="8">
         <el-card>
-          <template #header>平台数据源</template>
+          <template #header>{{ $t('sentiment.platformDist') }}</template>
           <div ref="platformChartRef" style="height: 300px"></div>
         </el-card>
       </el-col>
@@ -79,7 +79,7 @@
       <!-- 地区分布 -->
       <el-col :span="8">
         <el-card>
-          <template #header>地区分布</template>
+          <template #header>{{ $t('sentiment.regionDist') }}</template>
           <div ref="regionChartRef" style="height: 300px"></div>
         </el-card>
       </el-col>
@@ -87,7 +87,7 @@
       <!-- 球队舆情排行 -->
       <el-col :span="8">
         <el-card>
-          <template #header>球队舆情热度</template>
+          <template #header>{{ $t('sentiment.teamRanking') }}</template>
           <div class="team-ranking">
             <div v-for="(team, index) in teamRanking" :key="team.teamId" class="team-item">
               <span class="team-rank">{{ index + 1 }}</span>
@@ -99,10 +99,10 @@
                 style="flex: 1; margin: 0 12px"
               />
               <span class="team-score" :style="{ color: getScoreColor(team.score / 100 * 2 - 1) }">
-                {{ team.score > 50 ? '正面' : '负面' }}
+                {{ team.score > 50 ? $t('sentiment.positive') : $t('sentiment.negative') }}
               </span>
             </div>
-            <el-empty v-if="teamRanking.length === 0" description="暂无数据" :image-size="60" />
+            <el-empty v-if="teamRanking.length === 0" :description="$t('common.noData')" :image-size="60" />
           </div>
         </el-card>
       </el-col>
@@ -112,12 +112,12 @@
     <el-card style="margin-top: 16px">
       <template #header>
         <div class="card-header">
-          <span>最新舆情</span>
-          <el-select v-model="selectedPlatform" placeholder="筛选平台" clearable size="small" style="width: 140px" @change="loadRecentItems">
-            <el-option label="Twitter/X" value="twitter" />
-            <el-option label="Reddit" value="reddit" />
-            <el-option label="微博" value="weibo" />
-            <el-option label="其他" value="other" />
+          <span>{{ $t('sentiment.recentSentiment') }}</span>
+          <el-select v-model="selectedPlatform" :placeholder="$t('sentiment.filterPlatform')" clearable size="small" style="width: 140px" @change="loadRecentItems">
+            <el-option :label="t('match.platformTwitter')" value="twitter" />
+            <el-option :label="t('match.platformReddit')" value="reddit" />
+            <el-option :label="t('match.platformWeibo')" value="weibo" />
+            <el-option :label="$t('sentiment.other')" value="other" />
           </el-select>
         </div>
       </template>
@@ -127,29 +127,32 @@
             <el-tag :type="getPolarityType(item.sentimentPolarity)" size="small">
               {{ getPolarityLabel(item.sentimentPolarity) }}
             </el-tag>
-            <span class="feed-platform">{{ item.sourcePlatform }}</span>
+            <span class="feed-platform">{{ platformLabel(item.sourcePlatform) }}</span>
             <span class="feed-lang">{{ languageLabels[item.language] || item.language }}</span>
             <span class="feed-time">{{ formatTime(item.createdAt) }}</span>
           </div>
           <div class="feed-text">{{ item.originalText }}</div>
           <div class="feed-footer">
             <span class="feed-score" :style="{ color: getScoreColor(Number(item.sentimentScore)) }">
-              情绪分: {{ Number(item.sentimentScore).toFixed(2) }}
+              {{ $t('sentiment.sentimentScore') }}: {{ Number(item.sentimentScore).toFixed(2) }}
             </span>
-            <span class="feed-confidence">置信度: {{ (Number(item.confidence) * 100).toFixed(0) }}%</span>
-            <span class="feed-engagement" v-if="item.engagement">互动: {{ item.engagement }}</span>
+            <span class="feed-confidence">{{ $t('sentiment.confidence') }}: {{ (Number(item.confidence) * 100).toFixed(0) }}%</span>
+            <span class="feed-engagement" v-if="item.engagement">{{ $t('sentiment.engagement') }}: {{ item.engagement }}</span>
           </div>
         </div>
-        <el-empty v-if="recentItems.length === 0" description="暂无舆情数据" />
+        <el-empty v-if="recentItems.length === 0" :description="$t('sentiment.noData')" />
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { http } from '@/api/request'
+
+const { t, locale: i18nLocale } = useI18n()
 
 const overview = ref<any>({})
 const recentItems = ref<any[]>([])
@@ -171,10 +174,11 @@ let regionChart: echarts.ECharts | null = null
 const platformCount = ref(0)
 const languageCount = ref(0)
 
-const languageLabels: Record<string, string> = {
-  'zh-CN': '中文', 'en-US': '英语', 'es-ES': '西语', 'fr-FR': '法语',
-  'pt-BR': '葡语', 'ar-SA': '阿语', 'ja-JP': '日语', 'ko-KR': '韩语',
-}
+// 语言标签映射（响应式）
+const languageLabels = computed<Record<string, string>>(() => ({
+  'zh-CN': t('sentiment.zhCN'), 'en-US': t('sentiment.enUS'), 'es-ES': t('sentiment.esES'), 'fr-FR': t('sentiment.frFR'),
+  'pt-BR': t('sentiment.ptBR'), 'ar-SA': t('sentiment.arSA'), 'ja-JP': t('sentiment.jaJP'), 'ko-KR': t('sentiment.koKR'),
+}))
 
 function getScoreColor(score: number): string {
   if (score > 0.3) return '#67c23a'
@@ -194,14 +198,14 @@ function getPolarityType(polarity: string): 'success' | 'danger' | 'info' {
 }
 
 function getPolarityLabel(polarity: string): string {
-  if (polarity === 'positive') return '正面'
-  if (polarity === 'negative') return '负面'
-  return '中性'
+  if (polarity === 'positive') return t('sentiment.positive')
+  if (polarity === 'negative') return t('sentiment.negative')
+  return t('sentiment.neutral')
 }
 
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return new Date(dateStr).toLocaleString(i18nLocale.value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 async function loadOverview() {
@@ -224,8 +228,8 @@ async function loadTimeline() {
         xAxis: { type: 'category', data: res.map((r: any) => r.period) },
         yAxis: { type: 'value', min: -1, max: 1 },
         series: [
-          { name: '情绪分值', type: 'line', data: res.map((r: any) => Number(r.avgScore).toFixed(4)), smooth: true, itemStyle: { color: '#409eff' } },
-          { name: '数据量', type: 'bar', data: res.map((r: any) => Number(r.count)), yAxisIndex: 1, itemStyle: { color: '#e6e8eb' } },
+          { name: t('sentiment.scoreValue'), type: 'line', data: res.map((r: any) => Number(r.avgScore).toFixed(4)), smooth: true, itemStyle: { color: '#409eff' } },
+          { name: t('sentiment.dataCount'), type: 'bar', data: res.map((r: any) => Number(r.count)), yAxisIndex: 1, itemStyle: { color: '#e6e8eb' } },
         ],
         grid: { left: 60, right: 60, bottom: 30, top: 30 },
       })
@@ -254,7 +258,7 @@ function initCharts() {
 
 function renderLangChart(stats: any[]) {
   if (!langChart || !stats?.length) return
-  const langNames: Record<string, string> = { 'zh-CN': '中文', 'en-US': '英语', 'es-ES': '西语', 'fr-FR': '法语', 'pt-BR': '葡语', 'ar-SA': '阿语', 'ja-JP': '日语', 'ko-KR': '韩语' }
+  const langNames: Record<string, string> = { 'zh-CN': t('sentiment.zhCN'), 'en-US': t('sentiment.enUS'), 'es-ES': t('sentiment.esES'), 'fr-FR': t('sentiment.frFR'), 'pt-BR': t('sentiment.ptBR'), 'ar-SA': t('sentiment.arSA'), 'ja-JP': t('sentiment.jaJP'), 'ko-KR': t('sentiment.koKR') }
   langChart.setOption({
     tooltip: { trigger: 'item' },
     series: [{
@@ -271,7 +275,7 @@ function renderPlatformChart(stats: any[]) {
     tooltip: { trigger: 'item' },
     series: [{
       type: 'pie', radius: ['35%', '65%'],
-      data: stats.map((s: any) => ({ name: s.platform, value: Number(s.count) })),
+      data: stats.map((s: any) => ({ name: platformLabels.value[s.platform] || s.platform, value: Number(s.count) })),
     }],
   })
 }

@@ -1335,7 +1335,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
             {
               type: 'text',
               style: {
-                text: t('match.dimNoData') || '暂无数据',
+                text: t('match.dimNoData'),
                 fill: '#94a3b8',
                 fontSize: 14,
                 fontWeight: 500,
@@ -1345,7 +1345,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
               type: 'text',
               top: 24,
               style: {
-                text: t('match.dimNoDataDesc') || '该维度暂无 agent 分析报告',
+                text: t('match.dimNoDataDesc'),
                 fill: '#cbd5e1',
                 fontSize: 11,
               },
@@ -1426,7 +1426,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
       legend: {
         bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8,
         textStyle: { color: '#4b5563', fontSize: 12 },
-        data: [t('dimSection.cornerTitle') || '边角趣味数据'],
+        data: [t('dimSection.cornerTitle')],
       },
       radar: {
         center: ['50%', '46%'],
@@ -1448,7 +1448,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
         areaStyle: { color: 'rgba(91, 143, 249, 0.22)' },
         data: [{
           value: data.map((d) => Number((d.value * 100).toFixed(1))),
-          name: t('dimSection.cornerTitle') || '边角趣味数据',
+          name: t('dimSection.cornerTitle'),
         }],
       }],
     })

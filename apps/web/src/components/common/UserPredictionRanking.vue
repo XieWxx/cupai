@@ -21,9 +21,9 @@
             <span class="ranking-row__llm">· {{ item.llmType || '-' }}</span>
           </div>
         </div>
-        <div class="ranking-row__accuracy">
-          <div class="ranking-row__accuracy-value">{{ (item.accuracy * 100).toFixed(1) }}%</div>
-          <div class="ranking-row__accuracy-label">{{ $t('matchCenter.accuracy') }}</div>
+        <div class="ranking-row__stat">
+          <div class="ranking-row__stat-value">{{ displayValue(item) }}</div>
+          <div class="ranking-row__stat-label">{{ $t(mode === 'predictions' ? 'matchCenter.predictions' : 'matchCenter.accuracy') }}</div>
         </div>
       </li>
     </ul>
@@ -44,8 +44,19 @@ export interface UserRankingItem {
 interface Props {
   list: UserRankingItem[]
   loading?: boolean
+  /** 展示模式：predictions=预测次数（赛事维度），accuracy=准确率（全局排行） */
+  mode?: 'predictions' | 'accuracy'
 }
-withDefaults(defineProps<Props>(), { loading: false })
+const props = withDefaults(defineProps<Props>(), { loading: false, mode: 'predictions' })
+
+function displayValue(item: UserRankingItem): string {
+  if (props.mode === 'accuracy') {
+    // accuracy 模式：item.accuracy 是 0-1 的小数
+    return `${(item.accuracy * 100).toFixed(1)}%`
+  }
+  // predictions 模式：item.accuracy 存的是预测次数
+  return `${Math.round(item.accuracy)}`
+}
 
 function rankClass(idx: number) {
   if (idx === 0) return 'gold'
@@ -108,12 +119,22 @@ function platformLabel(p?: string) {
 .ranking-row__avatar {
   width: 28px;
   height: 20px;
-  border-radius: 3px;
   overflow: hidden;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  background: #e5e7eb;
+}
+.ranking-row__avatar .fi {
+  width: 28px;
+  height: 20px;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: none !important;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: inline-block;
 }
 .ranking-row__main {
   flex: 1;
@@ -132,17 +153,17 @@ function platformLabel(p?: string) {
   color: var(--color-text-tertiary, #9ca3af);
   margin-top: 2px;
 }
-.ranking-row__accuracy {
+.ranking-row__stat {
   text-align: right;
   flex-shrink: 0;
 }
-.ranking-row__accuracy-value {
+.ranking-row__stat-value {
   font-size: 14px;
   font-weight: 600;
   color: #5b8ff9;
   font-variant-numeric: tabular-nums;
 }
-.ranking-row__accuracy-label {
+.ranking-row__stat-label {
   font-size: 10px;
   color: var(--color-text-tertiary, #9ca3af);
   text-transform: uppercase;

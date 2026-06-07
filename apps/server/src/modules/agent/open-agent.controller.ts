@@ -247,47 +247,47 @@ Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出�
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`result_wdl\` | 胜负平 | home_win / draw / away_win |
-| \`result_score\` | 精确比分 | 如 "2:1" |
-| \`total_goals\` | 总进球数 | 0 / 1 / 2 / 3+ |
-| \`both_score\` | 双方都进球 | yes / no |
+| \`result_wdl\` | 胜负平 | home / draw / away |
+| \`result_total_goals\` | 全场总进球档位 | 0 / 1 / 2 / 3 / 4+ |
+| \`result_half_full\` | 半全场结果 | HH / HD / HA / DH / DD / DA / AH / AD / AA |
+| \`result_exact_score\` | 精确比分 | 如 "2:1" |
 
 ### 进球细节（8 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`first_goal\` | 首球方 | home / away / none |
-| \`first_goal_time\` | 首球时间 | 0-15 / 16-30 / 31-45 / 46-60 / 61-75 / 76-90+ |
-| \`goal_half\` | 进球半场 | first / second / both / none |
-| \`home_goals\` | 主队进球数 | 0 / 1 / 2 / 3+ |
-| \`away_goals\` | 客队进球数 | 0 / 1 / 2 / 3+ |
-| \`goal_diff\` | 净胜球 | -3+ / -2 / -1 / 0 / 1 / 2 / 3+ |
-| \`clean_sheet\` | 零封 | home / away / both / none |
+| \`goal_first_half\` | 上半场进球数 | 0 / 1 / 2 / 3+ |
+| \`goal_first\` | 首球方 | home / away / none |
+| \`goal_last\` | 末球方 | home / away / none |
+| \`goal_own\` | 是否有乌龙球 | yes / no |
 | \`goal_player_score\` | 进球球员 | 球员名（从阵容中选取） |
+| \`goal_stoppage\` | 伤停补时进球 | yes / no |
+| \`goal_clean_sheet\` | 零封 | home / away / both / none |
+| \`goal_odd_even\` | 总进球奇偶 | odd / even |
 
 ### 判罚（3 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`penalty\` | 是否有点球 | yes / no |
-| \`red_card\` | 是否有红牌 | yes / no |
-| \`var_review\` | 是否有 VAR | yes / no |
+| \`penalty_awarded\` | 是否有点球 | yes / no |
+| \`penalty_var_cancel\` | VAR 取消进球 | yes / no |
+| \`penalty_knockout_extra\` | 是否进入加时/点球 | regular / extra / penalties |
 
 ### 犯规（3 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`total_cards\` | 总牌数 | 0-2 / 3-4 / 5-6 / 7+ |
-| \`home_cards\` | 主队牌数 | 0 / 1 / 2 / 3+ |
-| \`away_cards\` | 客队牌数 | 0 / 1 / 2 / 3+ |
+| \`card_red\` | 是否有红牌 | yes / no |
+| \`card_yellow_total\` | 黄牌总数 | 0 / 1-2 / 3-4 / 5+ |
+| \`card_yellow_compare\` | 黄牌对比 | home_more / away_more / equal |
 
 ### 边角趣味数据（3 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`corners\` | 角球总数 | 0-6 / 7-10 / 11-14 / 15+ |
-| \`possession_home\` | 主队控球率 | <40% / 40-50% / 50-60% />60% |
-| \`shots_on_target\` | 射正总数 | 0-3 / 4-6 / 7-9 / 10+ |
+| \`corner_total\` | 角球总数 | 0-4 / 5-8 / 9-12 / 13+ |
+| \`corner_freekick_goal\` | 定位球进球 | yes / no |
+| \`corner_substitutions\` | 换人次数 | 0-3 / 4-6 / 7+ |
 
 ## 三、回调接口
 
@@ -458,47 +458,47 @@ Agents analyze 21 dimensions across 5 categories, outputting probability distrib
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`result_wdl\` | Win/Draw/Loss | home_win / draw / away_win |
-| \`result_score\` | Exact score | e.g. "2:1" |
-| \`total_goals\` | Total goals | 0 / 1 / 2 / 3+ |
-| \`both_score\` | Both teams score | yes / no |
+| \`result_wdl\` | Win/Draw/Loss | home / draw / away |
+| \`result_total_goals\` | Total goals range | 0 / 1 / 2 / 3 / 4+ |
+| \`result_half_full\` | Half-time/Full-time | HH / HD / HA / DH / DD / DA / AH / AD / AA |
+| \`result_exact_score\` | Exact score | e.g. "2:1" |
 
 ### Goal Details (8 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`first_goal\` | First goal team | home / away / none |
-| \`first_goal_time\` | First goal time | 0-15 / 16-30 / 31-45 / 46-60 / 61-75 / 76-90+ |
-| \`goal_half\` | Goal half | first / second / both / none |
-| \`home_goals\` | Home goals | 0 / 1 / 2 / 3+ |
-| \`away_goals\` | Away goals | 0 / 1 / 2 / 3+ |
-| \`goal_diff\` | Goal difference | -3+ / -2 / -1 / 0 / 1 / 2 / 3+ |
-| \`clean_sheet\` | Clean sheet | home / away / both / none |
+| \`goal_first_half\` | First half goals | 0 / 1 / 2 / 3+ |
+| \`goal_first\` | First goal team | home / away / none |
+| \`goal_last\` | Last goal team | home / away / none |
+| \`goal_own\` | Own goal | yes / no |
 | \`goal_player_score\` | Goal scorer | Player name (from lineup) |
+| \`goal_stoppage\` | Stoppage time goal | yes / no |
+| \`goal_clean_sheet\` | Clean sheet | home / away / both / none |
+| \`goal_odd_even\` | Total goals odd/even | odd / even |
 
 ### Penalties & VAR (3 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`penalty\` | Penalty awarded | yes / no |
-| \`red_card\` | Red card shown | yes / no |
-| \`var_review\` | VAR review | yes / no |
+| \`penalty_awarded\` | Penalty awarded | yes / no |
+| \`penalty_var_cancel\` | VAR goal cancel | yes / no |
+| \`penalty_knockout_extra\` | Extra time/penalties | regular / extra / penalties |
 
 ### Cards & Fouls (3 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`total_cards\` | Total cards | 0-2 / 3-4 / 5-6 / 7+ |
-| \`home_cards\` | Home cards | 0 / 1 / 2 / 3+ |
-| \`away_cards\` | Away cards | 0 / 1 / 2 / 3+ |
+| \`card_red\` | Red card | yes / no |
+| \`card_yellow_total\` | Total yellow cards | 0 / 1-2 / 3-4 / 5+ |
+| \`card_yellow_compare\` | Yellow card compare | home_more / away_more / equal |
 
 ### Fun Stats (3 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`corners\` | Total corners | 0-6 / 7-10 / 11-14 / 15+ |
-| \`possession_home\` | Home possession | <40% / 40-50% / 50-60% />60% |
-| \`shots_on_target\` | Shots on target | 0-3 / 4-6 / 7-9 / 10+ |
+| \`corner_total\` | Total corners | 0-4 / 5-8 / 9-12 / 13+ |
+| \`corner_freekick_goal\` | Set piece goal | yes / no |
+| \`corner_substitutions\` | Substitutions | 0-3 / 4-6 / 7+ |
 
 ## 3. Callback Endpoints
 

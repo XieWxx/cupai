@@ -264,12 +264,6 @@
           </template>
 
           <div v-loading="reportsLoading">
-            <EmptyState
-              v-if="!reportsLoading && allSectionDimsEmpty"
-              :title="$t('match.userReportsEmpty')"
-              :description="$t('match.userReportsEmptyDesc')"
-              variant="document"
-            />
             <!-- 动态渲染该板块下所有维度的图表（2 列布局，每图自带复制指令按钮） -->
             <div class="dim-charts-grid">
               <div
@@ -734,6 +728,7 @@ import {
   type DimensionKey,
 } from '@/utils/copyInstruction'
 import { useMatchStore } from '@/stores/match'
+import { useUserStore } from '@/stores/user'
 import { subscribeMatch } from '@/api/websocket'
 import { http } from '@/api/request'
 import { listInstructions, type IInstruction } from '@/api/instruction'
@@ -751,6 +746,7 @@ const route = useRoute()
 const router = useRouter()
 const { t, locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const match = ref<any>(null)
@@ -853,8 +849,11 @@ const activeLineupTab = ref<'home' | 'away'>('home')
 
 /**
  * 用户当前 API Key（用于回传指引）
+ * 优先从 userStore 获取（登录后后端返回），兜底从 localStorage 获取
  */
-const currentApiKey = computed(() => localStorage.getItem('cupai_api_key') || '')
+const currentApiKey = computed(() => {
+  return userStore?.user?.apiKey || localStorage.getItem('cupai_api_key') || ''
+})
 
 /**
  * 指令 ID 索引：按 dimKey 缓存（用于在「复制指令」中预填 curl 模板的 instructionId）
@@ -895,7 +894,10 @@ function buildCommonInput(dimKey?: DimensionKey): CopyInstructionInput {
         }
       : null,
     userApiKey: currentApiKey.value,
-    appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+    // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
+    appBaseUrl: import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
+      : (typeof window !== 'undefined' ? window.location.origin : undefined),
   }
   // 若传入了 dimKey，自动注入该维度的 instructionId（让 curl 模板中可一键复用）
   if (dimKey && instructionMap.value[dimKey]?.id) {
@@ -913,13 +915,7 @@ function sectionDims(sectionKey: string): DimensionDef[] {
 }
 
 
-/** 所有维度板块是否全部无数据（用于决定是否显示 EmptyState） */
-const allSectionDimsEmpty = computed(() => {
-  return dimensionReports.value.every((r) => !r?.distribution || Object.keys(r.distribution).length === 0)
-})
-/**
- * 设置维度图表容器的 DOM ref（模板中 :ref="(el) => setDimChartRef(...)"）
- */
+/** 设置维度图表容器的 DOM ref（模板中 :ref="(el) => setDimChartRef(...)"） */
 function setDimChartRef(dimKey: string, el: HTMLElement | null) {
   if (el) dimChartRefs.value[dimKey] = el
   else delete dimChartRefs.value[dimKey]
@@ -1013,7 +1009,10 @@ async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
   const text = buildPlayerInstruction({
     player: { ...player, teamName },
     userApiKey: currentApiKey.value,
-    appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+    // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
+    appBaseUrl: import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
+      : (typeof window !== 'undefined' ? window.location.origin : undefined),
   })
   copyDialogOpen.value = true
   copyDialogTabs.value = [
@@ -1035,7 +1034,10 @@ async function openTeamCopyDialog(side: 'home' | 'away') {
       keyPlayers: players.filter((p) => p.isKeyPlayer).slice(0, 5),
     },
     userApiKey: currentApiKey.value,
-    appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+    // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
+    appBaseUrl: import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
+      : (typeof window !== 'undefined' ? window.location.origin : undefined),
   })
   copyDialogOpen.value = true
   copyDialogTabs.value = [
@@ -1192,16 +1194,16 @@ function goBack() {
 async function loadPrediction() {
   try {
     // 后端真实接口：GET /matches/{id}/prediction
-    // 响应：{ homeWin, draw, awayWin, reasoning, source, dimensions }
-    // 见 docs/api-spec.md §3.6.4
+    // 有真实预测数据时返回 { homeWin, draw, awayWin, ... }，无数据时返回 null
     const res = await http.get<any>(`/matches/${route.params.id}/prediction`)
-    if (res && typeof res.homeWin === 'number') {
+    if (res && typeof res === 'object' && typeof res.homeWin === 'number') {
       prediction.value = res
     } else {
-      console.warn('[loadPrediction] backend response missing homeWin:', res)
+      prediction.value = null
     }
   } catch (err) {
-    console.error('[loadPrediction] failed:', err)
+    // 接口失败（404 等）也置空，UI 展示"暂无预测数据"
+    prediction.value = null
   }
 }
 
@@ -1870,9 +1872,10 @@ onUnmounted(() => {
   margin-top: var(--space-4);
   padding: var(--space-8) var(--space-6);
   text-align: center;
-  background: var(--gradient-dark);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 .scoreboard--upcoming {
   padding: var(--space-6) var(--space-6);
@@ -1911,7 +1914,7 @@ onUnmounted(() => {
 .team-name {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
@@ -1919,7 +1922,7 @@ onUnmounted(() => {
 }
 .team-rank {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
 }
 .score-display {
   display: flex;
@@ -1937,13 +1940,13 @@ onUnmounted(() => {
 }
 .score-sep {
   font-size: var(--text-4xl);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   font-weight: var(--font-light);
 }
 .half-time {
   margin-top: var(--space-3);
   font-size: var(--text-sm);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-secondary);
 }
 
 /* ========== 关键信息紧凑卡 ========== */
@@ -1957,9 +1960,9 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--color-bg-dark-card);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-dark);
   transition: transform var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
@@ -1982,20 +1985,20 @@ onUnmounted(() => {
 }
 .key-info-card__label {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   margin-bottom: var(--space-0-5, 2px);
 }
 .key-info-card__value {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .key-info-card__sub {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   font-weight: var(--font-normal);
   margin-left: var(--space-0-5, 2px);
 }
@@ -2062,7 +2065,8 @@ onUnmounted(() => {
   }
 }
 .dim-chart-block {
-  background: var(--color-bg-dark-card);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4) var(--space-2);
   min-width: 0; /* 防止 grid 子项溢出 */
@@ -2081,7 +2085,7 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   min-width: 0;
   flex: 1;
 }
@@ -2136,14 +2140,14 @@ onUnmounted(() => {
   align-items: center;
   font-size: var(--text-base);
   font-weight: var(--font-medium);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .prediction-team__label {
   font-weight: var(--font-normal);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-secondary);
 }
 .prediction-team__rate {
   font-size: var(--text-lg);
@@ -2155,10 +2159,11 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--color-bg-dark-card);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   line-height: var(--leading-relaxed);
 }
 .prediction-reasoning .el-icon {
@@ -2169,7 +2174,7 @@ onUnmounted(() => {
 .prediction-source {
   text-align: right;
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
 }
 
 /* ========== 阵容与球员分析 ========== */
@@ -2178,7 +2183,8 @@ onUnmounted(() => {
 }
 .team-profile {
   padding: var(--space-3);
-  background: var(--gradient-dark);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
 }
@@ -2196,7 +2202,7 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-base);
   font-weight: var(--font-bold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
 }
 .team-profile__name .team-flag {
   font-size: var(--text-2xl);
@@ -2212,18 +2218,18 @@ onUnmounted(() => {
 .stat-item {
   text-align: center;
   padding: var(--space-2);
-  background: var(--color-bg-dark-hover);
+  background: var(--color-bg-muted);
   border-radius: var(--radius-md);
 }
 .stat-item__value {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   font-feature-settings: 'tnum';
 }
 .stat-item__label {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   margin-top: var(--space-0-5, 2px);
 }
 .position-group {
@@ -2235,16 +2241,16 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border-dark);
+  border-bottom: 1px solid var(--color-border-light);
   margin-bottom: var(--space-2);
 }
 .position-group__title .el-icon {
   color: var(--color-primary-light);
 }
 .position-group__count {
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   font-weight: var(--font-normal);
   font-size: var(--text-xs);
 }
@@ -2257,7 +2263,7 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   font-weight: var(--font-medium);
 }
 .player-name__cn {
@@ -2268,7 +2274,7 @@ onUnmounted(() => {
 }
 .player-name__en {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   margin-top: var(--space-0-5, 2px);
 }
 .key-badge {
@@ -2277,10 +2283,10 @@ onUnmounted(() => {
 .stat-num {
   font-weight: var(--font-semibold);
   font-feature-settings: 'tnum';
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
 }
 .stat-empty {
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
 }
 .card-cell {
   display: inline-flex;
@@ -2329,17 +2335,18 @@ onUnmounted(() => {
   text-align: center;
   padding: var(--space-3) 0;
   border-radius: var(--radius-md);
-  background: var(--color-bg-dark-card);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
 }
 .sentiment-stat__value {
   font-size: var(--text-2xl);
   font-weight: var(--font-extrabold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   font-feature-settings: 'tnum';
 }
 .sentiment-stat__label {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   margin-top: var(--space-1);
 }
 .sentiment-detail-title {
@@ -2348,7 +2355,7 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   margin-bottom: var(--space-2);
 }
 .sentiment-detail-title .el-icon {
@@ -2359,7 +2366,7 @@ onUnmounted(() => {
 }
 .feed-item {
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-dark);
+  border-bottom: 1px solid var(--color-border-light);
 }
 .feed-item:last-child {
   border-bottom: none;
@@ -2377,13 +2384,13 @@ onUnmounted(() => {
 }
 .feed-time {
   font-size: var(--text-xs);
-  color: var(--color-text-dark-muted);
+  color: var(--color-text-tertiary);
   margin-left: auto;
 }
 .feed-text {
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
-  color: var(--color-text-dark);
+  color: var(--color-text-primary);
   word-break: break-word;
   overflow-wrap: anywhere;
 }

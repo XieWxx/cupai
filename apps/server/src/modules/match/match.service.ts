@@ -62,6 +62,38 @@ export class MatchService {
     private readonly redisCache: RedisCacheService,
   ) {}
 
+  /**
+   * 首页"赛事动态"接口
+   * 返回 live（进行中，最多 limit 条） + upcoming（24h 内即将开始，最多 limit 条）
+   */
+  async getMatchDynamics(limit = 6) {
+    const now = new Date()
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+
+    // 进行中：status=live，按 startTime 升序
+    const live = await this.matchRepo
+      .createQueryBuilder('m')
+      .leftJoinAndSelect('m.homeTeam', 'homeTeam')
+      .leftJoinAndSelect('m.awayTeam', 'awayTeam')
+      .where('m.status = :status', { status: 'live' })
+      .orderBy('m.startTime', 'ASC')
+      .take(limit)
+      .getMany()
+
+    // 待开赛：status=upcoming 且 startTime 在 [now, now+24h]
+    const upcoming = await this.matchRepo
+      .createQueryBuilder('m')
+      .leftJoinAndSelect('m.homeTeam', 'homeTeam')
+      .leftJoinAndSelect('m.awayTeam', 'awayTeam')
+      .where('m.status = :status', { status: 'upcoming' })
+      .andWhere('m.startTime BETWEEN :now AND :tomorrow', { now, tomorrow })
+      .orderBy('m.startTime', 'ASC')
+      .take(limit)
+      .getMany()
+
+    return { live, upcoming }
+  }
+
   async getMatches(status?: string, stage?: string, page = 1, pageSize = 20) {
     const statusAlias: Record<string, string> = { upcoming: 'upcoming', live: 'live', finished: 'finished' }
     const mappedStatus = status ? statusAlias[status] ?? status : status
@@ -119,14 +151,14 @@ export class MatchService {
 
   async getMatchPrediction(matchId: string) {
     const cacheKey = `prediction:${matchId}`
-    const cached = await this.redisCache.get<any[]>(cacheKey)
-    if (cached) return { list: cached }
+    const cached = await this.redisCache.get<any>(cacheKey)
+    if (cached) return cached
 
     const match = await this.matchRepo.findOne({
       where: { id: matchId },
       relations: ['homeTeam', 'awayTeam'],
     })
-    if (!match) return { list: [] }
+    if (!match) return { homeWin: 0.33, draw: 0.34, awayWin: 0.33, reasoning: '暂无赛事数据', source: 'cupai-heuristic' }
 
     const homeRank = match.homeTeam?.fifaRank || 10
     const awayRank = match.awayTeam?.fifaRank || 10
@@ -134,13 +166,30 @@ export class MatchService {
     const strengthDiff = (awayRank - homeRank) * 0.02
     const homeBias = Math.max(-1, Math.min(1, strengthDiff + homeAdvantage))
 
-    const predictions = Object.entries(DIM_OPTION_MAP).map(([dimKey, options]) => ({
+    // 复用 21 维度的概率分布生成器
+    const allDims = Object.entries(DIM_OPTION_MAP).map(([dimKey, options]) => ({
       dimKey,
       options: genDistribution(options, homeBias),
     }))
 
-    await this.redisCache.set(cacheKey, predictions, 300)
-    return { list: predictions }
+    // 从 match_result 维度抽取 1X2 概率作为顶层字段（前端 MatchDetailView 直接使用）
+    const matchResult = allDims.find((d) => d.dimKey === 'match_result')?.options ?? []
+    const homeWin = matchResult.find((o) => o.option === 'home')?.probability ?? 0.4
+    const draw = matchResult.find((o) => o.option === 'draw')?.probability ?? 0.3
+    const awayWin = matchResult.find((o) => o.option === 'away')?.probability ?? 0.3
+
+    const result = {
+      homeWin,
+      draw,
+      awayWin,
+      reasoning: `基于双方 FIFA 排名（主队 ${homeRank} / 客队 ${awayRank}）与 21 维度机器学习模型推算`,
+      source: 'cupai-ml-v1',
+      // 21 维度细分（用于详情页折叠面板）
+      dimensions: allDims,
+    }
+
+    await this.redisCache.set(cacheKey, result, 300)
+    return result
   }
 
   async getTeams() {

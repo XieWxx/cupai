@@ -5,6 +5,12 @@ import { PlayerEntity } from './entities/player.entity'
 import { MatchEntity } from './entities/match.entity'
 import { GroupStandingEntity } from './entities/group-standing.entity'
 import { SentimentDataEntity } from './entities/sentiment-data.entity'
+import { LeagueEntity } from './entities/league.entity'
+import { EventIncidentEntity } from './entities/event-incident.entity'
+import { EventLineupEntity } from './entities/event-lineup.entity'
+import { EventOddsEntity } from './entities/event-odds.entity'
+import { EventStatsEntity } from './entities/event-stats.entity'
+import { EventPredictionEntity } from './entities/event-prediction.entity'
 import { MatchService } from './match.service'
 import { MatchController } from './match.controller'
 import { MatchGateway } from './match.gateway'
@@ -18,7 +24,19 @@ import { BsdcModule } from '../bsd/bsd.module'
 // 赛事数据模块 - 球队、球星、历史赛果、实时动态、环境数据、积分榜、舆情
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TeamEntity, PlayerEntity, MatchEntity, GroupStandingEntity, SentimentDataEntity]),
+    TypeOrmModule.forFeature([
+      TeamEntity,
+      PlayerEntity,
+      MatchEntity,
+      GroupStandingEntity,
+      SentimentDataEntity,
+      LeagueEntity,
+      EventIncidentEntity,
+      EventLineupEntity,
+      EventOddsEntity,
+      EventStatsEntity,
+      EventPredictionEntity,
+    ]),
     RedisModule,
     BsdcModule,
   ],

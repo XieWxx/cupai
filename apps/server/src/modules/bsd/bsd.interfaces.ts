@@ -268,6 +268,7 @@ export interface BsIncident {
   type: string
   detail: string
   goal_type: string | null
+  card_type?: string | null
   assist_player_name: string | null
   body_part: string | null
   situation: string | null
@@ -280,6 +281,12 @@ export interface BsIncident {
   comments: string | null
   extended: boolean
   expanded: boolean
+  /** 是否主队事件（部分比赛类型下必填） */
+  is_home?: boolean
+  /** 换人：换上球员 ID */
+  player_in_id?: number | null
+  /** 换人：换上球员姓名 */
+  player_in?: string | null
 }
 
 export interface BsLineups {
@@ -298,6 +305,8 @@ export interface BsLineupSide {
   formation: string
   confidence: number
   players: BsLineupPlayer[]
+  /** 替补球员（部分联赛会单独返回） */
+  substitutes?: BsLineupPlayer[]
 }
 
 export interface BsLineupPlayer {

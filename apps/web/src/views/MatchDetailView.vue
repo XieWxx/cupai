@@ -708,13 +708,11 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
 import {
   ArrowDown,
   ArrowUp,
   ChatLineRound,
   Clock,
-  Connection,
   CopyDocument,
   Cpu,
   DataLine,
@@ -736,20 +734,10 @@ import {
   type DimensionKey,
 } from '@/utils/copyInstruction'
 import { useMatchStore } from '@/stores/match'
-import { useUserStore } from '@/stores/user'
 import { subscribeMatch } from '@/api/websocket'
 import { http } from '@/api/request'
 import { listInstructions, type IInstruction } from '@/api/instruction'
 import CopyInstructionDialog from '@/components/common/CopyInstructionDialog.vue'
-import {
-  MOCK_MATCH_DETAIL,
-  MOCK_PREDICTION,
-  MOCK_SENTIMENT,
-  MOCK_HOME_SENTIMENT,
-  MOCK_AWAY_SENTIMENT,
-  MOCK_TEAM_PLAYERS,
-  MOCK_DIMENSION_REPORTS,
-} from '@/api/mockData'
 import { getFlagClass } from '@/utils/flag'
 import * as echarts from 'echarts'
 import SkeletonCard from '@/components/common/SkeletonCard.vue'
@@ -763,13 +751,6 @@ const route = useRoute()
 const router = useRouter()
 const { t, locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
-const userStore = useUserStore()
-
-/**
- * Mock 模式开关：URL 加 `?demo=1` 即可加载前端内置测试数据
- * 无需后端服务，方便本地预览页面与设计稿还原
- */
-const isDemoMode = computed(() => route.query.demo === '1')
 
 const loading = ref(false)
 const match = ref<any>(null)
@@ -785,17 +766,34 @@ const prediction = ref<{
   source: string
 } | null>(null)
 
-// ========== 用户预测排行（demo 模式内置示例）==========
-const userPredictionRanking = ref<UserRankingItem[]>([
-  { userId: 'u-1', username: 'AI-Sage', countryCode: 'CN', platform: 'deepseek', llmType: 'deepseek-chat', accuracy: 0.78 },
-  { userId: 'u-2', username: 'ClaudeOraculo', countryCode: 'BR', platform: 'claude', llmType: 'claude-3.5-sonnet', accuracy: 0.74 },
-  { userId: 'u-3', username: 'GPT-Tactico', countryCode: 'ES', platform: 'gpt', llmType: 'gpt-4o', accuracy: 0.72 },
-  { userId: 'u-4', username: 'Qwen-Prophet', countryCode: 'JP', platform: 'qwen', llmType: 'qwen-max', accuracy: 0.69 },
-  { userId: 'u-5', username: 'Gemini-Scout', countryCode: 'DE', platform: 'gemini', llmType: 'gemini-1.5-pro', accuracy: 0.67 },
-  { userId: 'u-6', username: 'Cursor-Knight', countryCode: 'US', platform: 'cursor', llmType: 'gpt-4o-mini', accuracy: 0.63 },
-  { userId: 'u-7', username: 'Doubao-Doc', countryCode: 'CN', platform: 'doubao', llmType: 'doubao-pro', accuracy: 0.61 },
-])
+// ========== 用户预测排行（从后端 /ranking/users 获取）==========
+const userPredictionRanking = ref<UserRankingItem[]>([])
 const userRankingLoading = ref(false)
+
+/**
+ * 加载用户预测排行
+ * 后端接口：GET /ranking/users（按 accuracyRate 降序）
+ * 映射字段：userId / username / countryCode / platform / llmType / accuracy
+ */
+async function loadUserRanking() {
+  userRankingLoading.value = true
+  try {
+    const res: any = await http.get('/ranking/users', { params: { sort: 'accuracy', pageSize: 7 } })
+    const list = res?.list || res || []
+    userPredictionRanking.value = list.map((item: any) => ({
+      userId: item.userId || item.id || '',
+      username: item.user?.nickname || item.user?.username || item.username || '',
+      countryCode: item.user?.region || item.countryCode || '',
+      platform: item.user?.defaultAiConfig?.modelName || item.platform || '',
+      llmType: item.user?.defaultAiConfig?.modelName || item.llmType || '',
+      accuracy: Number(item.accuracyRate) || 0,
+    }))
+  } catch (err) {
+    console.error('[loadUserRanking] failed:', err)
+  } finally {
+    userRankingLoading.value = false
+  }
+}
 
 // ========== 单维度指令报告（21 维度，每维度独立一条；agent 完成 1 条指令后只传该维度的 distribution）==========
 const dimensionReports = ref<any[]>([])
@@ -856,7 +854,7 @@ const activeLineupTab = ref<'home' | 'away'>('home')
 /**
  * 用户当前 API Key（用于回传指引）
  */
-const currentApiKey = computed(() => userStore.apiKey || localStorage.getItem('cupai_api_key') || '')
+const currentApiKey = computed(() => localStorage.getItem('cupai_api_key') || '')
 
 /**
  * 指令 ID 索引：按 dimKey 缓存（用于在「复制指令」中预填 curl 模板的 instructionId）
@@ -892,7 +890,7 @@ function buildCommonInput(dimKey?: DimensionKey): CopyInstructionInput {
           homeWin: prediction.value.homeWin,
           draw: prediction.value.draw,
           awayWin: prediction.value.awayWin,
-          reasoning: prediction.value.reasoning,
+          reasoning: prediction.value.reasoning ?? '',
           source: prediction.value.source,
         }
       : null,
@@ -1186,62 +1184,24 @@ function goBack() {
   }
 }
 
-// ========== AI 预测计算（本地启发式 fallback）==========
-function computeLocalPrediction(): {
-  homeWin: number
-  draw: number
-  awayWin: number
-  reasoning: string
-  source: string
-} {
-  const home = match.value?.homeTeam
-  const away = match.value?.awayTeam
-  const homeWinRate = Number(home?.winRate ?? 0.5)
-  const awayWinRate = Number(away?.winRate ?? 0.5)
-  const homeRank = Number(home?.fifaRank ?? 50)
-  const awayRank = Number(away?.fifaRank ?? 50)
-
-  const rankDiff = (awayRank - homeRank) / Math.max(homeRank, awayRank)
-  const winDiff = homeWinRate - awayWinRate
-  let sentimentBoost = 0
-  if (matchSentiment.value?.avgScore !== undefined) {
-    sentimentBoost = Number(matchSentiment.value.avgScore) * 0.1
-  }
-
-  const score = winDiff * 0.5 + rankDiff * 0.4 + sentimentBoost
-  let homeWin = 1 / (1 + Math.exp(-score * 4))
-  homeWin = Math.max(0.05, Math.min(0.9, homeWin))
-  const awayWin = Math.max(0.05, Math.min(0.9, 1 - homeWin - 0.28))
-  const draw = Math.max(0.05, 1 - homeWin - awayWin)
-  return {
-    homeWin,
-    draw,
-    awayWin,
-    reasoning: t('match.predictionLocalReasoning', {
-      home: home?.name,
-      away: away?.name,
-    }),
-    source: t('match.predictionLocalSource'),
-  }
-}
+// ========== AI 预测（仅后端真实数据，不再本地启发式 fallback）==========
+// 说明：docs/api-spec.md §3.6.4 后端返回完整 {homeWin, draw, awayWin, reasoning, source, dimensions}，
+// 不再用前端 winRate/fifaRank 启发式计算（已删除 computeLocalPrediction 函数）。
+// 失败时 prediction 留空，UI 由 v-if 兜底"暂无 AI 预测"。
 
 async function loadPrediction() {
-  // Mock 模式：直接使用内置预测数据
-  if (isDemoMode.value) {
-    prediction.value = MOCK_PREDICTION
-    return
-  }
   try {
+    // 后端真实接口：GET /matches/{id}/prediction
+    // 响应：{ homeWin, draw, awayWin, reasoning, source, dimensions }
+    // 见 docs/api-spec.md §3.6.4
     const res = await http.get<any>(`/matches/${route.params.id}/prediction`)
     if (res && typeof res.homeWin === 'number') {
       prediction.value = res
-      return
+    } else {
+      console.warn('[loadPrediction] backend response missing homeWin:', res)
     }
-  } catch {
-    // 后端无此接口时使用本地启发式
-  }
-  if (match.value) {
-    prediction.value = computeLocalPrediction()
+  } catch (err) {
+    console.error('[loadPrediction] failed:', err)
   }
 }
 
@@ -1250,21 +1210,16 @@ async function loadPrediction() {
 /**
  * 加载该赛事的单维度报告
  * - agent 完成 1 条分析指令后只回传该维度的 distribution（不再传整份 result）
- * - demo 模式读 MOCK_DIMENSION_REPORTS；正常模式调 listDimensions
  */
 async function loadDimensionReports(matchId: string) {
   reportsLoading.value = true
   try {
-    if (isDemoMode.value) {
-      dimensionReports.value = MOCK_DIMENSION_REPORTS
-    } else {
-      // 懒加载 dimension API
-      const { listDimensions } = await import('@/api/dimension')
-      const res = await listDimensions(matchId, undefined, 200)
-      dimensionReports.value = res?.list || []
-    }
-  } catch {
-    // 接口未就绪时静默
+    // 懒加载 dimension API
+    const { listDimensions } = await import('@/api/dimension')
+    const res = await listDimensions(matchId, undefined, 200)
+    dimensionReports.value = res?.list || []
+  } catch (err) {
+    console.error('[loadDimensionReports] failed:', err)
   } finally {
     reportsLoading.value = false
     // 等待 DOM 更新后渲染所有维度的图表
@@ -1445,7 +1400,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
   if (chartType === 'ring') {
     chart.setOption({
       tooltip: baseTooltip,
-      legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { color: '#475569' } },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { color: '#4b5563' } },
       series: [{
         type: 'pie',
         radius: ['48%', '72%'],
@@ -1454,7 +1409,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
         label: {
           show: true, position: 'outside',
           formatter: (p: any) => `${fmtName(p.name)} ${fmtPct(p.value)}`,
-          color: '#334155', fontSize: 12,
+          color: '#374151', fontSize: 12,
         },
         data,
       }],
@@ -1466,14 +1421,14 @@ function renderDimensionChart(dimKey: DimensionKey) {
       tooltip: baseTooltip,
       legend: {
         bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8,
-        textStyle: { color: '#475569', fontSize: 12 },
+        textStyle: { color: '#4b5563', fontSize: 12 },
         data: [t('dimSection.cornerTitle') || '边角趣味数据'],
       },
       radar: {
         center: ['50%', '46%'],
         radius: '64%',
         splitNumber: 4,
-        axisName: { color: '#475569', fontSize: 11 },
+        axisName: { color: '#4b5563', fontSize: 11 },
         splitLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.18)' } },
         splitArea: { areaStyle: { color: ['rgba(91, 143, 249, 0.04)', 'rgba(91, 143, 249, 0.08)'] } },
         axisLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.25)' } },
@@ -1496,7 +1451,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
   } else if (chartType === 'pie') {
     chart.setOption({
       tooltip: baseTooltip,
-      legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { color: '#475569' } },
+      legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { color: '#4b5563' } },
       series: [{
         type: 'pie',
         radius: '62%',
@@ -1505,7 +1460,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
         label: {
           show: true, position: 'outside',
           formatter: (p: any) => `${fmtName(p.name)} ${fmtPct(p.value)}`,
-          color: '#334155', fontSize: 11,
+          color: '#374151', fontSize: 11,
         },
         data,
       }],
@@ -1520,7 +1475,7 @@ function renderDimensionChart(dimKey: DimensionKey) {
       grid: { left: 8, right: 40, top: 8, bottom: 8, containLabel: true },
       xAxis: {
         type: 'value',
-        axisLabel: { color: '#94a3b8', fontSize: 10, formatter: (v: number) => `${(v * 100).toFixed(0)}%` },
+        axisLabel: { color: '#6b7280', fontSize: 10, formatter: (v: number) => `${(v * 100).toFixed(0)}%` },
         splitLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.1)' } },
       },
       yAxis: {
@@ -1528,13 +1483,13 @@ function renderDimensionChart(dimKey: DimensionKey) {
         data: sorted.map((s) => s.name),
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: '#475569', fontSize: 11, formatter: (v: string) => fmtName(v) },
+        axisLabel: { color: '#4b5563', fontSize: 11, formatter: (v: string) => fmtName(v) },
       },
       series: [{
         type: 'bar',
         data: sorted.map((s) => ({ value: s.value, itemStyle: { color: s.color, borderRadius: [0, 6, 6, 0] } })),
         barWidth: '55%',
-        label: { show: true, position: 'right', color: '#475569', fontSize: 10, formatter: (p: any) => fmtPct(p.value) },
+        label: { show: true, position: 'right', color: '#4b5563', fontSize: 10, formatter: (p: any) => fmtPct(p.value) },
       }],
     })
   } else {
@@ -1542,8 +1497,8 @@ function renderDimensionChart(dimKey: DimensionKey) {
     chart.setOption({
       tooltip: baseTooltip,
       grid: { left: 32, right: 16, top: 16, bottom: 28 },
-      xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: '#cbd5e1' } }, axisLabel: { color: '#64748b', fontSize: 11, formatter: (v: string) => fmtName(v) } },
-      yAxis: { type: 'value', max: 0.6, axisLabel: { color: '#94a3b8', fontSize: 10, formatter: (v: number) => `${(v * 100).toFixed(0)}%` }, splitLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.1)' } } },
+      xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: '#d1d5db' } }, axisLabel: { color: '#6b7280', fontSize: 11, formatter: (v: string) => fmtName(v) } },
+      yAxis: { type: 'value', max: 0.6, axisLabel: { color: '#6b7280', fontSize: 10, formatter: (v: number) => `${(v * 100).toFixed(0)}%` }, splitLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.1)' } } },
       series: [{ type: 'bar', data: values, barWidth: '52%', itemStyle: { borderRadius: [6, 6, 0, 0] } }],
     })
   }
@@ -1565,49 +1520,33 @@ function reportPreview(content: string): string {
 /**
  * 并行拉取赛事 / 主队 / 客队 3 档舆情
  * 后端接口：GET /sentiment/match/:matchId、GET /sentiment/team/:teamId
- * mock 模式：直接读内置数据
  */
 async function loadAllSentiment(matchId: string, homeTeamId?: string, awayTeamId?: string) {
   sentimentLoading.value = true
   try {
-    if (isDemoMode.value) {
-      // Mock 模式：3 档都用内置示例
-      matchSentiment.value = MOCK_SENTIMENT
-      homeSentiment.value = MOCK_HOME_SENTIMENT
-      awaySentiment.value = MOCK_AWAY_SENTIMENT
-    } else {
-      // 真实模式：3 档独立拉取，任一失败静默（其余 2 档仍可正常展示）
-      const tasks: Array<Promise<void>> = [
-        http.get<any>(`/sentiment/match/${matchId}`).then((res) => { matchSentiment.value = res || null }).catch(() => { matchSentiment.value = null }),
-      ]
-      if (homeTeamId) {
-        tasks.push(
-          http.get<any>(`/sentiment/team/${homeTeamId}`).then((res) => { homeSentiment.value = res || null }).catch(() => { homeSentiment.value = null }),
-        )
-      }
-      if (awayTeamId) {
-        tasks.push(
-          http.get<any>(`/sentiment/team/${awayTeamId}`).then((res) => { awaySentiment.value = res || null }).catch(() => { awaySentiment.value = null }),
-        )
-      }
-      await Promise.all(tasks)
+    // 3 档独立拉取，任一失败静默（其余 2 档仍可正常展示）
+    const tasks: Array<Promise<void>> = [
+      http.get<any>(`/sentiment/match/${matchId}`).then((res) => { matchSentiment.value = res || null }).catch(() => { matchSentiment.value = null }),
+    ]
+    if (homeTeamId) {
+      tasks.push(
+        http.get<any>(`/sentiment/team/${homeTeamId}`).then((res) => { homeSentiment.value = res || null }).catch(() => { homeSentiment.value = null }),
+      )
     }
-  } catch {
-    // 任一接口未就绪时静默
+    if (awayTeamId) {
+      tasks.push(
+        http.get<any>(`/sentiment/team/${awayTeamId}`).then((res) => { awaySentiment.value = res || null }).catch(() => { awaySentiment.value = null }),
+      )
+    }
+    await Promise.all(tasks)
+  } catch (err) {
+    console.error('[loadAllSentiment] failed:', err)
   } finally {
     sentimentLoading.value = false
     await nextTick()
     renderSentimentCharts(currentSentiment.value)
     if (!prediction.value) loadPrediction()
   }
-}
-
-/**
- * 兼容旧调用：拉取赛事整体舆情（不拉主客队）
- * 保留以备回退；推荐使用 loadAllSentiment
- */
-async function loadMatchSentiment(matchId: string) {
-  await loadAllSentiment(matchId)
 }
 
 /**
@@ -1624,8 +1563,8 @@ async function loadInstructions(matchId: string) {
       if (ins?.dimKey && ins?.id) map[ins.dimKey] = ins
     }
     instructionMap.value = map
-  } catch {
-    // 接口未就绪或无数据时不阻塞主流程；curl 模板会用占位符
+  } catch (err) {
+    console.error('[loadInstructions] failed:', err)
     instructionMap.value = {}
   }
 }
@@ -1648,7 +1587,7 @@ function renderSentimentCharts(data: any) {
         radius: '68%',
         center: ['50%', '52%'],
         splitNumber: 4,
-        axisName: { color: '#475569', fontSize: 12, fontWeight: 500 },
+        axisName: { color: '#4b5563', fontSize: 12, fontWeight: 500 },
         splitLine: { lineStyle: { color: 'rgba(91, 143, 249, 0.18)' } },
         splitArea: {
           areaStyle: {
@@ -1701,7 +1640,7 @@ function renderSentimentCharts(data: any) {
         icon: 'circle',
         itemWidth: 8,
         itemHeight: 8,
-        textStyle: { color: '#475569', fontSize: 12 },
+        textStyle: { color: '#4b5563', fontSize: 12 },
       },
       series: [
         {
@@ -1710,7 +1649,7 @@ function renderSentimentCharts(data: any) {
           center: ['50%', '46%'],
           avoidLabelOverlap: false,
           itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
-          label: { show: true, position: 'outside', formatter: '{b}\n{d}%', color: '#334155', fontSize: 12 },
+          label: { show: true, position: 'outside', formatter: '{b}\n{d}%', color: '#374151', fontSize: 12 },
           labelLine: { length: 10, length2: 10 },
           data: [
             {
@@ -1766,30 +1705,26 @@ async function loadDetail() {
   loading.value = true
 
   try {
-    // Mock 模式：直接使用内置测试数据
-    const data = isDemoMode.value
-      ? (MOCK_MATCH_DETAIL as any)
-      : await matchStore.fetchMatchDetail(matchId)
+    // 从后端获取赛事详情
+    const data = await matchStore.fetchMatchDetail(matchId)
     match.value = data
     if (!data) {
       errorState.value = 'not_found'
       return
     }
 
-    // Mock 模式下跳过 WebSocket 订阅
-    if (!isDemoMode.value) {
-      unsubscribe = subscribeMatch(matchId, (wsData: any) => {
-        if (!match.value) return
-        if (wsData.type === 'live_update') {
-          if (wsData.homeScore !== undefined) match.value.homeScore = wsData.homeScore
-          if (wsData.awayScore !== undefined) match.value.awayScore = wsData.awayScore
-        } else if (wsData.type === 'match:update') {
-          Object.assign(match.value, wsData)
-        }
-      })
-    }
+    // WebSocket 实时订阅
+    unsubscribe = subscribeMatch(matchId, (wsData: any) => {
+      if (!match.value) return
+      if (wsData.type === 'live_update') {
+        if (wsData.homeScore !== undefined) match.value.homeScore = wsData.homeScore
+        if (wsData.awayScore !== undefined) match.value.awayScore = wsData.awayScore
+      } else if (wsData.type === 'match:update') {
+        Object.assign(match.value, wsData)
+      }
+    })
 
-    // 并行加载：舆情（全部 + 主 + 客）、预测、球员阵容、单维度指令报告、agent 指令清单
+    // 并行加载：舆情（全部 + 主 + 客）、预测、球员阵容、单维度指令报告、agent 指令清单、用户排行
     loadAllSentiment(
       matchId,
       data?.homeTeam?.id || data?.homeTeamId,
@@ -1799,6 +1734,7 @@ async function loadDetail() {
     loadPlayers()
     loadDimensionReports(matchId)
     loadInstructions(matchId)
+    loadUserRanking()
   } catch (e: any) {
     if (e?.response?.status === 404) {
       errorState.value = 'not_found'
@@ -1823,20 +1759,14 @@ async function loadPlayers() {
   const tasks: Promise<void>[] = []
   if (homeId) {
     tasks.push(
-      (isDemoMode.value
-        ? Promise.resolve(MOCK_TEAM_PLAYERS[homeId] || [])
-        : matchStore.fetchTeamPlayers(homeId)
-      ).then((list) => {
+      matchStore.fetchTeamPlayers(homeId).then((list) => {
         homePlayers.value = list
       }).catch(() => {}),
     )
   }
   if (awayId) {
     tasks.push(
-      (isDemoMode.value
-        ? Promise.resolve(MOCK_TEAM_PLAYERS[awayId] || [])
-        : matchStore.fetchTeamPlayers(awayId)
-      ).then((list) => {
+      matchStore.fetchTeamPlayers(awayId).then((list) => {
         awayPlayers.value = list
       }).catch(() => {}),
     )
@@ -1915,6 +1845,8 @@ onUnmounted(() => {
 
 <style scoped>
 .match-detail-view {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
   min-height: 60vh;
 }
 .page-header-title {
@@ -1938,7 +1870,7 @@ onUnmounted(() => {
   margin-top: var(--space-4);
   padding: var(--space-8) var(--space-6);
   text-align: center;
-  background: var(--gradient-primary-soft);
+  background: var(--gradient-dark);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-md);
 }
@@ -1946,17 +1878,17 @@ onUnmounted(() => {
   padding: var(--space-6) var(--space-6);
 }
 .scoreboard--upcoming .team-flag {
-  font-size: 32px;
+  font-size: var(--text-4xl);
 }
 .scoreboard--upcoming .team-name {
   font-size: var(--text-base);
 }
 .team-side-tag {
   letter-spacing: 0.04em;
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 .team-side-tag--inline {
-  margin-right: 4px;
+  margin-right: var(--space-1);
 }
 .score-row {
   display: flex;
@@ -1973,13 +1905,13 @@ onUnmounted(() => {
   min-width: 120px;
 }
 .team-flag {
-  font-size: 40px;
+  font-size: var(--text-5xl);
   line-height: 1;
 }
 .team-name {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
@@ -1987,7 +1919,7 @@ onUnmounted(() => {
 }
 .team-rank {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
 }
 .score-display {
   display: flex;
@@ -1999,19 +1931,19 @@ onUnmounted(() => {
 .score-num {
   font-size: var(--text-6xl);
   font-weight: var(--font-extrabold);
-  color: var(--color-text-primary);
+  color: var(--color-danger);
   font-feature-settings: 'tnum';
   line-height: 1;
 }
 .score-sep {
   font-size: var(--text-4xl);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
   font-weight: var(--font-light);
 }
 .half-time {
   margin-top: var(--space-3);
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
 }
 
 /* ========== 关键信息紧凑卡 ========== */
@@ -2025,9 +1957,9 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--color-bg-page);
+  background: var(--color-bg-dark-card);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--color-border-dark);
   transition: transform var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
@@ -2040,8 +1972,8 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: var(--space-10);
+  height: var(--space-10);
   border-radius: var(--radius-md);
 }
 .key-info-card__body {
@@ -2050,22 +1982,22 @@ onUnmounted(() => {
 }
 .key-info-card__label {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  margin-bottom: 2px;
+  color: var(--color-text-dark-muted);
+  margin-bottom: var(--space-0-5, 2px);
 }
 .key-info-card__value {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .key-info-card__sub {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
   font-weight: var(--font-normal);
-  margin-left: 2px;
+  margin-left: var(--space-0-5, 2px);
 }
 
 /* ========== 2 列信息行（赛事信息+临场环境 / 因子数据+数据来源） ==========
@@ -2101,10 +2033,10 @@ onUnmounted(() => {
 
 /* 关键信息卡内时间字段（三份时间需要换行展示） */
 .key-info-card__value--time {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: var(--font-normal);
   white-space: normal;
-  line-height: 1.4;
+  line-height: var(--leading-tight);
 }
 
 /* ========== 单维度指令报告（21 维度动态图表，按 5 大板块分组） ========== */
@@ -2130,7 +2062,7 @@ onUnmounted(() => {
   }
 }
 .dim-chart-block {
-  background: var(--color-bg-muted);
+  background: var(--color-bg-dark-card);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4) var(--space-2);
   min-width: 0; /* 防止 grid 子项溢出 */
@@ -2149,7 +2081,7 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   min-width: 0;
   flex: 1;
 }
@@ -2204,14 +2136,14 @@ onUnmounted(() => {
   align-items: center;
   font-size: var(--text-base);
   font-weight: var(--font-medium);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .prediction-team__label {
   font-weight: var(--font-normal);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
 }
 .prediction-team__rate {
   font-size: var(--text-lg);
@@ -2223,21 +2155,21 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--color-primary-bg);
+  background: var(--color-bg-dark-card);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  color: var(--color-text-regular);
+  color: var(--color-text-dark);
   line-height: var(--leading-relaxed);
 }
 .prediction-reasoning .el-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-light);
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: var(--space-0-5, 2px);
 }
 .prediction-source {
   text-align: right;
   font-size: var(--text-xs);
-  color: var(--color-text-placeholder);
+  color: var(--color-text-dark-muted);
 }
 
 /* ========== 阵容与球员分析 ========== */
@@ -2246,7 +2178,7 @@ onUnmounted(() => {
 }
 .team-profile {
   padding: var(--space-3);
-  background: var(--gradient-primary-soft);
+  background: var(--gradient-dark);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
 }
@@ -2264,10 +2196,10 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-base);
   font-weight: var(--font-bold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
 }
 .team-profile__name .team-flag {
-  font-size: 24px;
+  font-size: var(--text-2xl);
 }
 .team-profile__tags {
   display: flex;
@@ -2280,19 +2212,19 @@ onUnmounted(() => {
 .stat-item {
   text-align: center;
   padding: var(--space-2);
-  background: var(--color-bg-page);
+  background: var(--color-bg-dark-hover);
   border-radius: var(--radius-md);
 }
 .stat-item__value {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   font-feature-settings: 'tnum';
 }
 .stat-item__label {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  margin-top: 2px;
+  color: var(--color-text-dark-muted);
+  margin-top: var(--space-0-5, 2px);
 }
 .position-group {
   margin-bottom: var(--space-3);
@@ -2303,16 +2235,16 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-dark);
   margin-bottom: var(--space-2);
 }
 .position-group__title .el-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-light);
 }
 .position-group__count {
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
   font-weight: var(--font-normal);
   font-size: var(--text-xs);
 }
@@ -2325,7 +2257,7 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   font-weight: var(--font-medium);
 }
 .player-name__cn {
@@ -2336,8 +2268,8 @@ onUnmounted(() => {
 }
 .player-name__en {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  margin-top: 2px;
+  color: var(--color-text-dark-muted);
+  margin-top: var(--space-0-5, 2px);
 }
 .key-badge {
   flex-shrink: 0;
@@ -2345,15 +2277,15 @@ onUnmounted(() => {
 .stat-num {
   font-weight: var(--font-semibold);
   font-feature-settings: 'tnum';
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
 }
 .stat-empty {
-  color: var(--color-text-placeholder);
+  color: var(--color-text-dark-muted);
 }
 .card-cell {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .yellow-card {
   display: inline-flex;
@@ -2361,10 +2293,10 @@ onUnmounted(() => {
   justify-content: center;
   min-width: 18px;
   height: 22px;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   background: var(--color-warning);
-  color: #fff;
-  border-radius: 2px;
+  color: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
 }
@@ -2374,18 +2306,18 @@ onUnmounted(() => {
   justify-content: center;
   min-width: 18px;
   height: 22px;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   background: var(--color-danger);
-  color: #fff;
-  border-radius: 2px;
+  color: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: var(--font-bold);
 }
 :deep(.is-key-player) {
   background: linear-gradient(
     90deg,
-    rgba(245, 158, 11, 0.06) 0%,
-    rgba(245, 158, 11, 0) 50%
+    color-mix(in srgb, var(--color-warning) 6%, transparent) 0%,
+    color-mix(in srgb, var(--color-warning) 0%, transparent) 50%
   );
 }
 :deep(.el-table .is-key-player td) {
@@ -2397,17 +2329,17 @@ onUnmounted(() => {
   text-align: center;
   padding: var(--space-3) 0;
   border-radius: var(--radius-md);
-  background: var(--color-bg-muted);
+  background: var(--color-bg-dark-card);
 }
 .sentiment-stat__value {
   font-size: var(--text-2xl);
   font-weight: var(--font-extrabold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   font-feature-settings: 'tnum';
 }
 .sentiment-stat__label {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
   margin-top: var(--space-1);
 }
 .sentiment-detail-title {
@@ -2416,18 +2348,18 @@ onUnmounted(() => {
   gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-text-dark);
   margin-bottom: var(--space-2);
 }
 .sentiment-detail-title .el-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-light);
 }
 .sentiment-chart {
   height: 240px;
 }
 .feed-item {
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-dark);
 }
 .feed-item:last-child {
   border-bottom: none;
@@ -2440,18 +2372,18 @@ onUnmounted(() => {
 }
 .feed-platform {
   font-size: var(--text-xs);
-  color: var(--color-primary);
+  color: var(--color-primary-light);
   font-weight: var(--font-semibold);
 }
 .feed-time {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--color-text-dark-muted);
   margin-left: auto;
 }
 .feed-text {
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
-  color: var(--color-text-regular);
+  color: var(--color-text-dark);
   word-break: break-word;
   overflow-wrap: anywhere;
 }
@@ -2464,7 +2396,7 @@ onUnmounted(() => {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-  margin-right: 4px;
+  margin-right: var(--space-1);
   animation: blink 1.5s ease-in-out infinite;
 }
 .match-card__status-dot--live {
@@ -2475,10 +2407,24 @@ onUnmounted(() => {
   50% { opacity: 0.4; }
 }
 
+/* ========== 响应式断点 ========== */
 @media (max-width: 768px) {
   .score-row { gap: var(--space-4); }
   .score-num { font-size: var(--text-5xl); }
-  .team-flag { font-size: 32px; }
+  .team-flag { font-size: var(--text-4xl); }
   .team-name { font-size: var(--text-base); }
+}
+
+/* 响应式断点：超小屏幕 */
+@media (max-width: 480px) {
+  .key-info-bar {
+    grid-template-columns: 1fr;
+  }
+  .score-row { gap: var(--space-2); }
+  .score-num { font-size: var(--text-4xl); }
+  .team-flag { font-size: var(--text-3xl); }
+  .dim-charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

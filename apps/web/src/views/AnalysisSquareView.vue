@@ -1,21 +1,25 @@
 <template>
   <div class="analysis-square-view">
-    <h1>{{ $t('nav.analysisSquare') }}</h1>
+    <header class="page-header">
+      <h1 class="page-title">{{ $t('nav.analysisSquare') }}</h1>
+    </header>
 
     <!-- 筛选栏 -->
-    <el-row :gutter="16" class="filter-bar">
-      <el-col :span="6">
-        <el-select v-model="filters.source" :placeholder="$t('square.sourceFilter')" clearable @change="loadReports">
-          <el-option :label="$t('square.all')" value="" />
-          <el-option :label="$t('square.agentLabel')" value="agent" />
-          <el-option :label="$t('square.userLabel')" value="manual" />
-        </el-select>
-      </el-col>
-    </el-row>
+    <div class="filter-bar">
+      <el-row :gutter="16">
+        <el-col :span="6">
+          <el-select v-model="filters.source" :placeholder="$t('square.sourceFilter')" clearable @change="loadReports">
+            <el-option :label="$t('square.all')" value="" />
+            <el-option :label="$t('square.agentLabel')" value="agent" />
+            <el-option :label="$t('square.userLabel')" value="manual" />
+          </el-select>
+        </el-col>
+      </el-row>
+    </div>
 
     <!-- 报告列表 -->
     <div v-loading="analysisStore.loading">
-      <el-card v-for="report in analysisStore.publicReports" :key="report.id" class="report-card" shadow="hover">
+      <el-card v-for="report in analysisStore.publicReports" :key="report.id" class="common-card report-card" shadow="hover">
         <template #header>
           <div class="report-header">
             <div class="report-meta">
@@ -35,7 +39,6 @@
           <span class="report-model">{{ $t('square.modelLabel') }} {{ report.llmType }}</span>
           <span class="report-lang">{{ $t('square.languageLabel') }} {{ displayLanguageLabel(report.displayLanguage) }}</span>
           <span class="report-source" v-if="report.weightSnapshot">{{ $t('square.weightSnapshot') }} {{ formatWeights(report.weightSnapshot) }}</span>
-          <!-- 点赞/收藏按钮 -->
           <div class="report-actions">
             <el-button
               :type="interactionMap[report.id]?.like ? 'primary' : 'default'"
@@ -73,125 +76,103 @@ import MarkdownIt from 'markdown-it'
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 const { t, locale: i18nLocale } = useI18n()
+const analysisStore = useAnalysisStore()
 
-// 渲染 Markdown 内容
+const filters = reactive({
+  source: '',
+})
+const interactionMap = ref<Record<string, { like: boolean; collect: boolean }>>({})
+let ws: WebSocket | null = null
+
 function renderMarkdown(content: string | undefined): string {
   if (!content) return ''
   return md.render(content)
 }
 
-// 格式化权重快照
-function formatWeights(weights: Record<string, number>): string {
-  if (!weights) return ''
-  return Object.entries(weights)
-    .map(([k, v]) => `${k}: ${v}%`)
-    .join(', ')
+function displayLanguageLabel(lang: string | undefined): string {
+  if (!lang) return '-'
+  const labels: Record<string, string> = {
+    'zh-CN': t('profile.zhCN'), 'en-US': t('profile.enUS'), 'es-ES': t('profile.esES'),
+    'fr-FR': t('profile.frFR'), 'pt-BR': t('profile.ptBR'), 'ar-SA': t('profile.arSA'),
+    'ja-JP': t('profile.jaJP'), 'ko-KR': t('profile.koKR'),
+  }
+  return labels[lang] || lang
 }
 
-const analysisStore = useAnalysisStore()
-
-// 用户互动状态映射 { reportId: { like, collect } }
-const interactionMap = reactive<Record<string, { like: boolean; collect: boolean }>>({})
-
-const filters = reactive({
-  source: '',
-})
+function formatWeights(snapshot: string): string {
+  try {
+    const w = JSON.parse(snapshot)
+    return Object.entries(w).map(([k, v]) => `${k}: ${Math.round(Number(v) * 100)}%`).join(' | ')
+  } catch {
+    return snapshot
+  }
+}
 
 async function loadReports() {
-  await analysisStore.fetchPublicReports({
-    source: filters.source || undefined,
-  })
-  // 加载完成后查询用户互动状态
-  await loadInteractions()
-}
-
-// 批量查询用户对报告的互动状态
-async function loadInteractions() {
-  const reportIds = analysisStore.publicReports.map((r: any) => r.id)
-  if (reportIds.length === 0) return
-
   try {
-    const token = localStorage.getItem('cupai_token')
-    if (!token) return // 未登录不查询
-
-    const res = await http.post<Record<string, { like: boolean; collect: boolean }>>(
-      '/analysis/interactions/check',
-      { reportIds },
-    )
-    Object.assign(interactionMap, res)
-  } catch {
-    // 未登录或查询失败，忽略
+    await analysisStore.fetchPublicReports({
+      source: filters.source || undefined,
+    })
+  } catch (err) {
+    console.error('[loadReports] failed:', err)
   }
 }
 
-// 点赞（toggle）
 async function toggleLike(reportId: string) {
+  const current = interactionMap.value[reportId]?.like
   try {
-    const res = await http.post<{ action: string; type: string }>('/analysis/interaction', {
-      reportId,
-      type: 'like',
-    })
-    // 更新本地状态
-    if (!interactionMap[reportId]) interactionMap[reportId] = { like: false, collect: false }
-    interactionMap[reportId].like = res.action === 'added'
-    // 更新列表中的计数
-    const report = analysisStore.publicReports.find((r: any) => r.id === reportId)
-    if (report) {
-      report.likeCount = (report.likeCount || 0) + (res.action === 'added' ? 1 : -1)
-    }
+    await http.post('/analysis/interaction', { reportId, type: 'like' })
+    interactionMap.value[reportId] = { ...(interactionMap.value[reportId] || {}), like: !current }
+    const report = analysisStore.publicReports.find((r) => r.id === reportId)
+    if (report) report.likeCount = (report.likeCount || 0) + (current ? -1 : 1)
   } catch {
-    ElMessage.error(t('common.loginRequired'))
+    ElMessage.error(t('common.operationFail'))
   }
 }
 
-// 收藏（toggle）
 async function toggleCollect(reportId: string) {
+  const current = interactionMap.value[reportId]?.collect
   try {
-    const res = await http.post<{ action: string; type: string }>('/analysis/interaction', {
-      reportId,
-      type: 'collect',
-    })
-    if (!interactionMap[reportId]) interactionMap[reportId] = { like: false, collect: false }
-    interactionMap[reportId].collect = res.action === 'added'
-    const report = analysisStore.publicReports.find((r: any) => r.id === reportId)
-    if (report) {
-      report.collectCount = (report.collectCount || 0) + (res.action === 'added' ? 1 : -1)
-    }
+    await http.post('/analysis/interaction', { reportId, type: 'collect' })
+    interactionMap.value[reportId] = { ...(interactionMap.value[reportId] || {}), collect: !current }
+    const report = analysisStore.publicReports.find((r) => r.id === reportId)
+    if (report) report.collectCount = (report.collectCount || 0) + (current ? -1 : 1)
   } catch {
-    ElMessage.error(t('common.loginRequired'))
+    ElMessage.error(t('common.operationFail'))
   }
 }
-
-let unsubscribeSquare: (() => void) | null = null
 
 onMounted(() => {
   loadReports()
-  // 订阅广场 WebSocket 新报告推送
-  unsubscribeSquare = subscribeSquare((data: any) => {
-    if (data.type === 'new_report') {
-      ElMessage.info(t('square.newAnalysisNotice'))
-    }
-  })
+  // WebSocket 推送
+  try {
+    ws = subscribeSquare((data: any) => {
+      if (data?.type === 'new_report') {
+        analysisStore.publicReports.unshift(data.report)
+      }
+    })
+  } catch {
+    // WebSocket 不可用则忽略
+  }
 })
 
 onUnmounted(() => {
-  unsubscribeSquare?.()
+  if (ws) ws.close()
 })
 </script>
 
 <style scoped>
-.analysis-square-view h1 {
-  font-size: 22px;
-  margin-bottom: 20px;
-  color: #1a1a2e;
+.analysis-square-view {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
 .filter-bar {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-4);
 }
 
 .report-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .report-header {
@@ -203,32 +184,32 @@ onUnmounted(() => {
 .report-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .report-time {
-  font-size: 13px;
-  color: #999;
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
 }
 
 .report-stats {
   display: flex;
-  gap: 16px;
-  font-size: 14px;
-  color: #666;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
 .report-content {
-  line-height: 1.8;
-  color: #333;
-  font-size: 14px;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-regular);
+  font-size: var(--text-sm);
 }
 
 .report-content.markdown-body :deep(h1),
 .report-content.markdown-body :deep(h2),
 .report-content.markdown-body :deep(h3) {
-  margin: 8px 0 4px;
-  font-weight: 700;
+  margin: var(--space-2) 0 var(--space-1);
+  font-weight: var(--font-bold);
 }
 
 .report-content.markdown-body :deep(ul),
@@ -237,12 +218,12 @@ onUnmounted(() => {
 }
 
 .report-content.markdown-body :deep(p) {
-  margin: 4px 0;
+  margin: var(--space-1) 0;
 }
 
 .report-source {
-  color: #999;
-  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -252,15 +233,17 @@ onUnmounted(() => {
 .report-footer {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 12px;
-  font-size: 12px;
-  color: #999;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-light);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 
 .report-actions {
   margin-left: auto;
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 </style>

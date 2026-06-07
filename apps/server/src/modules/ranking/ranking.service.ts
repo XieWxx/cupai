@@ -5,8 +5,55 @@ import { WeightModelEntity } from './entities/weight-model.entity'
 import { UserRankingEntity } from './entities/user-ranking.entity'
 import { ModelRankingEntity } from './entities/model-ranking.entity'
 import { AnalysisReportEntity } from '../agent/entities/analysis-report.entity'
+import { UserAiConfigEntity } from '../ai/entities/user-ai-config.entity'
 import { CreateWeightModelDto } from './dto/create-weight-model.dto'
 import { WEIGHT_SUM } from '@cupai/constants'
+
+/**
+ * 用户排行支持的排序方式
+ * - total：总预测准确率（默认）
+ * - exact：精准比分命中率
+ * - funny：趣味数据命中率
+ */
+export type UserRankingSort = 'total' | 'exact' | 'funny'
+
+/**
+ * 域名 -> 平台 key 的归一化映射
+ * 平台识别失败时按 host 首字符兜底
+ */
+function hostToPlatformKey(host: string): string {
+  if (!host) return 'unknown'
+  if (/openai\.com/.test(host)) return 'openai'
+  if (/anthropic\.com/.test(host)) return 'anthropic'
+  if (/googleapis\.com|gemini|google\.com/.test(host)) return 'gemini'
+  if (/deepseek\.com/.test(host)) return 'deepseek'
+  if (/dashscope|aliyuncs\.com|qwen/.test(host)) return 'qwen'
+  if (/qianfan|baidubce\.com|baidu/.test(host)) return 'ernie'
+  if (/spark-api|xf-yun\.com|iflytek/.test(host)) return 'spark'
+  if (/bigmodel\.cn|zhipu/.test(host)) return 'glm'
+  if (/moonshot\.cn|kimi/.test(host)) return 'moonshot'
+  if (/cohere\.ai/.test(host)) return 'cohere'
+  // 兜底：取主域名前缀
+  const m = host.match(/^([a-z0-9-]+)/i)
+  return m ? m[1] : 'unknown'
+}
+
+/**
+ * 平台 key -> 中文展示名（与前端 agentPlatform.ts 字典保持一致）
+ */
+const PLATFORM_DISPLAY: Record<string, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  gemini: 'Google Gemini',
+  deepseek: 'DeepSeek',
+  qwen: '通义千问',
+  ernie: '文心一言',
+  spark: '讯飞星火',
+  glm: '智谱清言',
+  moonshot: 'Moonshot',
+  cohere: 'Cohere',
+  unknown: '未配置',
+}
 
 /**
  * 权重模型与排行服务
@@ -22,6 +69,8 @@ export class RankingService {
     private readonly modelRankingRepo: Repository<ModelRankingEntity>,
     @InjectRepository(AnalysisReportEntity)
     private readonly reportRepo: Repository<AnalysisReportEntity>,
+    @InjectRepository(UserAiConfigEntity)
+    private readonly userAiConfigRepo: Repository<UserAiConfigEntity>,
   ) {}
 
   // 创建权重模型
@@ -97,10 +146,31 @@ export class RankingService {
 
   /**
    * 获取用户预测准确率排行
-   * 按总积分降序，支持赛季筛选
+   * 按 sort 字段降序，支持赛季筛选
    * 关联用户的默认 AI 配置（denormalize 为 defaultAiConfig）
+   *
+   * @param sort    排序字段：total（默认）/ exact / funny
+   * @param limit   限制返回条数（首页摘要用），与 page/pageSize 互斥，limit 优先
    */
-  async getUserRankings(seasonId?: string, page = 1, pageSize = 20) {
+  async getUserRankings(
+    seasonId?: string,
+    page = 1,
+    pageSize = 20,
+    sort?: string,
+    limit?: number,
+  ) {
+    const sortKey: UserRankingSort =
+      sort === 'exact' || sort === 'funny' ? sort : 'total'
+
+    // 精准/趣味命中率字段尚未在实体中建模，使用 0 兜底，
+    // 待 PRD 3.3.2 后端字段落地后可替换为真实表达式。
+    const orderColumn =
+      sortKey === 'exact'
+        ? 'r.exactScoreRate'
+        : sortKey === 'funny'
+        ? 'r.funnyDataRate'
+        : 'r.accuracyRate'
+
     const query = this.userRankingRepo
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.user', 'user')
@@ -111,13 +181,22 @@ export class RankingService {
       query.andWhere('r.seasonId = :seasonId', { seasonId })
     }
 
-    query.orderBy('r.totalScore', 'DESC')
+    // 主排序：按 sort 字段降序；缺字段时按 totalScore / accuracyRate 兜底
+    query.orderBy(orderColumn, 'DESC')
+    query.addOrderBy('r.totalScore', 'DESC')
     query.addOrderBy('r.accuracyRate', 'DESC')
 
-    const [list, total] = await query
-      .skip((page - 1) * pageSize)
-      .take(pageSize)
-      .getManyAndCount()
+    let list: UserRankingEntity[]
+    let total = 0
+    if (limit && limit > 0) {
+      // 首页摘要场景：跳过 count 提高性能
+      list = await query.take(limit).getMany()
+    } else {
+      [list, total] = await query
+        .skip((page - 1) * pageSize)
+        .take(pageSize)
+        .getManyAndCount()
+    }
 
     // 后处理：denormalize 用户默认 AI 配置（前端可直接读取 platform + modelName）
     const enrichedList = list.map((r) => {
@@ -138,8 +217,10 @@ export class RankingService {
   /**
    * 获取大模型准确率排行
    * 按总积分降序
+   *
+   * @param limit  限制返回条数（首页摘要用）
    */
-  async getModelRankings(seasonId?: string, page = 1, pageSize = 20) {
+  async getModelRankings(seasonId?: string, page = 1, pageSize = 20, limit?: number) {
     const query = this.modelRankingRepo.createQueryBuilder('r')
 
     if (seasonId) {
@@ -149,12 +230,70 @@ export class RankingService {
     query.orderBy('r.totalScore', 'DESC')
     query.addOrderBy('r.accuracyRate', 'DESC')
 
-    const [list, total] = await query
-      .skip((page - 1) * pageSize)
-      .take(pageSize)
-      .getManyAndCount()
+    let list: ModelRankingEntity[]
+    let total = 0
+    if (limit && limit > 0) {
+      list = await query.take(limit).getMany()
+    } else {
+      [list, total] = await query
+        .skip((page - 1) * pageSize)
+        .take(pageSize)
+        .getManyAndCount()
+    }
 
     return { list, total, page, pageSize }
+  }
+
+  /**
+   * 热门 Agent 平台排行（首页摘要用）
+   * 聚合 user_ai_configs.apiEndpoint，按域名归一化后按用户数降序
+   * 一个用户可被多个平台计数（按其全部 AI 配置）
+   *
+   * 返回结构：{ list: [{ platform, platformKey, userCount, totalPredictions }] }
+   */
+  async getPlatformRankings(limit?: number) {
+    const configs = await this.userAiConfigRepo.find({
+      select: ['id', 'userId', 'apiEndpoint'],
+    })
+
+    // 聚合：platformKey -> { userIds: Set, totalPredictions: 0 }
+    const agg = new Map<
+      string,
+      { userIds: Set<string>; totalPredictions: number }
+    >()
+
+    for (const cfg of configs) {
+      let host = ''
+      try {
+        let url = (cfg.apiEndpoint || '').trim()
+        if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url
+        host = url ? new URL(url).host.toLowerCase() : ''
+      } catch {
+        host = (cfg.apiEndpoint || '').split('/')[0].toLowerCase()
+      }
+      const key = hostToPlatformKey(host)
+      if (!agg.has(key)) {
+        agg.set(key, { userIds: new Set(), totalPredictions: 0 })
+      }
+      const bucket = agg.get(key)!
+      bucket.userIds.add(cfg.userId)
+    }
+
+    let list = Array.from(agg.entries())
+      .map(([platformKey, info]) => ({
+        platform: PLATFORM_DISPLAY[platformKey] || platformKey,
+        platformKey,
+        userCount: info.userIds.size,
+        totalPredictions: 0,
+      }))
+      .filter((row) => row.platformKey !== 'unknown')
+      .sort((a, b) => b.userCount - a.userCount)
+
+    if (limit && limit > 0) {
+      list = list.slice(0, limit)
+    }
+
+    return { list, total: list.length }
   }
 
   /**

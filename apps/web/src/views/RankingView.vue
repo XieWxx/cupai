@@ -9,7 +9,7 @@
       <p class="page-subtitle">{{ $t('ranking.pageSubtitle') }}</p>
     </header>
 
-    <!-- 顶部统计指标 -->
+    <!-- 顶部统计指标（仅保留：参与人数、累计分析数） -->
     <section class="overview-grid">
       <el-card shadow="hover" class="overview-card">
         <el-statistic
@@ -18,27 +18,6 @@
         >
           <template #suffix>
             <span class="ov-suffix">{{ $t('common.name') }}</span>
-          </template>
-        </el-statistic>
-      </el-card>
-      <el-card shadow="hover" class="overview-card">
-        <el-statistic
-          :value="overview.topScore"
-          :title="$t('ranking.overview.topScore')"
-        >
-          <template #suffix>
-            <span class="ov-suffix">pts</span>
-          </template>
-        </el-statistic>
-      </el-card>
-      <el-card shadow="hover" class="overview-card">
-        <el-statistic
-          :value="overview.avgScore"
-          :title="$t('ranking.overview.avgScore')"
-          :precision="1"
-        >
-          <template #suffix>
-            <span class="ov-suffix">pts</span>
           </template>
         </el-statistic>
       </el-card>
@@ -87,7 +66,7 @@
           class="ranking-table"
         >
           <!-- 排名（带金银铜 badge） -->
-          <el-table-column :label="$t('ranking.rank')" width="80" align="center">
+          <el-table-column :label="$t('ranking.rank')" width="70" align="center">
             <template #default="{ $index }">
               <span :class="['rank-badge', $index < 3 ? `rank-${$index + 1}` : '']">
                 {{ $index + 1 }}
@@ -95,49 +74,35 @@
             </template>
           </el-table-column>
 
-          <!-- 用户：国旗 + 头像 + 用户名 -->
-          <el-table-column :label="$t('ranking.user')" min-width="220">
+          <!-- 用户：国旗 + 用户名（不显示头像，min-width 撑满剩余空间） -->
+          <el-table-column :label="$t('ranking.user')" min-width="140">
             <template #default="{ row }">
               <div class="user-cell">
                 <span
                   :class="['flag-icon', 'fi', `fi-${flagClass(row.user?.region)}`]"
                   :title="row.user?.region || 'XX'"
                 />
-                <el-avatar
-                  :size="32"
-                  :src="row.user?.avatar || defaultAvatar"
-                  class="user-avatar"
-                >
-                  {{ (row.user?.nickname || '?').charAt(0).toUpperCase() }}
-                </el-avatar>
                 <span class="user-nickname">{{ row.user?.nickname || 'Anonymous' }}</span>
               </div>
             </template>
           </el-table-column>
 
           <!-- Agent 平台：icon + 名称 -->
-          <el-table-column :label="$t('ranking.agentPlatform')" min-width="180">
+          <el-table-column :label="$t('ranking.agentPlatform')" width="140">
             <template #default="{ row }">
               <PlatformBadge :platform="platformOf(row)" />
             </template>
           </el-table-column>
 
           <!-- 大模型：icon + 名称 -->
-          <el-table-column :label="$t('ranking.model')" min-width="180">
+          <el-table-column :label="$t('ranking.model')" width="170">
             <template #default="{ row }">
               <PlatformBadge :platform="modelOf(row)" :show-name="true" />
             </template>
           </el-table-column>
 
-          <!-- 总积分（突出） -->
-          <el-table-column :label="$t('ranking.totalScore')" width="120" align="center">
-            <template #default="{ row }">
-              <span class="total-score">{{ row.totalScore }}</span>
-            </template>
-          </el-table-column>
-
           <!-- 总预测准确率（带百分比 Icon，PRD 3.3.2 字段） -->
-          <el-table-column width="180">
+          <el-table-column width="110">
             <template #header>
               <span class="col-header-with-icon">
                 <el-icon><DataLine /></el-icon>
@@ -158,7 +123,7 @@
           </el-table-column>
 
           <!-- 精准比分命中率（奖杯 Icon · PRD 3.3.2 高难度奖项） -->
-          <el-table-column width="170">
+          <el-table-column width="110">
             <template #header>
               <span class="col-header-with-icon col-header--trophy">
                 <el-icon><Trophy /></el-icon>
@@ -179,7 +144,7 @@
           </el-table-column>
 
           <!-- 趣味数据命中率（星星 Icon · PRD 3.3.2 边角数据） -->
-          <el-table-column width="170">
+          <el-table-column width="110">
             <template #header>
               <span class="col-header-with-icon col-header--star">
                 <el-icon><StarFilled /></el-icon>
@@ -200,7 +165,7 @@
           </el-table-column>
 
           <!-- 预测次数 -->
-          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="100" align="center" />
+          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="120" align="center" />
         </el-table>
       </el-tab-pane>
 
@@ -214,12 +179,16 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('common.model')" prop="modelName" />
-          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="90" />
-          <el-table-column :label="$t('ranking.exactMatches')" prop="exactMatches" width="100" />
-          <el-table-column :label="$t('ranking.basicMatches')" prop="basicMatches" width="100" />
-          <el-table-column :label="$t('ranking.totalScore')" prop="totalScore" width="90" />
-          <el-table-column :label="$t('ranking.accuracyRate')" width="100">
+          <el-table-column :label="$t('common.model')" prop="modelName" min-width="150" />
+          <el-table-column :label="$t('ranking.agentPlatform')" min-width="150">
+            <template #default="{ row }">
+              <PlatformBadge :platform="row.platformName || row.platform || '-'" :show-name="true" />
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="100" align="center" />
+          <el-table-column :label="$t('ranking.exactMatches')" prop="exactMatches" width="100" align="center" />
+          <el-table-column :label="$t('ranking.basicMatches')" prop="basicMatches" width="100" align="center" />
+          <el-table-column :label="$t('ranking.accuracyRate')" width="100" align="center">
             <template #default="{ row }">
               {{ Number(row.accuracyRate).toFixed(1) }}%
             </template>
@@ -308,19 +277,12 @@ function onSortChange() {
   loadData()
 }
 
-/** 默认头像（首字母 placeholder） */
-const defaultAvatar = ''
-
 /* ============ 顶部指标计算 ============ */
 const overview = computed(() => {
   const list = userRankings.value || []
   const participants = list.length
-  const topScore = list.reduce((m, r) => Math.max(m, r.totalScore || 0), 0)
-  const avgScore = participants
-    ? list.reduce((s, r) => s + (r.totalScore || 0), 0) / participants
-    : 0
   const totalAnalyses = list.reduce((s, r) => s + (r.totalPredictions || 0), 0)
-  return { participants, topScore, avgScore, totalAnalyses }
+  return { participants, totalAnalyses }
 })
 
 /* ============ 工具：根据行得到平台/模型元数据 ============ */
@@ -359,8 +321,8 @@ async function loadData() {
       const res = await http.get<{ list: any[] }>('/ranking/models')
       modelRankings.value = res.list || []
     }
-  } catch {
-    // 后端未启动时忽略
+  } catch (err) {
+    console.error(`[loadData] tab=${activeTab.value} failed:`, err)
   } finally {
     loading.value = false
   }
@@ -371,8 +333,8 @@ async function loadMyRanking() {
     const token = localStorage.getItem('cupai_token')
     if (!token) return
     myRanking.value = await http.get<any>('/ranking/my')
-  } catch {
-    // 未登录忽略
+  } catch (err) {
+    console.error('[loadMyRanking] failed:', err)
   }
 }
 
@@ -386,198 +348,187 @@ onMounted(() => {
 /* ============== 顶部背景渐变条 ============== */
 .hero-bar {
   height: 6px;
-  border-radius: 3px;
-  margin-bottom: 18px;
-  background: linear-gradient(90deg, #0b2a5b 0%, #e63946 55%, #f4c430 100%);
-  box-shadow: 0 2px 8px rgba(11, 42, 91, 0.15);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-5);
+  background: var(--gradient-wc);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ============== 标题区 ============== */
 .page-header {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-5);
 }
 
 .page-title {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 6px;
-  color: #1a1a2e;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-primary);
 }
 
 .page-subtitle {
   margin: 0;
-  color: #64748b;
-  font-size: 13px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
-/* ============== 顶部指标卡 ============== */
+/* ============== 顶部指标卡（使用 common-card 样式） ============== */
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .overview-card {
-  border-radius: 10px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+.overview-card:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .overview-card :deep(.el-statistic__head) {
-  font-size: 13px;
-  color: #64748b;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
 .overview-card :deep(.el-statistic__content) {
-  font-size: 26px;
-  font-weight: 700;
-  color: #1a1a2e;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-extrabold);
+  color: var(--color-text-primary);
 }
 
 .ov-suffix {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-left: 4px;
-  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-left: var(--space-1);
+  font-weight: var(--font-medium);
 }
 
 /* ============== 排序选择器（PRD 3.3.3） ============== */
 .sort-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
+
 .sort-label {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: #475569;
-  font-weight: 600;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-semibold);
 }
-.sort-btn-label { margin-left: 4px; }
+
+.sort-btn-label {
+  margin-left: var(--space-1);
+}
 
 /* ============== 列头带 Icon（PRD 3.3.2 字段配套 Icon） ============== */
 .col-header-with-icon {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-weight: 600;
-  color: #1a1a2e;
+  gap: var(--space-2);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
 }
-.col-header--trophy :deep(.el-icon) { color: #f59e0b; }
-.col-header--star :deep(.el-icon) { color: #e94560; }
+
+.col-header--trophy :deep(.el-icon) {
+  color: var(--color-warning);
+}
+
+.col-header--star :deep(.el-icon) {
+  color: var(--color-wc-red);
+}
 
 /* ============== 表格 ============== */
 .ranking-table :deep(.ranking-row:hover > td) {
-  background-color: #f8fafc !important;
+  background-color: var(--color-bg-muted) !important;
 }
 
 .ranking-table :deep(.el-table__row) {
-  transition: background-color 0.15s ease;
-}
-
-/* ============== 排名 badge（金银铜） ============== */
-.rank-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  font-weight: 700;
-  font-size: 13px;
-  background: #f0f0f0;
-  color: #666;
-}
-
-.rank-1 {
-  background: linear-gradient(135deg, #ffd700, #f4c430);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(255, 215, 0, 0.45);
-}
-
-.rank-2 {
-  background: linear-gradient(135deg, #e8e8e8, #b8b8b8);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(192, 192, 192, 0.45);
-}
-
-.rank-3 {
-  background: linear-gradient(135deg, #cd7f32, #a05a1f);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(205, 127, 50, 0.45);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 /* ============== 用户列：国旗 + 头像 + 昵称 ============== */
 .user-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .flag-icon {
   width: 22px;
   height: 16px;
-  border-radius: 2px;
-  box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: none !important;
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   flex-shrink: 0;
   display: inline-block;
 }
 
-.user-avatar {
-  flex-shrink: 0;
-  background: linear-gradient(135deg, #615ced, #4285f4);
-  color: #fff;
-  font-weight: 600;
-}
-
 .user-nickname {
-  font-weight: 500;
-  color: #1a1a2e;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ============== 总积分 ============== */
-.total-score {
-  font-size: 20px;
-  font-weight: 800;
-  color: #d97706;
-  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  max-width: 120px;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* ============== 准确率 ============== */
 .accuracy-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
 }
 
 .accuracy-num {
-  font-size: 12px;
-  color: #1a1a2e;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  color: var(--color-text-primary);
+  font-weight: var(--font-semibold);
   font-variant-numeric: tabular-nums;
 }
 
 /* ============== 个人卡片 ============== */
 .my-ranking-card {
-  margin-top: 24px;
+  margin-top: var(--space-6);
 }
 
 /* ============== 响应式 ============== */
-@media (max-width: 768px) {
+@media (max-width: 480px) {
   .overview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .sort-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .user-cell {
+    gap: var(--space-1);
+  }
+
+  .user-nickname {
+    max-width: 80px;
   }
 }
 </style>

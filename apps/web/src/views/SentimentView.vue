@@ -1,12 +1,14 @@
 <template>
   <div class="sentiment-view">
-    <h1>{{ $t('sentiment.title') }}</h1>
-    <p class="subtitle">{{ $t('sentiment.subtitle') }}</p>
+    <header class="page-header">
+      <h1 class="page-title">{{ $t('sentiment.title') }}</h1>
+      <p class="page-subtitle">{{ $t('sentiment.subtitle') }}</p>
+    </header>
 
     <!-- 全局概览卡片 -->
     <el-row :gutter="16" class="overview-cards">
       <el-col :span="6">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="common-card overview-card">
           <div class="stat-card">
             <div class="stat-value">{{ overview.total || 0 }}</div>
             <div class="stat-label">{{ $t('sentiment.totalCount') }}</div>
@@ -14,7 +16,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="common-card overview-card">
           <div class="stat-card">
             <div class="stat-value" :style="{ color: getScoreColor(overview.avgScore) }">
               {{ formatScore(overview.avgScore) }}
@@ -24,7 +26,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="common-card overview-card">
           <div class="stat-card">
             <div class="stat-value">{{ platformCount }}</div>
             <div class="stat-label">{{ $t('sentiment.platformCount') }}</div>
@@ -32,7 +34,7 @@
         </el-card>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover">
+        <el-card shadow="hover" class="common-card overview-card">
           <div class="stat-card">
             <div class="stat-value">{{ languageCount }}</div>
             <div class="stat-label">{{ $t('sentiment.languageCount') }}</div>
@@ -41,10 +43,10 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="16" style="margin-top: 16px">
+    <el-row :gutter="16" style="margin-top: var(--space-4)">
       <!-- 情绪趋势图 -->
       <el-col :span="16">
-        <el-card>
+        <el-card class="common-card">
           <template #header>
             <div class="card-header">
               <span>{{ $t('sentiment.trendTitle') }}</span>
@@ -60,17 +62,17 @@
 
       <!-- 语言分布饼图 -->
       <el-col :span="8">
-        <el-card>
+        <el-card class="common-card">
           <template #header>{{ $t('sentiment.languageDist') }}</template>
           <div ref="langChartRef" style="height: 350px"></div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="16" style="margin-top: 16px">
+    <el-row :gutter="16" style="margin-top: var(--space-4)">
       <!-- 平台统计 -->
       <el-col :span="8">
-        <el-card>
+        <el-card class="common-card">
           <template #header>{{ $t('sentiment.platformDist') }}</template>
           <div ref="platformChartRef" style="height: 300px"></div>
         </el-card>
@@ -78,275 +80,299 @@
 
       <!-- 地区分布 -->
       <el-col :span="8">
-        <el-card>
+        <el-card class="common-card">
           <template #header>{{ $t('sentiment.regionDist') }}</template>
           <div ref="regionChartRef" style="height: 300px"></div>
         </el-card>
       </el-col>
 
-      <!-- 球队舆情排行 -->
+      <!-- 情绪得分分布 -->
       <el-col :span="8">
-        <el-card>
-          <template #header>{{ $t('sentiment.teamRanking') }}</template>
-          <div class="team-ranking">
-            <div v-for="(team, index) in teamRanking" :key="team.teamId" class="team-item">
-              <span class="team-rank">{{ index + 1 }}</span>
-              <span class="team-name">{{ team.name }}</span>
-              <el-progress
-                :percentage="team.score"
-                :stroke-width="8"
-                :color="getScoreColor(team.score / 100 * 2 - 1)"
-                style="flex: 1; margin: 0 12px"
-              />
-              <span class="team-score" :style="{ color: getScoreColor(team.score / 100 * 2 - 1) }">
-                {{ team.score > 50 ? $t('sentiment.positive') : $t('sentiment.negative') }}
-              </span>
-            </div>
-            <el-empty v-if="teamRanking.length === 0" :description="$t('common.noData')" :image-size="60" />
-          </div>
+        <el-card class="common-card">
+          <template #header>{{ $t('sentiment.scoreDist') }}</template>
+          <div ref="scoreChartRef" style="height: 300px"></div>
         </el-card>
       </el-col>
     </el-row>
 
-    <!-- 最近舆情流 -->
-    <el-card style="margin-top: 16px">
-      <template #header>
-        <div class="card-header">
-          <span>{{ $t('sentiment.recentSentiment') }}</span>
-          <el-select v-model="selectedPlatform" :placeholder="$t('sentiment.filterPlatform')" clearable size="small" style="width: 140px" @change="loadRecentItems">
-            <el-option :label="t('match.platformTwitter')" value="twitter" />
-            <el-option :label="t('match.platformReddit')" value="reddit" />
-            <el-option :label="t('match.platformWeibo')" value="weibo" />
-            <el-option :label="$t('sentiment.other')" value="other" />
-          </el-select>
-        </div>
-      </template>
-      <div class="sentiment-feed">
-        <div v-for="item in recentItems" :key="item.id" class="feed-item">
-          <div class="feed-header">
-            <el-tag :type="getPolarityType(item.sentimentPolarity)" size="small">
-              {{ getPolarityLabel(item.sentimentPolarity) }}
-            </el-tag>
-            <span class="feed-platform">{{ platformLabel(item.sourcePlatform) }}</span>
-            <span class="feed-lang">{{ languageLabels[item.language] || item.language }}</span>
-            <span class="feed-time">{{ formatTime(item.createdAt) }}</span>
+    <el-row :gutter="16" style="margin-top: var(--space-4)">
+      <!-- 各队情绪趋势 -->
+      <el-col :span="12">
+        <el-card class="common-card">
+          <template #header>{{ $t('sentiment.teamTrend') }}</template>
+          <div class="team-ranking">
+            <div v-for="(team, idx) in teamRanking" :key="team.id" class="team-item">
+              <span class="team-rank">{{ idx + 1 }}</span>
+              <span class="team-name">{{ team.name }}</span>
+              <span class="team-score" :style="{ color: getScoreColor(team.avgScore) }">
+                {{ formatScore(team.avgScore) }}
+              </span>
+            </div>
           </div>
-          <div class="feed-text">{{ item.originalText }}</div>
-          <div class="feed-footer">
-            <span class="feed-score" :style="{ color: getScoreColor(Number(item.sentimentScore)) }">
-              {{ $t('sentiment.sentimentScore') }}: {{ Number(item.sentimentScore).toFixed(2) }}
-            </span>
-            <span class="feed-confidence">{{ $t('sentiment.confidence') }}: {{ (Number(item.confidence) * 100).toFixed(0) }}%</span>
-            <span class="feed-engagement" v-if="item.engagement">{{ $t('sentiment.engagement') }}: {{ item.engagement }}</span>
+        </el-card>
+      </el-col>
+
+      <!-- 实时舆情流 -->
+      <el-col :span="12">
+        <el-card class="common-card">
+          <template #header>{{ $t('sentiment.realTimeFeed') }}</template>
+          <div class="sentiment-feed">
+            <div v-for="item in feedList" :key="item.id" class="feed-item">
+              <div class="feed-header">
+                <span class="feed-platform">{{ item.platform }}</span>
+                <span class="feed-lang">{{ item.language }}</span>
+                <span class="feed-time">{{ formatTime(item.createdAt) }}</span>
+              </div>
+              <p class="feed-text">{{ item.text }}</p>
+              <div class="feed-footer">
+                <span class="feed-score" :style="{ color: getScoreColor(item.sentimentScore) }">
+                  {{ formatScore(item.sentimentScore) }}
+                </span>
+                <span class="feed-confidence">{{ t('sentiment.confidence') }}: {{ item.confidence }}%</span>
+              </div>
+            </div>
+            <el-empty v-if="feedList.length === 0" :description="$t('sentiment.noFeed')" />
           </div>
-        </div>
-        <el-empty v-if="recentItems.length === 0" :description="$t('sentiment.noData')" />
-      </div>
-    </el-card>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { http } from '@/api/request'
-
-const { t, locale: i18nLocale } = useI18n()
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 
 const overview = ref<any>({})
-const recentItems = ref<any[]>([])
+const timeline = ref<any[]>([])
+const langDist = ref<any[]>([])
+const platformDist = ref<any[]>([])
+const regionDist = ref<any[]>([])
+const scoreDist = ref<any[]>([])
 const teamRanking = ref<any[]>([])
-const trendInterval = ref<'hour' | 'day'>('hour')
-const selectedPlatform = ref('')
+const feedList = ref<any[]>([])
+const trendInterval = ref('hour')
 
-// ECharts 引用
 const trendChartRef = ref<HTMLElement>()
 const langChartRef = ref<HTMLElement>()
 const platformChartRef = ref<HTMLElement>()
 const regionChartRef = ref<HTMLElement>()
+const scoreChartRef = ref<HTMLElement>()
 
-let trendChart: echarts.ECharts | null = null
-let langChart: echarts.ECharts | null = null
-let platformChart: echarts.ECharts | null = null
-let regionChart: echarts.ECharts | null = null
-
-const platformCount = ref(0)
-const languageCount = ref(0)
-
-// 语言标签映射（响应式）
-const languageLabels = computed<Record<string, string>>(() => ({
-  'zh-CN': t('sentiment.zhCN'), 'en-US': t('sentiment.enUS'), 'es-ES': t('sentiment.esES'), 'fr-FR': t('sentiment.frFR'),
-  'pt-BR': t('sentiment.ptBR'), 'ar-SA': t('sentiment.arSA'), 'ja-JP': t('sentiment.jaJP'), 'ko-KR': t('sentiment.koKR'),
-}))
+const platformCount = computed(() => platformDist.value.length)
+const languageCount = computed(() => langDist.value.length)
 
 function getScoreColor(score: number): string {
-  if (score > 0.3) return '#67c23a'
-  if (score > 0) return '#e6a23c'
-  if (score > -0.3) return '#f56c6c'
-  return '#c45656'
+  if (score >= 60) return 'var(--color-success)'
+  if (score >= 40) return 'var(--color-warning)'
+  return 'var(--color-danger)'
 }
 
-function formatScore(score: number | string): string {
-  return Number(score || 0).toFixed(3)
+function formatScore(score: number | null | undefined): string {
+  if (score == null) return '-'
+  return `${Math.round(score)}`
 }
 
-function getPolarityType(polarity: string): 'success' | 'danger' | 'info' {
-  if (polarity === 'positive') return 'success'
-  if (polarity === 'negative') return 'danger'
-  return 'info'
-}
-
-function getPolarityLabel(polarity: string): string {
-  if (polarity === 'positive') return t('sentiment.positive')
-  if (polarity === 'negative') return t('sentiment.negative')
-  return t('sentiment.neutral')
-}
-
-function formatTime(dateStr: string): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleString(i18nLocale.value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+function formatTime(time: string): string {
+  return new Date(time).toLocaleTimeString()
 }
 
 async function loadOverview() {
   try {
-    const res = await http.get<any>('/sentiment/overview')
-    overview.value = res || {}
-    platformCount.value = res?.platformStats?.length || 0
-    languageCount.value = res?.languageStats?.length || 0
-  } catch {
-    // 后端未启动
+    const res = await http.get<{
+      total: number
+      avgScore: number
+      platformStats: Array<{ platform: string; count: number; avgScore: number }>
+      languageStats: Array<{ language: string; count: number; avgScore: number }>
+      regionStats: Array<{ region: string; count: number; avgScore: number }>
+    }>('/sentiment/overview')
+    overview.value = {
+      ...(res || {}),
+      // 后端 avgScore 是 .toFixed(4) 字符串，转为 number 便于 getScoreColor 比较
+      avgScore: Number(res?.avgScore) || 0,
+      total: Number(res?.total) || 0,
+    }
+
+    // 从 overview 派生分布图数据（后端 GET /sentiment/charts 暂未实现，
+    // 文档 §4.1 建议由 overview 前端聚合临时替代）
+    langDist.value = (res?.languageStats || []).map((s) => ({ name: s.language, value: Number(s.count) }))
+    platformDist.value = (res?.platformStats || []).map((s) => ({ name: s.platform, value: Number(s.count) }))
+    regionDist.value = (res?.regionStats || []).map((s) => ({ name: s.region, value: Number(s.count) }))
+
+    renderLangChart()
+    renderPlatformChart()
+    renderRegionChart()
+  } catch (err) {
+    console.error('[loadOverview] failed:', err)
   }
 }
 
 async function loadTimeline() {
   try {
-    const res = await http.get<any[]>('/sentiment/timeline', { params: { interval: trendInterval.value } })
-    if (trendChart && res) {
-      trendChart.setOption({
-        tooltip: { trigger: 'axis' },
-        xAxis: { type: 'category', data: res.map((r: any) => r.period) },
-        yAxis: { type: 'value', min: -1, max: 1 },
-        series: [
-          { name: t('sentiment.scoreValue'), type: 'line', data: res.map((r: any) => Number(r.avgScore).toFixed(4)), smooth: true, itemStyle: { color: '#409eff' } },
-          { name: t('sentiment.dataCount'), type: 'bar', data: res.map((r: any) => Number(r.count)), yAxisIndex: 1, itemStyle: { color: '#e6e8eb' } },
-        ],
-        grid: { left: 60, right: 60, bottom: 30, top: 30 },
-      })
-    }
-  } catch {
-    // 后端未启动
+    // 后端字段：period / positiveCount / negativeCount / neutralCount
+    const res = await http.get<Array<{
+      period: string
+      positiveCount: number
+      negativeCount: number
+      neutralCount: number
+    }>>('/sentiment/timeline', {
+      params: { interval: trendInterval.value },
+    })
+    timeline.value = res || []
+    renderTrendChart()
+  } catch (err) {
+    console.error('[loadTimeline] failed:', err)
   }
 }
 
-async function loadRecentItems() {
+/**
+ * 派生出 teamRanking / scoreDist / feedList 等聚合数据
+ * scoreDist 从 overview.recentTrend 真实数据按桶聚合（0-0.25 / 0.25-0.5 / 0.5-0.75 / 0.75-1.0）
+ */
+async function loadDerivedData() {
   try {
-    await http.get<any>('/sentiment/overview')
-    // 从 overview 中获取最近数据（简化处理）
-    recentItems.value = []
-  } catch {
-    // 后端未启动
+    // 球队情绪排行：后端暂未提供 topTeams 字段，保留空态等接口完善
+    teamRanking.value = []
+
+    // 情感得分分布：基于 overview.recentTrend 中各时段 avgScore 按桶聚合
+    const trend: any[] = overview.value?.recentTrend || []
+    if (trend.length > 0) {
+      const buckets = [
+        { range: '0-25', min: 0, max: 0.25, count: 0 },
+        { range: '25-50', min: 0.25, max: 0.5, count: 0 },
+        { range: '50-75', min: 0.5, max: 0.75, count: 0 },
+        { range: '75-100', min: 0.75, max: 1.01, count: 0 },
+      ]
+      for (const item of trend) {
+        const score = Number(item.avgScore) || 0
+        for (const b of buckets) {
+          if (score >= b.min && score < b.max) { b.count++; break }
+        }
+      }
+      scoreDist.value = buckets.map((b) => ({ range: b.range, count: b.count }))
+    } else {
+      // 无趋势数据时保留空态
+      scoreDist.value = []
+    }
+    renderScoreChart()
+
+    // 实时舆情流：后端无 feedList 接口，保留空态
+    feedList.value = []
+  } catch (err) {
+    console.error('[loadDerivedData] failed:', err)
   }
 }
 
-function initCharts() {
-  if (trendChartRef.value) trendChart = echarts.init(trendChartRef.value)
-  if (langChartRef.value) langChart = echarts.init(langChartRef.value)
-  if (platformChartRef.value) platformChart = echarts.init(platformChartRef.value)
-  if (regionChartRef.value) regionChart = echarts.init(regionChartRef.value)
-}
-
-function renderLangChart(stats: any[]) {
-  if (!langChart || !stats?.length) return
-  const langNames: Record<string, string> = { 'zh-CN': t('sentiment.zhCN'), 'en-US': t('sentiment.enUS'), 'es-ES': t('sentiment.esES'), 'fr-FR': t('sentiment.frFR'), 'pt-BR': t('sentiment.ptBR'), 'ar-SA': t('sentiment.arSA'), 'ja-JP': t('sentiment.jaJP'), 'ko-KR': t('sentiment.koKR') }
-  langChart.setOption({
-    tooltip: { trigger: 'item' },
-    series: [{
-      type: 'pie', radius: ['40%', '70%'],
-      data: stats.map((s: any) => ({ name: langNames[s.language] || s.language, value: Number(s.count) })),
-      emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' } },
-    }],
-  })
-}
-
-function renderPlatformChart(stats: any[]) {
-  if (!platformChart || !stats?.length) return
-  platformChart.setOption({
-    tooltip: { trigger: 'item' },
-    series: [{
-      type: 'pie', radius: ['35%', '65%'],
-      data: stats.map((s: any) => ({ name: platformLabels.value[s.platform] || s.platform, value: Number(s.count) })),
-    }],
-  })
-}
-
-function renderRegionChart(stats: any[]) {
-  if (!regionChart || !stats?.length) return
-  regionChart.setOption({
+function renderTrendChart() {
+  if (!trendChartRef.value) return
+  const chart = echarts.init(trendChartRef.value)
+  chart.setOption({
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: stats.map((s: any) => s.region), axisLabel: { rotate: 30 } },
+    legend: { data: [t('sentiment.positive'), t('sentiment.neutral'), t('sentiment.negative')] },
+    grid: { left: 40, right: 20, top: 40, bottom: 40 },
+    xAxis: { type: 'category', data: timeline.value.map((item) => item.period) },
     yAxis: { type: 'value' },
-    series: [{ type: 'bar', data: stats.map((s: any) => Number(s.count)), itemStyle: { color: '#409eff' } }],
-    grid: { left: 40, right: 20, bottom: 40, top: 20 },
+    series: [
+      { name: t('sentiment.positive'), type: 'line', data: timeline.value.map((item) => Number(item.positiveCount) || 0) },
+      { name: t('sentiment.neutral'), type: 'line', data: timeline.value.map((item) => Number(item.neutralCount) || 0) },
+      { name: t('sentiment.negative'), type: 'line', data: timeline.value.map((item) => Number(item.negativeCount) || 0) },
+    ],
   })
 }
 
-onMounted(async () => {
-  await nextTick()
-  initCharts()
-
-  await loadOverview()
-  await loadTimeline()
-
-  // 渲染图表
-  if (overview.value?.languageStats) renderLangChart(overview.value.languageStats)
-  if (overview.value?.platformStats) renderPlatformChart(overview.value.platformStats)
-  if (overview.value?.regionStats) renderRegionChart(overview.value.regionStats)
-
-  // 窗口 resize 自适应
-  window.addEventListener('resize', () => {
-    trendChart?.resize()
-    langChart?.resize()
-    platformChart?.resize()
-    regionChart?.resize()
+function renderLangChart() {
+  if (!langChartRef.value) return
+  const chart = echarts.init(langChartRef.value)
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    series: [
+      {
+        type: 'pie',
+        radius: '60%',
+        data: langDist.value.map((d) => ({ name: d.name, value: d.value })),
+      },
+    ],
   })
+}
+
+function renderPlatformChart() {
+  if (!platformChartRef.value) return
+  const chart = echarts.init(platformChartRef.value)
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    series: [
+      {
+        type: 'pie',
+        radius: '60%',
+        data: platformDist.value.map((d) => ({ name: d.name, value: d.value })),
+      },
+    ],
+  })
+}
+
+function renderRegionChart() {
+  if (!regionChartRef.value) return
+  const chart = echarts.init(regionChartRef.value)
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    series: [
+      {
+        type: 'pie',
+        radius: '60%',
+        data: regionDist.value.map((d) => ({ name: d.name, value: d.value })),
+      },
+    ],
+  })
+}
+
+function renderScoreChart() {
+  if (!scoreChartRef.value) return
+  const chart = echarts.init(scoreChartRef.value)
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: scoreDist.value.map((d) => d.range) },
+    yAxis: { type: 'value' },
+    series: [{ type: 'bar', data: scoreDist.value.map((d) => d.count) }],
+  })
+}
+
+onMounted(() => {
+  loadOverview()
+  loadTimeline()
+  loadDerivedData()
+})
+
+onUnmounted(() => {
+  // 解构 ref 时已做 ref.value 守卫，避免 TS undefined 报错
+  const refs = [
+    trendChartRef.value,
+    langChartRef.value,
+    platformChartRef.value,
+    regionChartRef.value,
+    scoreChartRef.value,
+  ]
+  refs.forEach((el) => el && echarts.dispose(el))
 })
 </script>
 
 <style scoped>
-.sentiment-view h1 {
-  font-size: 22px;
-  margin-bottom: 4px;
-  color: #1a1a2e;
+.sentiment-view {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
-.subtitle {
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 20px;
+/* .page-header、.card-header、.stat-card、.stat-value、.stat-label 使用全局样式 */
+
+.overview-cards {
+  margin-bottom: var(--space-4);
 }
 
-.overview-cards .stat-card {
-  text-align: center;
-  padding: 8px 0;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 800;
-  color: #1a1a2e;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #999;
-  margin-top: 4px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.overview-card :deep(.el-statistic__content) {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
 }
 
 .team-ranking {
@@ -357,8 +383,8 @@ onMounted(async () => {
 .team-item {
   display: flex;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .team-item:last-child {
@@ -367,18 +393,20 @@ onMounted(async () => {
 
 .team-rank {
   width: 24px;
-  font-weight: 700;
+  font-weight: var(--font-bold);
   text-align: center;
 }
 
 .team-name {
   min-width: 60px;
-  font-size: 13px;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
 }
 
 .team-score {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  margin-left: auto;
 }
 
 .sentiment-feed {
@@ -387,8 +415,8 @@ onMounted(async () => {
 }
 
 .feed-item {
-  padding: 12px 0;
-  border-bottom: 1px solid #f5f5f5;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .feed-item:last-child {
@@ -398,46 +426,60 @@ onMounted(async () => {
 .feed-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .feed-platform {
-  font-size: 12px;
-  color: #409eff;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
 }
 
 .feed-lang {
-  font-size: 11px;
-  color: #999;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 
 .feed-time {
-  font-size: 11px;
-  color: #ccc;
+  font-size: var(--text-xs);
+  color: var(--color-text-placeholder);
   margin-left: auto;
 }
 
 .feed-text {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #333;
-  margin-bottom: 6px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-regular);
+  margin: 0 0 var(--space-1);
 }
 
 .feed-footer {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #999;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 
 .feed-score {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
-.feed-confidence {
-  color: #999;
+@media (max-width: 768px) {
+  .sentiment-view :deep(.el-col) {
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+  .overview-cards :deep(.el-col) {
+    max-width: 50% !important;
+    flex: 0 0 50% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .overview-cards :deep(.el-col) {
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
 }
 </style>

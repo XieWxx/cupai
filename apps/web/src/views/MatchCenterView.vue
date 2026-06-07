@@ -1,67 +1,79 @@
 <template>
   <div class="match-center-view">
-    <h1>{{ $t('nav.matchCenter') }}</h1>
+    <header class="page-header">
+      <h1 class="page-title">{{ $t('nav.matchCenter') }}</h1>
+    </header>
 
     <!-- 筛选栏 -->
-    <el-row :gutter="16" class="filter-bar">
-      <el-col :span="6">
-        <el-select v-model="filters.status" :placeholder="$t('match.matchStatus')" clearable @change="loadMatches">
-          <el-option :label="$t('match.upcoming')" value="upcoming" />
-          <el-option :label="$t('match.live')" value="live" />
-          <el-option :label="$t('match.finished')" value="finished" />
-        </el-select>
-      </el-col>
-      <el-col :span="6">
-        <el-select v-model="filters.stage" :placeholder="$t('match.stage')" clearable @change="loadMatches">
-          <el-option :label="$t('match.groupStage')" value="group" />
-          <el-option :label="$t('match.knockout')" value="knockout" />
-          <el-option :label="$t('match.final')" value="final" />
-        </el-select>
-      </el-col>
-    </el-row>
+    <div class="filter-bar">
+      <el-row :gutter="16">
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-select v-model="filters.status" :placeholder="$t('match.matchStatus')" clearable @change="loadMatches">
+            <el-option :label="$t('match.upcoming')" value="upcoming" />
+            <el-option :label="$t('match.live')" value="live" />
+            <el-option :label="$t('match.finished')" value="finished" />
+          </el-select>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-select v-model="filters.stage" :placeholder="$t('match.stage')" clearable @change="loadMatches">
+            <el-option :label="$t('match.groupStage')" value="group" />
+            <el-option :label="$t('match.knockout')" value="knockout" />
+            <el-option :label="$t('match.final')" value="final" />
+          </el-select>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8">
+          <div class="filter-actions">
+            <el-button type="primary" @click="loadMatches">{{ $t('common.search') }}</el-button>
+            <el-button @click="filters.status = ''; filters.stage = ''; loadMatches()">{{ $t('common.reset') }}</el-button>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
 
     <!-- 赛事列表 -->
-    <el-table :data="matchStore.matches" v-loading="matchStore.loading" stripe>
-      <el-table-column :label="$t('match.homeTeam')" min-width="150">
-        <template #default="{ row }">
-          <div class="team-cell">
-            <span v-if="getFlagClass(row.homeTeam?.countryCode)" :class="getFlagClass(row.homeTeam?.countryCode)"></span>
-            <span>{{ row.homeTeam?.name }}</span>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column :label="$t('common.vs')" width="80" align="center">
-        <template #default="{ row }">
-          <span v-if="row.status === 'finished'" class="score">{{ row.homeScore }} : {{ row.awayScore }}</span>
-          <span v-else class="vs-text">{{ $t('common.vs') }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column :label="$t('match.awayTeam')" min-width="150">
-        <template #default="{ row }">
-          <div class="team-cell">
-            <span v-if="getFlagClass(row.awayTeam?.countryCode)" :class="getFlagClass(row.awayTeam?.countryCode)"></span>
-            <span>{{ row.awayTeam?.name }}</span>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column :label="$t('match.matchStatus')" width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'live' ? 'danger' : row.status === 'finished' ? 'info' : 'success'" size="small">
-            {{ row.status === 'live' ? $t('match.live') : row.status === 'finished' ? $t('match.finished') : $t('match.upcoming') }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column :label="$t('match.startTime')" width="180">
-        <template #default="{ row }">
-          {{ new Date(row.startTime).toLocaleString(i18nLocale) }}
-        </template>
-      </el-table-column>
-      <el-table-column :label="$t('common.operation')" width="100" align="center">
-        <template #default="{ row }">
-          <el-button text type="primary" @click="$router.push(`/match/${row.id}`)">{{ $t('common.detail') }}</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-card class="common-card">
+      <el-table :data="matchStore.matches" v-loading="matchStore.loading" stripe>
+        <el-table-column :label="$t('match.homeTeam')" min-width="150">
+          <template #default="{ row }">
+            <div class="team-cell">
+              <span v-if="getFlagClass(row.homeTeam?.countryCode)" :class="getFlagClass(row.homeTeam?.countryCode)"></span>
+              <span>{{ row.homeTeam?.name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('common.vs')" width="80" align="center">
+          <template #default="{ row }">
+            <span v-if="row.status === 'finished'" class="score">{{ row.homeScore }} : {{ row.awayScore }}</span>
+            <span v-else class="vs-text">{{ $t('common.vs') }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('match.awayTeam')" min-width="150">
+          <template #default="{ row }">
+            <div class="team-cell">
+              <span v-if="getFlagClass(row.awayTeam?.countryCode)" :class="getFlagClass(row.awayTeam?.countryCode)"></span>
+              <span>{{ row.awayTeam?.name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('match.matchStatus')" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'live' ? 'danger' : row.status === 'finished' ? 'info' : 'success'" size="small">
+              {{ row.status === 'live' ? $t('match.live') : row.status === 'finished' ? $t('match.finished') : $t('match.upcoming') }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('match.startTime')" width="180">
+          <template #default="{ row }">
+            {{ new Date(row.startTime).toLocaleString(i18nLocale) }}
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('common.operation')" width="100" align="center">
+          <template #default="{ row }">
+            <el-button text type="primary" @click="$router.push(`/match/${row.id}`)">{{ $t('common.detail') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
@@ -92,30 +104,57 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.match-center-view h1 {
-  font-size: 22px;
-  margin-bottom: 20px;
-  color: #1a1a2e;
+.match-center-view {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
-.filter-bar {
-  margin-bottom: 20px;
+/* .page-header 使用全局定义 */
+/* .filter-bar 使用全局定义（padding/background/border/radius 已在 index.css 中定义） */
+
+.filter-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 .team-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
+}
+
+/* 国旗图标对齐全局 .team-flag 样式 */
+.team-cell span[class*="fi"] {
+  width: 22px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 .score {
-  font-weight: 700;
-  font-size: 16px;
-  color: #e94560;
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  color: var(--color-danger);
 }
 
 .vs-text {
-  color: #999;
-  font-weight: 600;
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-semibold);
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  .filter-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-actions {
+    flex-direction: column;
+    width: 100%;
+  }
 }
 </style>

@@ -1,30 +1,30 @@
 <template>
   <div class="match-data-center-view">
     <!-- 页面标题区 -->
-    <div class="page-header">
+    <header class="page-header">
       <h1 class="page-title">{{ $t('matchCenter.title') }}</h1>
-      <div class="page-subtitle">{{ $t('matchCenter.subtitle') }}</div>
-    </div>
+      <p class="page-subtitle">{{ $t('matchCenter.subtitle') }}</p>
+    </header>
 
     <!-- Tab 切换：小组积分榜 / 小组赛程 / 淘汰赛对阵图 -->
     <el-tabs v-model="activeTab" class="data-tabs">
       <!-- 小组积分榜 -->
-      <el-tab-pane label="小组积分榜" name="standings">
-        <el-card class="dark-card" shadow="never">
+      <el-tab-pane :label="t('matchCenter.groupStandings')" name="standings">
+        <el-card class="common-card" shadow="never">
           <GroupStandings :groups="standingsGroups" :loading="loading.standings" />
         </el-card>
       </el-tab-pane>
 
       <!-- 小组赛程 -->
-      <el-tab-pane label="小组赛程" name="groupMatches">
-        <el-card class="dark-card" shadow="never">
+      <el-tab-pane :label="t('matchCenter.groupMatches')" name="groupMatches">
+        <el-card class="common-card" shadow="never">
           <GroupMatchTable :matches="groupMatches" :loading="loading.matches" />
         </el-card>
       </el-tab-pane>
 
       <!-- 淘汰赛对阵图 -->
-      <el-tab-pane label="淘汰赛对阵图" name="knockout">
-        <el-card class="dark-card bracket-card" shadow="never">
+      <el-tab-pane :label="t('matchCenter.knockoutBracket')" name="knockout">
+        <el-card class="common-card bracket-card" shadow="never">
           <KnockoutBracket :bracket-data="bracketStage" :loading="loading.matches" />
         </el-card>
       </el-tab-pane>
@@ -34,11 +34,13 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useMatchStore } from '@/stores/match'
 import { http } from '@/api/request'
 import KnockoutBracket from '@/components/bracket/KnockoutBracket.vue'
 import GroupStandings from '@/components/bracket/GroupStandings.vue'
 import GroupMatchTable from '@/components/bracket/GroupMatchTable.vue'
+const { t } = useI18n()
 
 const matchStore = useMatchStore()
 
@@ -66,7 +68,8 @@ async function loadStandings() {
     if (res?.groups) {
       standingsGroups.value = res.groups
     }
-  } catch {
+  } catch (err) {
+    console.error('[loadStandings] failed:', err)
     standingsGroups.value = {}
   } finally {
     loading.standings = false
@@ -77,25 +80,24 @@ async function loadStandings() {
 async function loadMatches() {
   loading.matches = true
   try {
-    // 加载全部赛事
     const allRes: any = await matchStore.fetchMatches({ pageSize: 200 })
     const allMatches = allRes?.list || []
 
-    // 筛选小组赛比赛
     groupMatches.value = allMatches.filter((m: any) => {
       const gName = m.groupName || ''
       const stage = (m.stage || '').toLowerCase()
       return gName || stage.includes('group') || stage.includes('小组')
     })
 
-    // 加载淘汰赛分组数据
     try {
       const bracketRes: any = await matchStore.fetchBracket()
       bracketStage.value = bracketRes?.bracketStage || null
-    } catch {
+    } catch (err) {
+      console.error('[loadMatches.bracket] failed:', err)
       bracketStage.value = null
     }
-  } catch {
+  } catch (err) {
+    console.error('[loadMatches] failed:', err)
     groupMatches.value = []
     bracketStage.value = null
   } finally {
@@ -114,77 +116,75 @@ watch(activeTab, (tab) => {
 })
 
 onMounted(() => {
-  // 初始加载积分榜
   loadStandings()
-  // 同时预加载赛事数据
   loadMatches()
 })
 </script>
 
 <style scoped>
 .match-data-center-view {
-  max-width: 1600px;
+  max-width: var(--page-max-width);
   margin: 0 auto;
-  padding: 0 16px 32px;
 }
 
 .page-header {
-  padding: 16px 0 20px;
+  margin-bottom: var(--space-5);
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-/* Tab 样式 */
 .data-tabs :deep(.el-tabs__header) {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .data-tabs :deep(.el-tabs__item) {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
 }
 
 .data-tabs :deep(.el-tabs__item.is-active) {
-  font-weight: 700;
-}
-
-/* 深色卡片 */
-.dark-card {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-  border-color: rgba(148, 163, 184, 0.12);
-  min-height: 400px;
-}
-
-.dark-card :deep(.el-card__body) {
-  padding: 16px;
+  font-weight: var(--font-bold);
 }
 
 /* 对阵图卡片 */
 .bracket-card {
-  min-height: 520px;
+  min-height: var(--space-10);
 }
 
 .bracket-card :deep(.el-card__body) {
-  padding: 0;
+  padding: var(--space-6);
   overflow: auto;
+  background: var(--color-bg-elevated);
 }
 
-@media (max-width: 768px) {
-  .page-title {
-    font-size: 20px;
-  }
+/* 响应式断点：中等屏幕 */
+@media (max-width: 960px) {
   .bracket-card {
     min-height: auto;
+  }
+  .bracket-card :deep(.el-card__body) {
+    padding: var(--space-4);
+  }
+}
+
+/* 响应式断点：小屏幕 */
+@media (max-width: 768px) {
+  .bracket-card {
+    min-height: auto;
+  }
+  .bracket-card :deep(.el-card__body) {
+    padding: var(--space-3);
+  }
+  .page-header {
+    margin-bottom: var(--space-3);
+  }
+}
+
+/* 响应式断点：超小屏幕 */
+@media (max-width: 480px) {
+  .data-tabs :deep(.el-tabs__item) {
+    font-size: var(--text-xs);
+  }
+  .bracket-card :deep(.el-card__body) {
+    padding: var(--space-2);
   }
 }
 </style>

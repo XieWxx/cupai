@@ -94,7 +94,7 @@ function gdClass(gd: number): string {
   align-items: center;
   justify-content: center;
   min-height: 160px;
-  color: #94a3b8;
+  color: var(--color-text-tertiary);
   gap: 8px;
 }
 
@@ -107,8 +107,8 @@ function gdClass(gd: number): string {
 
 /* 小组卡片 */
 .group-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -118,8 +118,8 @@ function gdClass(gd: number): string {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: rgba(56, 189, 248, 0.06);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  background: var(--color-primary-bg);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .group-badge {
@@ -129,15 +129,15 @@ function gdClass(gd: number): string {
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
+  background: var(--color-primary);
+  color: #fff;
   font-size: 13px;
   font-weight: 700;
 }
 
 .group-label {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
@@ -146,36 +146,36 @@ function gdClass(gd: number): string {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  color: #cbd5e1;
+  color: var(--color-text-primary);
 }
 
 .standings-table thead th {
   padding: 8px 6px;
   text-align: center;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 11px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  border-bottom: 1px solid var(--color-border-light);
   white-space: nowrap;
 }
 
 .standings-table tbody td {
   padding: 7px 6px;
   text-align: center;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.04);
+  border-bottom: 1px solid var(--color-border-lighter);
 }
 
 .standings-table tbody tr:hover {
-  background: rgba(56, 189, 248, 0.04);
+  background: var(--color-bg-muted);
 }
 
 /* 出线区行高亮 */
 .standings-table tbody tr.row-advance {
-  background: rgba(34, 197, 94, 0.04);
+  background: rgba(34, 197, 94, 0.06);
 }
 
 .standings-table tbody tr.row-advance:hover {
-  background: rgba(34, 197, 94, 0.08);
+  background: rgba(34, 197, 94, 0.1);
 }
 
 /* 列宽 */
@@ -199,11 +199,11 @@ function gdClass(gd: number): string {
 /* 排名 */
 .rank-num {
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-secondary);
 }
 
 .rank-top {
-  color: #4ade80;
+  color: var(--color-success);
   font-weight: 700;
 }
 
@@ -218,7 +218,6 @@ function gdClass(gd: number): string {
   width: 18px;
   height: 13px;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
 
@@ -227,28 +226,29 @@ function gdClass(gd: number): string {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+  color: var(--color-text-primary);
 }
 
 /* 净胜球 */
 .gd-positive {
-  color: #4ade80;
+  color: var(--color-success);
   font-weight: 600;
 }
 
 .gd-negative {
-  color: #f87171;
+  color: var(--color-danger);
   font-weight: 600;
 }
 
 .gd-zero {
-  color: #64748b;
+  color: var(--color-text-tertiary);
 }
 
 /* 积分 */
 .pts-value {
   font-weight: 700;
   font-size: 14px;
-  color: #fbbf24;
+  color: var(--color-warning);
 }
 
 /* 响应式 */

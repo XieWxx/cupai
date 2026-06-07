@@ -24,10 +24,8 @@ declare module 'vue' {
     ElDropdownItem: typeof import('element-plus/es')['ElDropdownItem']
     ElDropdownMenu: typeof import('element-plus/es')['ElDropdownMenu']
     ElEmpty: typeof import('element-plus/es')['ElEmpty']
-    ElFooter: typeof import('element-plus/es')['ElFooter']
     ElForm: typeof import('element-plus/es')['ElForm']
     ElFormItem: typeof import('element-plus/es')['ElFormItem']
-    ElHeader: typeof import('element-plus/es')['ElHeader']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
     ElMain: typeof import('element-plus/es')['ElMain']
@@ -41,7 +39,6 @@ declare module 'vue' {
     ElRow: typeof import('element-plus/es')['ElRow']
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElStatistic: typeof import('element-plus/es')['ElStatistic']
-    ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
@@ -59,7 +56,6 @@ declare module 'vue' {
     SectionCard: typeof import('./components/common/SectionCard.vue')['default']
     SkeletonCard: typeof import('./components/common/SkeletonCard.vue')['default']
     TimeTriple: typeof import('./components/common/TimeTriple.vue')['default']
-    TournamentBracket: typeof import('./components/bracket/TournamentBracket.vue')['default']
     UserPredictionRanking: typeof import('./components/common/UserPredictionRanking.vue')['default']
   }
   export interface GlobalDirectives {

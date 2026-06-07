@@ -14,6 +14,7 @@ export const useUserStore = defineStore('user', () => {
     avatar: string
     language: string
     timezone: string
+    apiKey?: string
   } | null>(null)
 
   // Token
@@ -25,7 +26,7 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 用户注册
    */
-  async function register(data: { username: string; password: string; nickname: string }) {
+  async function register(data: { username: string; password: string; nickname: string; region: string }) {
     const res = await http.post<{ user: typeof user.value; token: string }>('/user/register', data)
     token.value = res.token
     user.value = res.user

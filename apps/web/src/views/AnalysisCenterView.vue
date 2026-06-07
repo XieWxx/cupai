@@ -1,12 +1,14 @@
 <template>
   <div class="analysis-center-view">
-    <h1>{{ $t('nav.analysisCenter') }}</h1>
+    <header class="page-header">
+      <h1 class="page-title">{{ $t('nav.analysisCenter') }}</h1>
+    </header>
 
     <el-row :gutter="24">
       <!-- 左侧：配置面板 -->
       <el-col :span="8">
         <!-- AI 配置 -->
-        <el-card class="config-card">
+        <el-card class="common-card config-card">
           <template #header>
             <div class="card-header">
               <span>{{ $t('analysis.apiConfig') }}</span>
@@ -26,7 +28,7 @@
         </el-card>
 
         <!-- 权重模型 -->
-        <el-card class="config-card" style="margin-top: 16px">
+        <el-card class="common-card config-card" style="margin-top: var(--space-4)">
           <template #header>
             <div class="card-header">
               <span>{{ $t('analysis.weightModel') }}</span>
@@ -51,7 +53,7 @@
 
       <!-- 右侧：分析操作 -->
       <el-col :span="16">
-        <el-card>
+        <el-card class="common-card">
           <template #header>{{ $t('analysis.manualAnalysis') }}</template>
           <el-form :model="analysisForm" label-width="100px">
             <el-form-item :label="$t('analysis.selectMatch')">
@@ -83,36 +85,28 @@
         </el-card>
 
         <!-- 分析结果 -->
-        <el-card style="margin-top: 16px" v-if="analysisResult">
-          <template #header>{{ $t('analysis.analysisResult') }}</template>
-          <div class="analysis-result" v-html="renderedResult"></div>
+        <el-card class="common-card" style="margin-top: var(--space-4)">
+          <template #header>{{ $t('analysis.result') }}</template>
+          <div v-if="analysisResult" class="analysis-result" v-html="renderMarkdown(analysisResult)"></div>
+          <el-empty v-else :description="$t('analysis.noResult')" />
         </el-card>
       </el-col>
     </el-row>
 
     <!-- AI 配置弹窗 -->
-    <el-dialog v-model="showAiConfigDialog" :title="$t('analysis.addApiConfig')" width="500px">
+    <el-dialog v-model="showAiConfigDialog" :title="$t('common.addNew')" width="500px">
       <el-form :model="aiConfigForm" label-width="100px">
-        <el-form-item :label="$t('analysis.modelName')">
-          <el-select v-model="aiConfigForm.modelName" :placeholder="$t('analysis.selectModel')">
-            <el-option :label="$t('analysis.modelDeepseek')" value="deepseek" />
-            <el-option :label="$t('analysis.modelGPT')" value="gpt" />
-            <el-option :label="$t('analysis.modelQwen')" value="qwen" />
-            <el-option :label="$t('analysis.modelDoubao')" value="doubao" />
-            <el-option :label="$t('analysis.modelCustom')" value="custom" />
-          </el-select>
+        <el-form-item :label="$t('common.model')">
+          <el-input v-model="aiConfigForm.modelName" />
         </el-form-item>
-        <el-form-item :label="$t('analysis.apiAddress')">
-          <el-input v-model="aiConfigForm.apiEndpoint" placeholder="https://api.example.com/v1" />
+        <el-form-item :label="$t('profile.apiAddress')">
+          <el-input v-model="aiConfigForm.apiEndpoint" />
         </el-form-item>
-        <el-form-item :label="$t('analysis.apiKey')">
-          <el-input v-model="aiConfigForm.apiKey" type="password" :placeholder="$t('analysis.apiKeyHint')" show-password />
+        <el-form-item :label="$t('profile.temperature')">
+          <el-input-number v-model="aiConfigForm.temperature" :min="0" :max="2" :step="0.1" />
         </el-form-item>
-        <el-form-item :label="$t('analysis.temperatureParam')">
-          <el-slider v-model="aiConfigForm.temperature" :min="0" :max="1" :step="0.1" show-input />
-        </el-form-item>
-        <el-form-item :label="$t('analysis.maxToken')">
-          <el-input-number v-model="aiConfigForm.maxTokens" :min="256" :max="32768" :step="256" />
+        <el-form-item :label="$t('profile.maxToken')">
+          <el-input-number v-model="aiConfigForm.maxTokens" :min="100" :max="8192" :step="100" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -122,68 +116,53 @@
     </el-dialog>
 
     <!-- 权重模型弹窗 -->
-    <el-dialog v-model="showWeightDialog" :title="$t('analysis.weightModelConfig')" width="700px">
-      <el-row :gutter="24">
-        <el-col :span="14">
-          <el-form :model="weightForm" label-width="120px">
-            <el-form-item :label="$t('analysis.modelName')">
-              <el-input v-model="weightForm.name" :placeholder="$t('analysis.weightModelNameHint')" />
-            </el-form-item>
-            <el-form-item v-for="factor in factorList" :key="factor.key" :label="factor.label">
-              <el-slider v-model="weightForm[factor.key]" :min="0" :max="60" :step="1" show-input />
-            </el-form-item>
-            <el-form-item>
-              <el-alert :title="`${$t('analysis.weightSum')}: ${weightSum}%（${$t('analysis.weightMust100')}）`" :type="weightSum === 100 ? 'success' : 'error'" show-icon :closable="false" />
-            </el-form-item>
-          </el-form>
-        </el-col>
-        <el-col :span="10">
-          <EChartsView :option="radarOption" width="100%" height="320px" />
-        </el-col>
-      </el-row>
+    <el-dialog v-model="showWeightDialog" :title="$t('profile.myModels')" width="500px">
+      <el-form :model="weightForm" label-width="120px">
+        <el-form-item :label="$t('profile.templateName')">
+          <el-input v-model="weightForm.name" />
+        </el-form-item>
+        <el-form-item :label="$t('profile.historyRecord')">
+          <el-input-number v-model="weightForm.historicalRecord" :min="0" :max="100" :step="5" />
+        </el-form-item>
+        <el-form-item :label="$t('profile.teamStrength')">
+          <el-input-number v-model="weightForm.teamStrength" :min="0" :max="100" :step="5" />
+        </el-form-item>
+        <el-form-item :label="$t('profile.playerStatus')">
+          <el-input-number v-model="weightForm.playerStatus" :min="0" :max="100" :step="5" />
+        </el-form-item>
+        <el-form-item :label="$t('profile.isDefault')">
+          <el-switch v-model="weightForm.isDefault" />
+        </el-form-item>
+      </el-form>
       <template #footer>
         <el-button @click="showWeightDialog = false">{{ $t('common.cancel') }}</el-button>
-        <el-button type="primary" :disabled="weightSum !== 100" @click="saveWeightModel">{{ $t('common.save') }}</el-button>
+        <el-button type="primary" @click="saveWeightModel">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { useAnalysisStore } from '@/stores/analysis'
 import { useMatchStore } from '@/stores/match'
 import { usePromptStore } from '@/stores/prompt'
-import { FACTOR_KEYS } from '@cupai/constants'
-import { renderMarkdown } from '@/utils/markdown'
-import EChartsView from '@/components/common/EChartsView.vue'
+import { http } from '@/api/request'
+import MarkdownIt from 'markdown-it'
 
-const { t } = useI18n()
+const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
+
 const analysisStore = useAnalysisStore()
 const matchStore = useMatchStore()
 const promptStore = usePromptStore()
+const { t } = useI18n()
 
 const analyzing = ref(false)
 const analysisResult = ref('')
 const showAiConfigDialog = ref(false)
 const showWeightDialog = ref(false)
-
-// 因子标签映射（响应式，支持国际化）
-const factorLabels = computed<Record<string, string>>(() => ({
-  historicalRecord: t('factor.historicalRecord'),
-  teamStrength: t('factor.teamStrength'),
-  playerStatus: t('factor.playerStatus'),
-  realtimeDynamic: t('factor.realtimeDynamic'),
-  environment: t('factor.environment'),
-  tacticalCounter: t('factor.tacticalCounter'),
-  socialSentiment: t('factor.socialSentiment'),
-  hiddenFactors: t('factor.hiddenFactors'),
-}))
-
-// 因子列表（使用 i18n 标签）
-const factorList = computed(() => FACTOR_KEYS.map((key) => ({ key, label: factorLabels.value[key] })))
 
 // 分析表单
 const analysisForm = reactive({
@@ -197,70 +176,60 @@ const analysisForm = reactive({
 const aiConfigForm = reactive({
   modelName: '',
   apiEndpoint: '',
-  apiKey: '',
   temperature: 0.7,
-  maxTokens: 4096,
+  maxTokens: 2048,
 })
 
-// 权重表单
-const weightForm = reactive<Record<string, number>>({
-  name: 0 as unknown as number,
-  historicalRecord: 18,
-  teamStrength: 18,
-  playerStatus: 14,
-  realtimeDynamic: 12,
-  environment: 10,
-  tacticalCounter: 5,
-  socialSentiment: 8,
-  hiddenFactors: 15,
+// 权重模型表单
+const weightForm = reactive({
+  id: '',
+  name: '',
+  historicalRecord: 33,
+  teamStrength: 33,
+  playerStatus: 34,
+  isDefault: false,
 })
 
-// 权重总和
-const weightSum = computed(() => {
-  return FACTOR_KEYS.reduce((sum, key) => sum + (Number(weightForm[key]) || 0), 0)
-})
+function renderMarkdown(content: string): string {
+  return md.render(content)
+}
 
-// 渲染 Markdown 结果
-const renderedResult = computed(() => {
-  return renderMarkdown(analysisResult.value)
-})
+async function startAnalysis() {
+  if (!analysisForm.matchId || !analysisForm.modelId || !analysisForm.weightModelId || !analysisForm.promptTemplateId) {
+    ElMessage.warning(t('analysis.fillRequired'))
+    return
+  }
+  analyzing.value = true
+  try {
+    const res: any = await http.post('/analysis/manual', {
+      matchId: analysisForm.matchId,
+      modelId: analysisForm.modelId,
+      weightModelId: analysisForm.weightModelId,
+      promptTemplateId: analysisForm.promptTemplateId,
+    })
+    analysisResult.value = res?.content || ''
+    ElMessage.success($t('analysis.analysisSuccess'))
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || $t('common.fail')
+    ElMessage.error(msg)
+  } finally {
+    analyzing.value = false
+  }
+}
 
-// 权重雷达图配置
-const radarOption = computed(() => ({
-  tooltip: { trigger: 'item' },
-  radar: {
-    indicator: FACTOR_KEYS.map((key) => ({
-      name: factorLabels.value[key],
-      max: 60,
-    })),
-  },
-  series: [
-    {
-      type: 'radar',
-      data: [
-        {
-          value: FACTOR_KEYS.map((key) => Number(weightForm[key]) || 0),
-          name: weightForm.name || t('analysis.currentModel'),
-          areaStyle: { opacity: 0.3 },
-        },
-      ],
-    },
-  ],
-}))
+function editWeightModel(model: any) {
+  weightForm.id = model.id
+  weightForm.name = model.name
+  weightForm.historicalRecord = model.historicalRecord || 33
+  weightForm.teamStrength = model.teamStrength || 33
+  weightForm.playerStatus = model.playerStatus || 34
+  weightForm.isDefault = model.isDefault || false
+  showWeightDialog.value = true
+}
 
-// 保存 AI 配置
 async function saveAiConfig() {
   try {
-    await analysisStore.createAiConfig({
-      modelName: aiConfigForm.modelName,
-      apiEndpoint: aiConfigForm.apiEndpoint,
-      temperature: aiConfigForm.temperature,
-      maxTokens: aiConfigForm.maxTokens,
-    })
-    // API Key 仅前端加密存储，不传后端
-    if (aiConfigForm.apiKey) {
-      localStorage.setItem(`cupai_apikey_${aiConfigForm.modelName}`, btoa(aiConfigForm.apiKey))
-    }
+    await analysisStore.addAiConfig(aiConfigForm)
     showAiConfigDialog.value = false
     ElMessage.success(t('analysis.apiConfigSaved'))
   } catch (err: any) {
@@ -268,88 +237,13 @@ async function saveAiConfig() {
   }
 }
 
-// 保存权重模型
 async function saveWeightModel() {
   try {
-    const data: any = { name: weightForm.name }
-    FACTOR_KEYS.forEach((key) => {
-      data[key] = Number(weightForm[key])
-    })
-    await analysisStore.createWeightModel(data)
+    await analysisStore.addWeightModel(weightForm)
     showWeightDialog.value = false
     ElMessage.success(t('analysis.weightModelSaved'))
   } catch (err: any) {
     ElMessage.error(err?.response?.data?.message || t('analysis.saveFail'))
-  }
-}
-
-// 编辑权重模型
-function editWeightModel(model: any) {
-  weightForm.name = model.name
-  FACTOR_KEYS.forEach((key) => {
-    weightForm[key] = Number(model[key])
-  })
-  showWeightDialog.value = true
-}
-
-// 开始分析（完整闭环：选赛事→选配置→选权重→选Prompt→调AI→生成报告）
-async function startAnalysis() {
-  // 表单校验
-  if (!analysisForm.matchId) {
-    ElMessage.warning(t('analysis.selectMatchFirst'))
-    return
-  }
-  if (!analysisForm.modelId) {
-    ElMessage.warning(t('analysis.selectApiConfigFirst'))
-    return
-  }
-
-  // 从 localStorage 解密 API Key
-  const selectedConfig = analysisStore.aiConfigs.find((c: any) => c.id === analysisForm.modelId)
-  if (!selectedConfig) {
-    ElMessage.error(t('analysis.apiConfigNotFound'))
-    return
-  }
-
-  const encryptedKey = localStorage.getItem(`cupai_apikey_${selectedConfig.modelName}`)
-  if (!encryptedKey) {
-    ElMessage.warning(t('analysis.apiKeyNotFound'))
-    return
-  }
-
-  const apiKey = atob(encryptedKey)
-
-  analyzing.value = true
-  analysisResult.value = ''
-  try {
-    ElMessage.info(t('analysis.generatingAnalysis'))
-
-    const result = await analysisStore.generateAnalysis({
-      matchId: analysisForm.matchId,
-      aiConfigId: analysisForm.modelId,
-      weightModelId: analysisForm.weightModelId || undefined,
-      promptTemplateId: analysisForm.promptTemplateId || undefined,
-      apiKey,
-      isPublic: false,
-      displayLanguage: navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US',
-    })
-
-    // 展示 AI 生成的分析结果
-    analysisResult.value = result?.content || t('analysis.analysisEmpty')
-    ElMessage.success(t('analysis.generateSuccess'))
-  } catch (err: any) {
-    const status = err?.response?.status
-    const msg = err?.response?.data?.message || err?.message || t('analysis.generateFail')
-    // 根据 HTTP 状态码分类错误提示（避免依赖中文关键词匹配）
-    if (status === 401 || status === 403) {
-      ElMessage.error(t('analysis.apiKeyInvalid'))
-    } else if (status === 408 || status === 504) {
-      ElMessage.error(t('analysis.aiTimeout'))
-    } else {
-      ElMessage.error(msg)
-    }
-  } finally {
-    analyzing.value = false
   }
 }
 
@@ -361,68 +255,70 @@ onMounted(async () => {
       promptStore.fetchMyTemplates(),
       matchStore.fetchMatches(),
     ])
-  } catch {
-    // 后端未启动时忽略
+  } catch (err) {
+    console.error('[AnalysisCenterView] initial load failed:', err)
   }
 })
 </script>
 
 <style scoped>
-.analysis-center-view h1 {
-  font-size: 22px;
-  margin-bottom: 20px;
-  color: #1a1a2e;
+.analysis-center-view {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
-.card-header {
+/* .page-header、.card-header 使用全局样式 */
+
+.config-item,
+.model-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
-.config-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+.config-item:last-child,
+.model-item:last-child {
+  border-bottom: none;
 }
 
-.config-info {
+.config-info,
+.model-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .config-endpoint {
-  font-size: 12px;
-  color: #999;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.model-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.model-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .model-name {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
 }
 
 .analysis-result {
-  line-height: 1.8;
-  color: #333;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-regular);
+}
+
+@media (max-width: 768px) {
+  .analysis-center-view :deep(.el-col) {
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .analysis-center-view :deep(.el-col) {
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
 }
 </style>

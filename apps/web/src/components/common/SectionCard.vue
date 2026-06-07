@@ -30,9 +30,10 @@ defineProps<Props>()
 <style scoped>
 .section-card {
   background: var(--color-bg-elevated, #fff);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-lg, 12px);
   padding: var(--space-4, 16px) var(--space-5, 20px);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card, 0 1px 2px rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--color-border-light, rgba(0, 0, 0, 0.04));
 }
 .section-card__header {
   display: flex;

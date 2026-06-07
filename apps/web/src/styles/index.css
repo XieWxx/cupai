@@ -1,16 +1,29 @@
-/* CupAI 全局样式 */
+/* CupAI 全局样式 — 统一设计系统 */
 
-* {
+/* ========== Reset ========== */
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
+html {
+  width: 100%;
+  min-height: 100vh;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  /* 兜底：禁止根元素出现横向滚动条 */
+  overflow-x: hidden;
+}
+
 body {
   width: 100%;
   min-height: 100vh;
   font-family:
+    'Inter',
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
@@ -21,6 +34,12 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  line-height: var(--leading-relaxed);
+  /* 兜底：禁止 body 出现横向滚动条。
+     html 上同步加，避免移动端/iframe 场景下从根层溢出。 */
+  overflow-x: hidden;
 }
 
 a {
@@ -28,53 +47,111 @@ a {
   color: inherit;
 }
 
+ul, ol {
+  list-style: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
 /* ========== Design Tokens ========== */
 :root {
-  /* Spacing */
+  /* --- Spacing --- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 28px;
   --space-8: 32px;
+  --space-10: 40px;
   --space-12: 48px;
 
-  /* Radius */
+  /* --- Radius --- */
+  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 20px;
 
-  /* Colors - neutral palette */
-  --color-bg-page: #f0f2f5;
+  /* --- Colors: Backgrounds --- */
+  --color-bg-page: #f8f9fb;
   --color-bg-elevated: #ffffff;
-  --color-bg-muted: #f8f9fb;
+  --color-bg-muted: #f3f4f6;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f7fa;
+  --color-bg-dark: #0f172a;
+  --color-bg-dark-card: #1e293b;
+  --color-bg-dark-hover: #253347;
+
+  /* --- Colors: Text --- */
   --color-text-primary: #111827;
   --color-text-secondary: #64748b;
   --color-text-tertiary: #94a3b8;
   --color-text-placeholder: #cbd5e1;
   --color-text-regular: #334155;
-  --color-border-light: #e8ecf1;
+  --color-text-dark: #e2e8f0;
+  --color-text-dark-muted: #94a3b8;
+
+  /* --- Colors: Borders --- */
   --color-border: #e2e8f0;
+  --color-border-light: #eef0f4;
+  --color-border-dark: rgba(148, 163, 184, 0.12);
 
-  /* Brand */
+  /* --- Brand Colors --- */
   --color-primary: #4f6ef7;
-  --color-primary-bg: #f0f3ff;
+  --color-primary-light: #6b85f9;
+  --color-primary-dark: #3b55d4;
+  --color-primary-bg: #eef1ff;
   --color-success: #22c55e;
+  --color-success-bg: #ecfdf5;
   --color-warning: #f59e0b;
+  --color-warning-bg: #fffbeb;
   --color-danger: #ef4444;
+  --color-danger-bg: #fef2f2;
+  --color-info: #3b82f6;
+  --color-info-bg: #eff6ff;
 
-  /* Gradients */
+  /* --- 2026 世界杯主题色 --- */
+  --color-wc-blue: #0b2a5b;
+  --color-wc-red: #e63946;
+  --color-wc-gold: #f4c430;
+  /* 主办国三色渐变（美墨加三国旗色） */
+  --gradient-usca-mx: linear-gradient(90deg, #0b2a5b 0%, #ffffff 50%, #006b3f 100%);
+  /* 世界杯冠军杯金色 */
+  --color-wc-trophy: #ffd700;
+  /* 世界杯金球/银色 */
+  --color-wc-gold-ball: #c5a447;
+  --color-wc-silver: #c0c0c0;
+  /* 世界杯足球绿（草皮色） */
+  --color-wc-pitch: #16a34a;
+  /* 世界杯红牌/黄牌色 */
+  --color-wc-red-card: #dc2626;
+  --color-wc-yellow-card: #eab308;
+
+  /* --- Gradients --- */
   --gradient-primary: linear-gradient(135deg, #1a1a2e 0%, #e94560 100%);
   --gradient-primary-soft: linear-gradient(135deg, #f8faff 0%, #eef1ff 100%);
+  --gradient-brand: linear-gradient(135deg, #4f6ef7 0%, #6b85f9 100%);
+  --gradient-wc: linear-gradient(90deg, #0b2a5b 0%, #e63946 55%, #f4c430 100%);
+  --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  /* 世界杯 Hero 专用渐变 */
+  --gradient-wc-hero: linear-gradient(135deg, #0b2a5b 0%, #1a1a2e 40%, #e94560 100%);
 
-  /* Shadows */
+  /* --- Shadows --- */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.06);
+  --shadow-primary: 0 4px 14px rgba(79, 110, 247, 0.25);
+  /* 世界杯专用阴影 */
+  --shadow-wc: 0 4px 20px rgba(11, 42, 91, 0.12);
 
-  /* Typography */
+  /* --- Typography --- */
   --font-light: 300;
   --font-normal: 400;
   --font-medium: 500;
@@ -82,24 +159,37 @@ a {
   --font-bold: 700;
   --font-extrabold: 800;
 
-  /* Font sizes */
+  /* --- Font Sizes --- */
   --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 16px;
   --text-lg: 18px;
   --text-xl: 20px;
   --text-2xl: 24px;
+  --text-3xl: 30px;
   --text-4xl: 36px;
   --text-5xl: 48px;
   --text-6xl: 64px;
 
-  /* Transitions */
+  /* --- Transitions --- */
   --duration-fast: 150ms;
   --duration-normal: 200ms;
+  --duration-slow: 300ms;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 弹性缓动函数（世界杯动画） */
+  --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Leading */
+  /* --- Leading --- */
   --leading-relaxed: 1.6;
+  --leading-tight: 1.3;
+
+  /* --- Page Layout --- */
+  --page-padding: var(--space-4);
+  --page-max-width: 1200px;
+  --section-gap: var(--space-8);
+  --section-header-height: 44px;
+  --header-height: 64px;
 }
 
 /* Dark mode (optional, future-proof) */
@@ -108,36 +198,182 @@ a {
     --color-bg-page: #0f172a;
     --color-bg-elevated: #1e293b;
     --color-bg-muted: #1a2332;
+    --color-bg-primary: #141414;
+    --color-bg-secondary: #1d1e1f;
     --color-text-primary: #f1f5f9;
     --color-text-secondary: #94a3b8;
     --color-text-tertiary: #64748b;
     --color-text-placeholder: #475569;
     --color-text-regular: #cbd5e1;
+    --color-border: #334155;
     --color-border-light: #334155;
-    --color-border: #475569;
     --gradient-primary-soft: linear-gradient(135deg, #1e1b4b 0%, #172554 100%);
     --color-primary-bg: #1e1b4b;
   }
 }
 
-/* ========== Layout Utilities ========== */
+/* ========== Page Layout ========== */
 .page-wrapper {
-  max-width: 1200px;
+  max-width: var(--page-max-width);
   margin: 0 auto;
-  padding: 0 var(--space-4);
+  padding: var(--page-padding);
 }
 
-/* Element Plus overrides for consistency */
-:deep(.el-page-header__content) {
-  line-height: var(--leading-relaxed);
+/* ========== Section Header ========== */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--section-header-height);
+  margin-bottom: var(--space-5);
 }
 
-@media (max-width: 768px) {
-  :root {
-    --space-4: 12px;
-    --space-6: 16px;
-    --space-8: 24px;
-  }
+.section-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+/* ========== Page Header ========== */
+.page-header {
+  margin-bottom: var(--space-6);
+}
+
+.page-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.page-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* ========== Filter Bar ========== */
+.filter-bar {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+}
+
+/* ========== Common Card ========== */
+.common-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+}
+
+.common-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ========== Dark Card (数据中心/对阵图专用) ========== */
+.dark-card {
+  background: var(--gradient-dark);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-lg);
+}
+
+/* ========== Card Header 统一 ========== */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+}
+
+/* ========== Stat Card (概览统计卡) ========== */
+.stat-card {
+  text-align: center;
+  padding: var(--space-2) 0;
+}
+
+.stat-value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-extrabold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
+}
+
+.stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+/* ========== Badge 统一 ========== */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.rank-1 {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.45);
+}
+
+.rank-2 {
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(148, 163, 184, 0.45);
+}
+
+.rank-3 {
+  background: linear-gradient(135deg, #fed7aa, #ea580c);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.45);
+}
+
+/* ========== 国旗统一 ========== */
+.team-flag {
+  width: 22px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ========== 状态标签 ========== */
+.status-live {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.status-finished {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-muted);
+}
+
+.status-upcoming {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 /* ========== Global transitions ========== */
@@ -147,7 +383,142 @@ a {
     border-color var(--duration-fast) var(--ease-out);
 }
 
-/* Reset transition for form elements */
 input, button, select, textarea {
   transition: none;
+}
+
+/* ========== Element Plus overrides for consistency ========== */
+:deep(.el-page-header__content) {
+  line-height: var(--leading-relaxed);
+}
+
+.el-card {
+  border-radius: var(--radius-lg);
+  border-color: var(--color-border-light);
+  overflow: hidden;
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--color-border-light);
+  padding: var(--space-4) var(--space-5);
+}
+
+.el-card__body {
+  padding: var(--space-5);
+}
+
+/* Element Plus 按钮增强 */
+.el-button--primary {
+  box-shadow: 0 2px 8px rgba(79, 110, 247, 0.2);
+}
+
+.el-button--primary:hover {
+  box-shadow: var(--shadow-primary);
+}
+
+/* Element Plus 输入框统一 */
+.el-input__wrapper,
+.el-select__wrapper {
+  border-radius: var(--radius-md);
+}
+
+/* Element Plus 表格统一 */
+.el-table {
+  --el-table-border-color: var(--color-border-light);
+  --el-table-header-bg-color: var(--color-bg-muted);
+}
+
+.el-table th.el-table__cell {
+  font-weight: var(--font-semibold);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Element Plus Tabs 统一 */
+.el-tabs__item {
+  font-weight: var(--font-medium);
+}
+
+.el-tabs__item.is-active {
+  font-weight: var(--font-bold);
+}
+
+/* Element Plus Tag 统一 */
+.el-tag {
+  border-radius: var(--radius-sm);
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ========== Selection ========== */
+::selection {
+  background: rgba(79, 110, 247, 0.2);
+  color: var(--color-text-primary);
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+  :root {
+    --page-padding: 12px;
+    --space-4: 12px;
+    --space-6: 16px;
+    --space-8: 24px;
+    --header-height: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --page-padding: 8px;
+  }
+}
+
+/* ========== 表格全局样式：自适应宽度 + 无横向滚动 + 表头不换行 ========== */
+.el-table {
+  width: 100% !important;
+}
+
+.el-table .el-table__body-wrapper {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+/* 所有表头单元格：自适应宽度，不换行 */
+.el-table th.el-table__cell > .cell {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* 所有数据单元格：自适应宽度，不换行 */
+.el-table td.el-table__cell > .cell {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* 移除所有国旗的边框/阴影效果 */
+.team-flag,
+.flag-icon,
+span[class*="fi"] {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }

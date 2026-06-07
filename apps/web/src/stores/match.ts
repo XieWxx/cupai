@@ -74,6 +74,7 @@ export const useMatchStore = defineStore('match', () => {
 
   /**
    * 获取球队详情（含球员）
+   * 复用后端 GET /match/teams/:id（已包含 players 数组）
    */
   async function fetchTeamDetail(teamId: string) {
     loading.value = true
@@ -83,6 +84,22 @@ export const useMatchStore = defineStore('match', () => {
       return res
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * 获取球队下的球员列表（首发阵容）
+   * 修复：原 MatchDetailView.loadPlayers 调用了不存在的 fetchTeamPlayers，
+   *      导致同步抛错使 playersLoading 永远不被关闭而一直转圈。
+   *      现复用 fetchTeamDetail 取出 players 字段。
+   */
+  async function fetchTeamPlayers(teamId: string): Promise<any[]> {
+    try {
+      const team = await fetchTeamDetail(teamId)
+      return (team && (team as any).players) || []
+    } catch {
+      // 任意失败都返回空数组，让 UI 进入"暂无球员"空态而非一直 loading
+      return []
     }
   }
 
@@ -97,5 +114,6 @@ export const useMatchStore = defineStore('match', () => {
     fetchMatchDetail,
     fetchTeams,
     fetchTeamDetail,
+    fetchTeamPlayers,
   }
 })

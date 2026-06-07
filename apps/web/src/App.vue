@@ -40,15 +40,15 @@ const themeMode = computed(() => undefined)
 </script>
 
 <style>
-/* 全局暗色主题 CSS 变量 */
+/* 全局暗色主题 CSS 变量（预留，与 index.css 设计系统联动） */
 :root {
-  --cupai-bg-primary: #ffffff;
-  --cupai-bg-secondary: #f5f7fa;
-  --cupai-bg-card: #ffffff;
-  --cupai-text-primary: #303133;
-  --cupai-text-secondary: #606266;
-  --cupai-border-color: #dcdfe6;
-  --cupai-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --cupai-bg-primary: var(--color-bg-elevated);
+  --cupai-bg-secondary: var(--color-bg-secondary);
+  --cupai-bg-card: var(--color-bg-elevated);
+  --cupai-text-primary: var(--color-text-primary);
+  --cupai-text-secondary: var(--color-text-secondary);
+  --cupai-border-color: var(--color-border);
+  --cupai-shadow: var(--shadow-card);
 }
 
 html.dark {
@@ -64,8 +64,7 @@ html.dark {
 #app {
   width: 100%;
   min-height: 100vh;
-  background-color: var(--cupai-bg-primary);
-  color: var(--cupai-text-primary);
-  transition: background-color 0.3s, color 0.3s;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 </style>

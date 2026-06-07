@@ -171,7 +171,7 @@ function onMatchClick(match: any) {
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  color: #94a3b8;
+  color: var(--color-text-dark-muted);
   gap: 8px;
 }
 
@@ -182,6 +182,7 @@ function onMatchClick(match: any) {
   min-width: 900px;
   min-height: 480px;
   gap: 0;
+  background: var(--color-bg-muted);
 }
 
 /* 半区容器 */
@@ -214,14 +215,14 @@ function onMatchClick(match: any) {
   text-align: center;
   font-size: 12px;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   letter-spacing: 1px;
   padding: 6px 0 12px;
   text-transform: uppercase;
 }
 
 .final-label {
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 13px;
 }
 
@@ -235,10 +236,10 @@ function onMatchClick(match: any) {
   gap: 8px;
 }
 
-/* ============ 比赛卡片 ============ */
+/* 比赛卡片 ============ */
 .bracket-match {
-  background: linear-gradient(145deg, #1e293b, #253347);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
@@ -247,8 +248,8 @@ function onMatchClick(match: any) {
 }
 
 .bracket-match:hover {
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-1px);
 }
 
@@ -264,8 +265,8 @@ function onMatchClick(match: any) {
 /* 决赛卡片特殊样式 */
 .final-match {
   min-width: 190px;
-  border-color: rgba(251, 191, 36, 0.25);
-  background: linear-gradient(145deg, #1e293b, #2a3040);
+  border-color: var(--color-warning);
+  background: linear-gradient(145deg, var(--color-warning-bg), var(--color-warning-light));
 }
 
 /* ============ 球队行 ============ */
@@ -275,8 +276,8 @@ function onMatchClick(match: any) {
   gap: 6px;
   padding: 6px 10px;
   font-size: 13px;
-  color: #cbd5e1;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .match-team:last-child {
@@ -284,12 +285,12 @@ function onMatchClick(match: any) {
 }
 
 .match-team.is-winner .team-name {
-  color: #4ade80;
+  color: var(--color-success);
   font-weight: 700;
 }
 
 .match-team.is-winner .team-score {
-  color: #4ade80;
+  color: var(--color-success);
   text-shadow: 0 0 6px rgba(74, 222, 128, 0.3);
 }
 
@@ -297,7 +298,6 @@ function onMatchClick(match: any) {
   width: 20px;
   height: 15px;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
 
@@ -314,7 +314,7 @@ function onMatchClick(match: any) {
   font-size: 14px;
   min-width: 18px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -326,10 +326,10 @@ function onMatchClick(match: any) {
   gap: 4px;
   padding: 4px 0;
   font-size: 11px;
-  color: #fbbf24;
+  color: var(--color-warning);
   font-weight: 700;
-  background: rgba(251, 191, 36, 0.06);
-  border-top: 1px solid rgba(251, 191, 36, 0.15);
+  background: var(--color-warning-bg);
+  border-top: 1px solid var(--color-border);
 }
 
 /* ============ 中间决赛区 ============ */

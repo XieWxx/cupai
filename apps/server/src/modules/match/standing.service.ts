@@ -42,15 +42,23 @@ export class StandingService {
     if (groupName) query.andWhere('s.groupName = :groupName', { groupName })
 
     const standings = await query.getMany()
+    this.logger.log(`[getStandings] queried ${standings.length} rows, groupName=${groupName || 'all'}`)
 
-    // 按小组分组
-    const grouped: Record<string, GroupStandingEntity[]> = {}
+    // 按小组分组（序列化时剥离循环引用：team.standings → undefined）
+    const grouped: Record<string, any[]> = {}
     for (const s of standings) {
       if (!grouped[s.groupName]) grouped[s.groupName] = []
-      grouped[s.groupName].push(s)
+      // 将 Entity 转为纯 POJO，避免 JSON.stringify 循环引用报错
+      const plain = { ...s }
+      if (plain.team) {
+        plain.team = { ...(plain.team as any) }
+        delete (plain.team as any).standings
+      }
+      grouped[s.groupName].push(plain)
     }
 
     const result = { groups: grouped, total: standings.length }
+    this.logger.log(`[getStandings] result groups keys: ${Object.keys(grouped).join(',')}, total: ${standings.length}`)
     await this.redisCache.set(cacheKey, result, 300)
     return result
   }

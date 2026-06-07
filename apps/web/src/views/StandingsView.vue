@@ -1,22 +1,26 @@
 <template>
   <div class="standings-view">
-    <h1>{{ $t('standings.title') }}</h1>
+    <header class="page-header">
+      <h1 class="page-title">{{ $t('standings.title') }}</h1>
+    </header>
 
     <!-- 小组选择 -->
-    <el-row :gutter="16" class="filter-bar">
-      <el-col :span="6">
-        <el-select v-model="selectedGroup" :placeholder="$t('standings.selectGroup')" clearable @change="loadStandings">
-          <el-option v-for="g in groups" :key="g" :label="g + $t('standings.group')" :value="g" />
-        </el-select>
-      </el-col>
-      <el-col :span="6">
-        <el-button type="primary" @click="loadAllStandings">{{ $t('standings.viewAllGroups') }}</el-button>
-      </el-col>
-    </el-row>
+    <div class="filter-bar">
+      <el-row :gutter="16">
+        <el-col :span="6">
+          <el-select v-model="selectedGroup" :placeholder="$t('standings.selectGroup')" clearable @change="loadStandings">
+            <el-option v-for="g in groups" :key="g" :label="g + $t('standings.group')" :value="g" />
+          </el-select>
+        </el-col>
+        <el-col :span="6">
+          <el-button type="primary" @click="loadAllStandings">{{ $t('standings.viewAllGroups') }}</el-button>
+        </el-col>
+      </el-row>
+    </div>
 
     <!-- 积分表 -->
     <div v-for="(teams, group) in standings.groups" :key="group" class="group-section">
-      <el-card>
+      <el-card class="common-card">
         <template #header>
           <div class="group-header">
             <span class="group-name">{{ group }}{{ $t('standings.group') }}</span>
@@ -40,7 +44,7 @@
           <el-table-column prop="goalsAgainst" :label="$t('standings.goalsAgainst')" width="50" align="center" />
           <el-table-column prop="goalDifference" :label="$t('standings.goalDifference')" width="60" align="center">
             <template #default="{ row }">
-              <span :style="{ color: row.goalDifference > 0 ? '#67c23a' : row.goalDifference < 0 ? '#f56c6c' : '#999' }">
+              <span :style="{ color: row.goalDifference > 0 ? 'var(--color-success)' : row.goalDifference < 0 ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }">
                 {{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}
               </span>
             </template>
@@ -80,13 +84,8 @@
             :color="getProgressColor(team.advanceProbability)"
           />
         </div>
-        <el-tag :type="getAdvanceTagType(team.advanceProbability)" size="small">
-          {{ team.status }}
-        </el-tag>
       </div>
     </el-dialog>
-
-    <el-empty v-if="Object.keys(standings.groups).length === 0 && !loading" :description="$t('standings.noData')" />
   </div>
 </template>
 
@@ -94,110 +93,92 @@
 import { ref, reactive, onMounted } from 'vue'
 import { http } from '@/api/request'
 
-const loading = ref(false)
 const selectedGroup = ref('')
-const groups = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-const standings = reactive<{ groups: Record<string, any[]> }>({ groups: {} })
 const showAdvanceDialog = ref(false)
-const advanceData = reactive<{ groupName: string; teams: any[] }>({ groupName: '', teams: [] })
+const groups = ref<string[]>([])
+const standings = reactive({ groups: {} as Record<string, any[]> })
+const advanceData = reactive({ groupName: '', teams: [] as any[] })
 
-async function loadStandings(group: string) {
-  if (!group) return loadAllStandings()
-  loading.value = true
+function getProgressColor(pct: number): string {
+  if (pct >= 80) return 'var(--color-success)'
+  if (pct >= 50) return 'var(--color-warning)'
+  return 'var(--color-danger)'
+}
+
+async function loadStandings() {
   try {
-    const res = await http.get<any>(`/match/standings/${group}`)
-    if (res?.groups) {
-      standings.groups = res.groups
+    const res: any = await http.get('/match/standings')
+    if (selectedGroup.value) {
+      standings.groups = { [selectedGroup.value]: res.groups?.[selectedGroup.value] || [] }
+    } else {
+      standings.groups = res.groups || {}
     }
-  } catch {
-    // 后端未启动
-  } finally {
-    loading.value = false
+  } catch (err) {
+    console.error('[loadStandings] failed:', err)
+    standings.groups = {}
   }
 }
 
 async function loadAllStandings() {
-  loading.value = true
-  try {
-    const res = await http.get<any>('/match/standings')
-    if (res?.groups) {
-      standings.groups = res.groups
-    }
-  } catch {
-    // 后端未启动
-  } finally {
-    loading.value = false
-  }
+  selectedGroup.value = ''
+  await loadStandings()
 }
 
 async function loadAdvance(group: string) {
   try {
-    const res = await http.get<any>(`/match/advance/${group}`)
-    if (res) {
-      advanceData.groupName = res.groupName || group
-      advanceData.teams = res.teams || []
-      showAdvanceDialog.value = true
-    }
-  } catch {
-    // 后端未启动
+    // 后端实际返回 { groupName, teams, analysis? }，非文档中的 scenarios/currentStandings
+    const res: any = await http.get(`/match/advance/${group}`)
+    advanceData.groupName = group
+    advanceData.teams = res?.teams || []
+    showAdvanceDialog.value = true
+  } catch (err) {
+    console.error('[loadAdvance] failed:', err)
   }
 }
 
-function getProgressColor(percentage: number): string {
-  if (percentage >= 70) return '#67c23a'
-  if (percentage >= 40) return '#e6a23c'
-  return '#f56c6c'
-}
-
-// 根据出线概率确定标签类型（避免依赖翻译文本比较）
-function getAdvanceTagType(probability: number): 'success' | 'warning' | 'danger' {
-  if (probability >= 70) return 'success'
-  if (probability >= 30) return 'warning'
-  return 'danger'
-}
-
-onMounted(() => {
-  loadAllStandings()
+onMounted(async () => {
+  try {
+    const res: any = await http.get('/match/standings')
+    groups.value = Object.keys(res.groups || {})
+    standings.groups = res.groups || {}
+  } catch (err) {
+    console.error('[StandingsView.onMounted] failed:', err)
+  }
 })
 </script>
 
 <style scoped>
-.standings-view h1 {
-  font-size: 22px;
-  margin-bottom: 20px;
-  color: #1a1a2e;
+.standings-view {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
-.filter-bar {
-  margin-bottom: 20px;
-}
+/* .page-header 使用全局样式，已删除重复属性 */
+/* .filter-bar 使用全局样式，已删除重复属性 */
 
 .group-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-6);
 }
 
-.group-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+/* .group-header 使用全局 .card-header 样式，已删除重复属性 */
 
 .group-name {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
 }
 
 .rank-top {
-  color: #67c23a;
-  font-weight: 700;
+  font-weight: var(--font-bold);
+  color: var(--color-warning);
 }
 
 .advance-team {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .advance-team:last-child {
@@ -205,27 +186,66 @@ onMounted(() => {
 }
 
 .advance-rank {
-  width: 24px;
-  text-align: center;
-  font-weight: 700;
-  font-size: 16px;
+  width: var(--space-7);
+  height: var(--space-7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-muted);
+  border-radius: 50%;
+  font-weight: var(--font-bold);
+  font-size: var(--text-sm);
+  flex-shrink: 0;
 }
 
 .advance-info {
-  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .advance-name {
-  display: block;
-  font-weight: 600;
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
 }
 
 .advance-record {
-  font-size: 12px;
-  color: #999;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
 }
 
 .advance-prob {
-  flex: 1;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .standings-view {
+    padding: 0 var(--space-3);
+  }
+
+  .advance-team {
+    flex-wrap: wrap;
+  }
+
+  .advance-prob {
+    width: 100%;
+    margin-top: var(--space-2);
+  }
+}
+
+@media (max-width: 480px) {
+  .standings-view {
+    padding: 0 var(--space-2);
+  }
+
+  .group-name {
+    font-size: var(--text-sm);
+  }
+
+  .advance-prob {
+    width: 100%;
+  }
 }
 </style>

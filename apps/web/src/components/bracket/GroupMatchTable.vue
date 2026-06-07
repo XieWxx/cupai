@@ -203,7 +203,7 @@ function onMatchClick(match: any) {
 .group-count {
   margin-left: auto;
   font-size: 11px;
-  color: #475569;
+  color: var(--color-text-tertiary);
 }
 
 /* 比赛列表 */
@@ -220,18 +220,18 @@ function onMatchClick(match: any) {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: rgba(30, 41, 59, 0.3);
-  border: 1px solid transparent;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
 }
 
 .match-row:hover {
-  background: rgba(56, 189, 248, 0.04);
-  border-color: rgba(56, 189, 248, 0.15);
+  background: var(--color-bg-muted);
+  border-color: var(--color-primary);
 }
 
 .match-row.live {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.04);
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .match-row.finished {
@@ -245,11 +245,11 @@ function onMatchClick(match: any) {
   gap: 8px;
   margin-bottom: 6px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-secondary);
 }
 
 .match-time {
-  color: #94a3b8;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
@@ -274,7 +274,7 @@ function onMatchClick(match: any) {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #cbd5e1;
+  color: var(--color-text-primary);
   font-weight: 500;
 }
 
@@ -284,7 +284,7 @@ function onMatchClick(match: any) {
 }
 
 .versus-team.is-winner .team-name {
-  color: #4ade80;
+  color: var(--color-success);
   font-weight: 700;
 }
 
@@ -292,7 +292,6 @@ function onMatchClick(match: any) {
   width: 18px;
   height: 13px;
   border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
 
@@ -327,14 +326,14 @@ function onMatchClick(match: any) {
 }
 
 .score-sep {
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 14px;
   margin: 0 2px;
 }
 
 .score-vs {
   font-size: 12px;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-weight: 700;
   letter-spacing: 1px;
 }
@@ -359,8 +358,8 @@ function onMatchClick(match: any) {
 }
 
 .status-live {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .live-dot {
@@ -377,13 +376,13 @@ function onMatchClick(match: any) {
 }
 
 .status-finished {
-  color: #64748b;
-  background: rgba(100, 116, 139, 0.1);
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-muted);
 }
 
 .status-upcoming {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.08);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 /* 响应式 */

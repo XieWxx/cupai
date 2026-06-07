@@ -4,16 +4,24 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm'
 
 /**
  * 球队实体
  * 对应 PRD 3.2 球队实力因子 + 3.1 历史战绩因子
+ *
+ * 同步来源：BSD SportsData v2 /teams/
  */
 @Entity('teams')
+@Index('idx_teams_bsd_id', ['dataSource'])
 export class TeamEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string
+
+  /** BSD 内部 ID（冗余便于反查） */
+  @Column({ name: 'bs_team_id', type: 'int', nullable: true, comment: 'BSD 球队 ID' })
+  bsTeamId: number
 
   @Column({ length: 100, comment: '球队名称（中文）' })
   name: string
@@ -54,11 +62,30 @@ export class TeamEntity {
   @Column({ length: 255, nullable: true, comment: '球队Logo URL' })
   logo: string
 
-  @Column({ name: 'data_source', length: 255, nullable: true, comment: '数据来源' })
+  /** 球队所在国家（BSD 原始值） */
+  @Column({ length: 100, nullable: true, comment: '国家名称（BSD 原始）' })
+  country: string
+
+  /** 球队主场场馆名 */
+  @Column({ name: 'venue_name', length: 200, nullable: true, comment: '主场场馆' })
+  venueName: string
+
+  /** 是否国家队 */
+  @Column({ name: 'is_national', type: 'boolean', default: false, comment: '是否国家队' })
+  isNational: boolean
+
+  /** 成立年份 */
+  @Column({ type: 'int', nullable: true, comment: '成立年份' })
+  founded: number
+
+  @Column({ name: 'data_source', length: 255, nullable: true, comment: '数据来源唯一标识 (如 bsd_1234)' })
   dataSource: string
 
   @Column({ name: 'data_source_url', length: 500, nullable: true, comment: '数据源链接' })
   dataSourceUrl: string
+
+  @Column({ name: 'last_synced_at', type: 'datetime', nullable: true, comment: '最近一次同步时间' })
+  lastSyncedAt: Date
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date

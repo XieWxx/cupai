@@ -64,17 +64,8 @@
 | 🗄️ **Banco de Dados** | MySQL 8.0 | Dados estruturados: usuários, modelos, relatórios, rankings |
 | ⚡ **Cache** | Redis | Cache em tempo real, limitação de API, dados quentes |
 | ⏰ **Agendador** | node-schedule | Escaneamento automático do Agente, geração de relatórios, inspeção de dados |
+| 🌐 **Fonte de Dados** | BSD API | Sincronização em tempo real de partidas/times/classificações/odds |
 | 🐳 **Implantação** | Docker + Docker Compose + Nginx | Implantação com um clique, proxy reverso, SSL |
-
-### 5 Algoritmos Proprietários
-
-| Algoritmo | Função |
-|-----------|--------|
-| 📐 Normalização Dinâmica de Pesos | Normalização automática de ponto flutuante após pesos definidos pelo usuário — previne desequilíbrios de alocação |
-| 🎯 Ajuste Adaptativo por Cenário | O Agente identifica automaticamente o nível da partida / atributos do time / características do confronto — ajusta pesos dinamicamente |
-| 🔇 Redução de Ruído Multidimensional e Confiança | Filtra dados inválidos, gradua níveis de confiança, elimina valores atípicos |
-| 📊 Quantificação de Sentimento Social | Pontuação de polaridade de sentimento (-10~10), índice de pressão pública, avaliação de foco |
-| ⚖️ Correção de Equilíbrio Multifatorial | Equilíbrio mútuo e correção complementar multifatorial — evita desorientação por dado único |
 
 ---
 
@@ -102,13 +93,11 @@ Acesse no navegador: `http://localhost:3000`
 
 ```bash
 pnpm install
-
-# Iniciar backend
-cd apps/server && pnpm dev
-
-# Iniciar frontend
-cd apps/web && pnpm dev
+pnpm dev:server   # Iniciar backend (porta 3002)
+pnpm dev:web      # Iniciar frontend (porta 5173)
 ```
+
+> A primeira execução requer a configuração de `apps/server/.env` (consulte `.env.example`), e certifique-se de que MySQL e Redis estejam em execução
 
 ---
 
@@ -119,27 +108,29 @@ cupai/
 ├── apps/
 │   ├── web/                   # Frontend (Vue 3 + Vite)
 │   │   └── src/
-│   │       ├── views/         # Páginas (8 visões principais)
+│   │       ├── views/         # Páginas (12 visões principais)
 │   │       ├── stores/        # Gerenciamento de estado Pinia
 │   │       ├── locales/       # i18n em 8 idiomas
 │   │       ├── api/           # Camada de requisições API + WebSocket
 │   │       └── components/    # Componentes compartilhados
 │   └── server/                # Backend (NestJS)
 │       └── src/
-│           ├── modules/       # 7 módulos de negócio
+│           ├── modules/       # 8 módulos de negócio
 │           │   ├── user/      # Módulo de usuários
 │           │   ├── ai/        # Módulo de relay de IA
-│           │   ├── match/     # Dados de partidas + classificações
+│           │   ├── match/     # Dados de partidas + classificações + sentimento
 │           │   ├── prompt/    # Mercado de Prompts + validação
 │           │   ├── ranking/   # Rankings
 │           │   ├── agent/     # Agente + interação + análise
+│           │   ├── bsd/       # Sincronização de fonte de dados BSD
 │           │   └── risk/      # Controle de riscos + palavras sensíveis
 │           ├── config/        # Configuração Redis + limitação
 │           └── common/        # Guards + filtros
 ├── packages/
 │   ├── types/                 # Definições de tipos unificadas
 │   ├── constants/             # Constantes de negócio
-│   └── utils/                 # 5 algoritmos proprietários
+│   └── utils/                 # Funções utilitárias comuns
+├── docs/                      # Documentação de API + soluções de fonte de dados
 ├── docker/                    # Configuração Nginx
 ├── deploy/                    # Dados iniciais init.sql
 └── docker-compose.yml
@@ -184,12 +175,19 @@ cupai/
 - [x] Expansão i18n para 8 idiomas (zh/en/es/fr/pt/ar/ja/ko)
 - [x] Arquivos README multilíngues
 
-### V1.3 — Edição Global Completa (Planejado)
+### V1.3 — Edição Baseada em Dados ✅
+
+- [x] Integração da fonte de dados BSD (sincronização em tempo real de partidas/times/classificações/odds)
+- [x] Módulo de análise de sentimento (visão geral de sentimento + linha do tempo + agregação multidimensional)
+- [x] Frontend totalmente conectado às APIs reais do backend (Mock removido por padrão)
+- [x] Padronização da documentação de API (api-spec.md v1.5)
+- [x] Página de detalhes da partida com dados completos do backend (predição IA + sentimento + relatório dimensional + escalação de jogadores)
+
+### V1.4 — Edição Global Completa (Planejado)
 
 - [ ] Identificação precisa de sentimento internacional
 - [ ] Aprimoramento do sistema de conformidade transfronteiriça
 - [ ] Monitoramento de dados e alertas, recuperação automática de anomalias
-- [ ] Provisionamento de funcionalidades comerciais
 
 ---
 

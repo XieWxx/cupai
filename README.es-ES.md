@@ -64,17 +64,8 @@
 | 🗄️ **Base de Datos** | MySQL 8.0 | Datos estructurados: usuarios, plantillas, informes, clasificaciones |
 | ⚡ **Caché** | Redis | Caché en tiempo real, limitación de API, datos calientes |
 | ⏰ **Programador** | node-schedule | Escaneo automático del Agente, generación de informes, inspección de datos |
+| 🌐 **Fuente de Datos** | BSD API | Sincronización en tiempo real de partidos/equipos/clasificaciones/cuotas |
 | 🐳 **Despliegue** | Docker + Docker Compose + Nginx | Despliegue con un clic, proxy inverso, SSL |
-
-### 5 Algoritmos Propietarios
-
-| Algoritmo | Función |
-|-----------|---------|
-| 📐 Normalización Dinámica de Pesos | Normalización automática de punto flotante tras pesos definidos por el usuario — previene desequilibrios de asignación |
-| 🎯 Ajuste Adaptativo por Escenario | El Agente identifica automáticamente el nivel del partido / atributos del equipo / características del enfrentamiento — ajusta pesos dinámicamente |
-| 🔇 Reducción de Ruido Multidimensional y Confianza | Filtra datos inválidos, gradúa niveles de confianza, elimina valores atípicos |
-| 📊 Cuantificación de Sentimiento Social | Puntuación de polaridad de sentimiento (-10~10), índice de presión pública, calificación de enfoque |
-| ⚖️ Corrección de Equilibrio Multifactor | Equilibrio mutuo y corrección complementaria multifactor — evita la desorientación por datos únicos |
 
 ---
 
@@ -102,13 +93,11 @@ Visita en el navegador: `http://localhost:3000`
 
 ```bash
 pnpm install
-
-# Iniciar backend
-cd apps/server && pnpm dev
-
-# Iniciar frontend
-cd apps/web && pnpm dev
+pnpm dev:server   # Iniciar backend (puerto 3002)
+pnpm dev:web      # Iniciar frontend (puerto 5173)
 ```
+
+> La primera ejecución requiere configurar `apps/server/.env` (consultar `.env.example`), y asegurar que MySQL y Redis estén en ejecución
 
 ---
 
@@ -119,27 +108,29 @@ cupai/
 ├── apps/
 │   ├── web/                   # Frontend (Vue 3 + Vite)
 │   │   └── src/
-│   │       ├── views/         # Páginas (8 vistas principales)
+│   │       ├── views/         # Páginas (12 vistas principales)
 │   │       ├── stores/        # Gestión de estado con Pinia
 │   │       ├── locales/       # i18n en 8 idiomas
 │   │       ├── api/           # Capa de solicitudes API + WebSocket
 │   │       └── components/    # Componentes compartidos
 │   └── server/                # Backend (NestJS)
 │       └── src/
-│           ├── modules/       # 7 módulos de negocio
+│           ├── modules/       # 8 módulos de negocio
 │           │   ├── user/      # Módulo de usuarios
 │           │   ├── ai/        # Módulo de relay de IA
-│           │   ├── match/     # Datos de partidos + clasificaciones
+│           │   ├── match/     # Datos de partidos + clasificaciones + sentimiento
 │           │   ├── prompt/    # Mercado de Prompts + validación
 │           │   ├── ranking/   # Clasificaciones
 │           │   ├── agent/     # Agente + interacción + análisis
+│           │   ├── bsd/       # Sincronización de fuente de datos BSD
 │           │   └── risk/      # Control de riesgos + palabras sensibles
 │           ├── config/        # Configuración Redis + limitación
 │           └── common/        # Guards + filtros
 ├── packages/
 │   ├── types/                 # Definiciones de tipos unificadas
 │   ├── constants/             # Constantes de negocio
-│   └── utils/                 # 5 algoritmos propietarios
+│   └── utils/                 # Funciones de utilidad comunes
+├── docs/                      # Documentación de API + soluciones de fuente de datos
 ├── docker/                    # Configuración Nginx
 ├── deploy/                    # Datos semilla init.sql
 └── docker-compose.yml
@@ -184,12 +175,19 @@ cupai/
 - [x] Expansión i18n a 8 idiomas (zh/en/es/fr/pt/ar/ja/ko)
 - [x] Archivos README multilingües
 
-### V1.3 — Edición Global Completa (Planificado)
+### V1.3 — Edición Basada en Datos ✅
+
+- [x] Integración de fuente de datos BSD (sincronización en tiempo real de partidos/equipos/clasificaciones/cuotas)
+- [x] Módulo de análisis de sentimiento (resumen de sentimiento + línea temporal + agregación multidimensional)
+- [x] Frontend conectado completamente a APIs reales del backend (eliminado Mock por defecto)
+- [x] Estandarización de documentación de API (api-spec.md v1.5)
+- [x] Página de detalles del partido con datos completos del backend (predicción IA + sentimiento + informe dimensional + alineación de jugadores)
+
+### V1.4 — Edición Global Completa (Planificado)
 
 - [ ] Identificación precisa de sentimiento internacional
 - [ ] Perfeccionamiento del sistema de cumplimiento transfronterizo
 - [ ] Monitoreo de datos y alertas, recuperación automática de anomalías
-- [ ] Provisionamiento de funciones comerciales
 
 ---
 

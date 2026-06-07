@@ -64,17 +64,8 @@
 | 🗄️ **Database** | MySQL 8.0 | Structured data: users, templates, reports, rankings |
 | ⚡ **Cache** | Redis | Real-time caching, API rate limiting, hot data |
 | ⏰ **Scheduler** | node-schedule | Agent auto-scanning, report generation, data inspection |
+| 🌐 **Data Source** | BSD API | Real-time sync of matches/teams/standings/odds |
 | 🐳 **Deployment** | Docker + Docker Compose + Nginx | One-click deployment, reverse proxy, SSL |
-
-### 5 Proprietary Algorithms
-
-| Algorithm | Function |
-|-----------|----------|
-| 📐 Dynamic Weight Normalization | Auto float normalization after user-defined weights — prevents allocation imbalance |
-| 🎯 Scene Adaptive Tuning | Agent auto-identifies match tier / team attributes / matchup characteristics — dynamically adjusts weights |
-| 🔇 Multi-dimensional Denoising & Confidence | Filters invalid data, grades confidence levels, removes outliers |
-| 📊 Social Sentiment Quantification | Sentiment polarity scoring (-10~10), public pressure index, focus rating |
-| ⚖️ Cross-factor Balance Correction | Multi-factor mutual balance and complementary correction — avoids single-data misdirection |
 
 ---
 
@@ -102,13 +93,11 @@ Visit in browser: `http://localhost:3000`
 
 ```bash
 pnpm install
-
-# Start backend
-cd apps/server && pnpm dev
-
-# Start frontend
-cd apps/web && pnpm dev
+pnpm dev:server   # Start backend (port 3002)
+pnpm dev:web      # Start frontend (port 5173)
 ```
+
+> First-time setup requires configuring `apps/server/.env` (refer to `.env.example`), and ensure MySQL and Redis are running
 
 ---
 
@@ -119,27 +108,29 @@ cupai/
 ├── apps/
 │   ├── web/                   # Frontend (Vue 3 + Vite)
 │   │   └── src/
-│   │       ├── views/         # Pages (8 core views)
+│   │       ├── views/         # Pages (12 core views)
 │   │       ├── stores/        # Pinia state management
 │   │       ├── locales/       # 8-language i18n
 │   │       ├── api/           # API request layer + WebSocket
 │   │       └── components/    # Shared components
 │   └── server/                # Backend (NestJS)
 │       └── src/
-│           ├── modules/       # 7 business modules
+│           ├── modules/       # 8 business modules
 │           │   ├── user/      # User module
 │           │   ├── ai/        # AI relay module
-│           │   ├── match/     # Match data + standings
+│           │   ├── match/     # Match data + standings + sentiment
 │           │   ├── prompt/    # Prompt marketplace + validation
 │           │   ├── ranking/   # Rankings
 │           │   ├── agent/     # Agent + interaction + analysis
+│           │   ├── bsd/       # BSD data source sync
 │           │   └── risk/      # Risk control + sensitive words
 │           ├── config/        # Redis + rate limiting config
 │           └── common/        # Guards + filters
 ├── packages/
 │   ├── types/                 # Unified type definitions
 │   ├── constants/             # Business constants
-│   └── utils/                 # 5 proprietary algorithms
+│   └── utils/                 # Common utility functions
+├── docs/                      # API docs + data source solutions
 ├── docker/                    # Nginx configuration
 ├── deploy/                    # init.sql seed data
 └── docker-compose.yml
@@ -184,12 +175,19 @@ cupai/
 - [x] i18n expansion to 8 languages (zh/en/es/fr/pt/ar/ja/ko)
 - [x] Multilingual README files
 
-### V1.3 — Global Complete Edition (Planned)
+### V1.3 — Data-Driven Edition ✅
+
+- [x] BSD data source integration (real-time sync of matches/teams/standings/odds)
+- [x] Sentiment analysis module (sentiment overview + timeline + multi-dimensional aggregation)
+- [x] Frontend fully connected to backend real APIs (removed Mock as default)
+- [x] API documentation standardization (api-spec.md v1.5)
+- [x] Match detail page with full backend data (AI prediction + sentiment + dimension report + player lineup)
+
+### V1.4 — Global Complete Edition (Planned)
 
 - [ ] Overseas sentiment precise identification
 - [ ] Cross-border compliance system refinement
 - [ ] Data monitoring & alerting, auto-recovery from anomalies
-- [ ] Commercial feature provisioning
 
 ---
 

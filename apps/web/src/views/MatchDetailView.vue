@@ -753,8 +753,8 @@ const match = ref<any>(null)
 const errorState = ref<'' | 'not_found' | 'network'>('')
 let unsubscribe: (() => void) | null = null
 
-// ========== AI 胜率预测 ==========
-const prediction = ref<{
+// ========== AI 胜率预测（占位，在 dimensionReports 定义后重新赋值）==========
+let prediction = ref<{
   homeWin: number
   draw: number
   awayWin: number
@@ -796,6 +796,40 @@ async function loadUserRanking() {
 // ========== 单维度指令报告（21 维度，每维度独立一条；agent 完成 1 条指令后只传该维度的 distribution）==========
 const dimensionReports = ref<any[]>([])
 const reportsLoading = ref(false)
+
+// 监听 dimensionReports 变化，自动聚合 result_wdl 维度生成 AI 胜负率预测
+watch(dimensionReports, (reports) => {
+  const wdlReports = (reports || []).filter((r: any) => r?.dimKey === 'result_wdl' && r?.distribution)
+  if (!wdlReports.length) {
+    prediction.value = null
+    return
+  }
+  // 归一化 key：不同 Agent 可能用 home/home_win/主胜 等不同 key
+  const normalizeKey = (k: string): 'home' | 'draw' | 'away' => {
+    const kl = k.toLowerCase().trim()
+    if (kl === 'home' || kl === 'home_win' || kl === '主胜' || kl === 'h') return 'home'
+    if (kl === 'draw' || kl === '平' || kl === '平局' || kl === 'd') return 'draw'
+    if (kl === 'away' || kl === 'away_win' || kl === '客胜' || kl === 'a') return 'away'
+    return 'draw' // 未知 key 归入平局
+  }
+  const totals: Record<string, number> = { home: 0, draw: 0, away: 0 }
+  wdlReports.forEach((r: any) => {
+    const dist = r.distribution || {}
+    Object.entries(dist).forEach(([k, v]) => {
+      const nk = normalizeKey(k)
+      totals[nk] = (totals[nk] || 0) + Number(v || 0)
+    })
+  })
+  const n = wdlReports.length
+  const latest = wdlReports[wdlReports.length - 1]
+  prediction.value = {
+    homeWin: Number((totals['home'] / n).toFixed(4)),
+    draw: Number((totals['draw'] / n).toFixed(4)),
+    awayWin: Number((totals['away'] / n).toFixed(4)),
+    reasoning: latest?.summary || '',
+    source: latest?.model || 'Agent',
+  }
+}, { deep: true })
 // 21 个维度的图表容器与实例（按 dimKey 索引）
 const dimChartRefs = ref<Record<string, HTMLElement | null>>({})
 const dimCharts: Record<string, any> = {}
@@ -1188,26 +1222,8 @@ function goBack() {
   }
 }
 
-// ========== AI 预测（仅后端真实数据，不再本地启发式 fallback）==========
-// 说明：docs/api-spec.md §3.6.4 后端返回完整 {homeWin, draw, awayWin, reasoning, source, dimensions}，
-// 不再用前端 winRate/fifaRank 启发式计算（已删除 computeLocalPrediction 函数）。
-// 失败时 prediction 留空，UI 由 v-if 兜底"暂无 AI 预测"。
-
-async function loadPrediction() {
-  try {
-    // 后端真实接口：GET /matches/{id}/prediction
-    // 有真实预测数据时返回 { homeWin, draw, awayWin, ... }，无数据时返回 null
-    const res = await http.get<any>(`/matches/${route.params.id}/prediction`)
-    if (res && typeof res === 'object' && typeof res.homeWin === 'number') {
-      prediction.value = res
-    } else {
-      prediction.value = null
-    }
-  } catch (err) {
-    // 接口失败（404 等）也置空，UI 展示"暂无预测数据"
-    prediction.value = null
-  }
-}
+// ========== AI 预测（已改为 computed，从 result_wdl 维度报告聚合生成）==========
+// 不再单独调用 /matches/{id}/prediction 接口
 
 // ========== 单维度指令报告加载（21 维度，每维度 1 个图表） ==========
 
@@ -1233,6 +1249,37 @@ async function loadDimensionReports(matchId: string) {
 }
 
 /**
+ * 归一化维度 distribution key
+ * 不同 Agent 可能返回中文 key（主胜/平/客胜）或变体 key（home_win/away_win），
+ * 需要映射为 DIMENSIONS 中定义的标准 optionsKey
+ */
+function normalizeDimKey(dimKey: string, key: string): string {
+  const kl = key.toLowerCase().trim()
+  // result_wdl: home/home_win/主胜 → home, draw/平 → draw, away/away_win/客胜 → away
+  if (dimKey === 'result_wdl') {
+    if (kl === 'home' || kl === 'home_win' || kl === '主胜' || kl === 'h') return 'home'
+    if (kl === 'draw' || kl === '平' || kl === '平局' || kl === 'd') return 'draw'
+    if (kl === 'away' || kl === 'away_win' || kl === '客胜' || kl === 'a') return 'away'
+  }
+  // goal_first / goal_last: none → noGoal
+  if (dimKey === 'goal_first' || dimKey === 'goal_last') {
+    if (kl === 'none' || kl === 'nogoal' || kl === '无') return 'noGoal'
+  }
+  // goal_first_half: yes/no → Yes/No (保持 optionsKey 大小写)
+  if (dimKey === 'goal_first_half') {
+    if (kl === 'yes' || kl === '是') return 'yes'
+    if (kl === 'no' || kl === '否') return 'no'
+  }
+  // 其他维度：如果 key 在 optionsKeys 中存在，直接返回；否则原样返回
+  const optKeys = DIMENSIONS[dimKey as DimensionKey]?.optionsKeys || []
+  if (optKeys.includes(key)) return key
+  // 尝试小写匹配
+  const match = optKeys.find((ok) => ok.toLowerCase() === kl)
+  if (match) return match
+  return key
+}
+
+/**
  * 聚合指定维度的分布（平均所有该维度的报告）
  * @param dimKey 维度 key
  * @returns { labels, values, count }
@@ -1246,7 +1293,9 @@ function aggregateDimension(dimKey: DimensionKey) {
     const dist = r?.distribution
     if (!dist) return
     Object.entries(dist).forEach(([k, v]) => {
-      totals[k] = (totals[k] || 0) + Number(v || 0)
+      // 归一化 key：将中文/变体 key 映射为标准 optionsKey
+      const nk = normalizeDimKey(dimKey, k)
+      totals[nk] = (totals[nk] || 0) + Number(v || 0)
     })
     count += 1
   })
@@ -1549,7 +1598,7 @@ async function loadAllSentiment(matchId: string, homeTeamId?: string, awayTeamId
     sentimentLoading.value = false
     await nextTick()
     renderSentimentCharts(currentSentiment.value)
-    if (!prediction.value) loadPrediction()
+    // prediction 已改为 computed，从 dimensionReports 自动聚合
   }
 }
 
@@ -1704,7 +1753,7 @@ async function loadDetail() {
   unsubscribe = null
   match.value = null
   matchSentiment.value = null
-  prediction.value = null
+  // prediction 是 computed，不需要手动清空
   errorState.value = ''
   loading.value = true
 
@@ -1734,7 +1783,7 @@ async function loadDetail() {
       data?.homeTeam?.id || data?.homeTeamId,
       data?.awayTeam?.id || data?.awayTeamId,
     )
-    loadPrediction()
+    // prediction 从 dimensionReports 自动聚合，无需单独加载
     loadPlayers()
     loadDimensionReports(matchId)
     loadInstructions(matchId)

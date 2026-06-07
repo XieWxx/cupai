@@ -520,6 +520,12 @@ export class BsdcSyncService {
       isLocalDerby: !!bsEvent.is_local_derby,
       isNeutralGround: !!bsEvent.is_neutral_ground,
       liveWebsocket: !!bsEvent.live_websocket,
+      // 天气/环境数据（BSD weather 对象）
+      temperature: bsEvent.weather?.temperature_c ?? null,
+      windSpeed: bsEvent.weather?.wind_speed ?? null,
+      weatherCondition: bsEvent.weather?.description ?? null,
+      // 观众人数
+      totalAttendance: bsEvent.attendance ?? null,
       lastSyncedAt: new Date(),
       dataSource: `bsd_${bsdId}`,
       dataSourceUrl: `https://sports.bzzoiro.com/api/v2/events/${bsdId}/`,

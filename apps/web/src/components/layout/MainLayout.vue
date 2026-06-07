@@ -19,6 +19,7 @@
           <el-menu-item index="/">{{ $t('nav.home') }}</el-menu-item>
           <el-menu-item index="/match">{{ $t('nav.matchCenter') }}</el-menu-item>
           <el-menu-item index="/ranking">{{ $t('nav.ranking') }}</el-menu-item>
+          <el-menu-item index="/sponsor">{{ $t('nav.sponsor') }}</el-menu-item>
         </el-menu>
         <div class="header-right">
           <!-- 语言切换 -->
@@ -91,6 +92,7 @@ const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/match')) return '/match'
   if (path.startsWith('/ranking')) return '/ranking'
+  if (path.startsWith('/sponsor')) return '/sponsor'
   return path
 })
 

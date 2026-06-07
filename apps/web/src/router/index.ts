@@ -34,6 +34,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'page.ranking' },
       },
       {
+        path: 'sponsor',
+        name: 'Sponsor',
+        component: () => import('@/views/SponsorView.vue'),
+        meta: { title: 'page.sponsor' },
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/ProfileView.vue'),

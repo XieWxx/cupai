@@ -103,6 +103,7 @@ export class OpenAgentController {
       distribution: (body.distribution as Record<string, number>) || null,
       summary: (body.summary as string) || null,
       model: (body.model as string) || null,
+      platform: (body.platform as string) || null,
       apiKeyHint: apiKey ? apiKey.slice(0, 8) : (body.apiKeyHint ? String(body.apiKeyHint).slice(0, 20) : null),
     })
     await this.submissionRepo.save(entry)
@@ -125,11 +126,13 @@ export class OpenAgentController {
     await this.redisCache.set(cacheKey, updated, 3600)
 
     // 更新排行榜：根据 API Key 查找用户并更新排行
+    const model = (body.model as string) || null
+    const platform = (body.platform as string) || null
     if (apiKey) {
       try {
         const user = await this.userRepo.findOne({ where: { apiKey } })
         if (user) {
-          await this.rankingService.incrementUserPredictions(user.id)
+          await this.rankingService.incrementUserPredictions(user.id, model, platform)
         }
       } catch (err) {
         // 排行更新失败不影响主流程
@@ -138,9 +141,9 @@ export class OpenAgentController {
     }
 
     // 更新模型排行
-    if (body.model) {
+    if (model) {
       try {
-        await this.rankingService.incrementModelPredictions(body.model as string)
+        await this.rankingService.incrementModelPredictions(model, platform)
       } catch (err) {
         console.error('[submitDimension] update model ranking failed:', err)
       }
@@ -310,11 +313,12 @@ POST ${apiBase}/agent/open/dimension/submit
 {
   "matchId": "赛事ID",
   "dimKey": "维度key（如 result_wdl）",
-  "topOption": "首选结论（如 home_win）",
+  "topOption": "首选结论（如 home）",
   "topProbability": 0.55,
-  "distribution": { "home_win": 0.55, "draw": 0.25, "away_win": 0.20 },
+  "distribution": { "home": 0.55, "draw": 0.25, "away": 0.20 },
   "summary": "分析摘要（200-300字）",
-  "model": "使用的模型名"
+  "model": "使用的模型名",
+  "platform": "Agent平台名（如 coze、dify、openai）"
 }
 \`\`\`
 

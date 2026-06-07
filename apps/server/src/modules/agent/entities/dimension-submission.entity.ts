@@ -48,6 +48,10 @@ export class DimensionSubmissionEntity {
   @Column({ name: 'api_key_hint', length: 20, nullable: true })
   apiKeyHint: string
 
+  /** 使用的 Agent 平台（如 codex-cli、cursor、cline 等） */
+  @Column({ name: 'platform', length: 100, nullable: true })
+  platform: string
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date
 }

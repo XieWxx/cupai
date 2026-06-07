@@ -2,30 +2,30 @@
   <div class="group-standings">
     <div v-if="loading" class="standings-loading">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
     <div v-else-if="!hasData" class="standings-empty">
-      <el-empty description="暂无积分榜数据" />
+      <el-empty :description="t('matchCenter.noGroupStandings')" />
     </div>
     <div v-else class="standings-grid">
       <div v-for="(teams, groupName) in groups" :key="groupName" class="group-card">
         <div class="group-title">
           <span class="group-badge">{{ groupName }}</span>
-          <span class="group-label">组</span>
+          <span class="group-label">{{ t('matchCenter.groupLabel') }}</span>
         </div>
         <table class="standings-table">
           <thead>
             <tr>
               <th class="col-rank">#</th>
-              <th class="col-team">球队</th>
-              <th class="col-stat">场</th>
-              <th class="col-stat">胜</th>
-              <th class="col-stat">平</th>
-              <th class="col-stat">负</th>
-              <th class="col-stat">进</th>
-              <th class="col-stat">失</th>
-              <th class="col-stat">净胜球</th>
-              <th class="col-pts">积分</th>
+              <th class="col-team">{{ t('matchCenter.team') }}</th>
+              <th class="col-stat">{{ t('matchCenter.played') }}</th>
+              <th class="col-stat">{{ t('matchCenter.wins') }}</th>
+              <th class="col-stat">{{ t('matchCenter.draws') }}</th>
+              <th class="col-stat">{{ t('matchCenter.losses') }}</th>
+              <th class="col-stat">{{ t('matchCenter.goalsFor') }}</th>
+              <th class="col-stat">{{ t('matchCenter.goalsAgainst') }}</th>
+              <th class="col-stat">{{ t('matchCenter.goalDifference') }}</th>
+              <th class="col-pts">{{ t('matchCenter.points') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -39,7 +39,7 @@
               </td>
               <td class="col-team">
                 <span v-if="getFlagClass(team.team?.countryCode)" :class="`${getFlagClass(team.team.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ team.team?.name || '未知' }}</span>
+                <span class="team-name">{{ team.team?.name || t('matchCenter.unknown') }}</span>
               </td>
               <td class="col-stat">{{ team.played || 0 }}</td>
               <td class="col-stat">{{ team.wins || 0 }}</td>
@@ -65,9 +65,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Loading } from '@element-plus/icons-vue'
 import { getFlagClass } from '@/utils/flag'
 
+const { t } = useI18n()
 const props = defineProps<{
   groups: Record<string, any[]>
   loading?: boolean
@@ -98,10 +100,10 @@ function gdClass(gd: number): string {
   gap: 8px;
 }
 
-/* 小组网格 */
+/* 小组网格：铺满容器 */
 .standings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
   gap: 16px;
 }
 
@@ -141,12 +143,13 @@ function gdClass(gd: number): string {
   font-weight: 600;
 }
 
-/* 积分表格 */
+/* 积分表格：铺满卡片宽度 */
 .standings-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   color: var(--color-text-primary);
+  table-layout: auto;
 }
 
 .standings-table thead th {
@@ -180,20 +183,23 @@ function gdClass(gd: number): string {
 
 /* 列宽 */
 .col-rank {
-  width: 32px;
+  width: 36px;
+  white-space: nowrap;
 }
 
 .col-team {
   text-align: left !important;
-  min-width: 100px;
+  /* 球队名列自适应宽度，不设固定宽度 */
 }
 
 .col-stat {
-  width: 36px;
+  width: 42px;
+  white-space: nowrap;
 }
 
 .col-pts {
-  width: 44px;
+  width: 50px;
+  white-space: nowrap;
 }
 
 /* 排名 */
@@ -227,6 +233,7 @@ function gdClass(gd: number): string {
   white-space: nowrap;
   font-weight: 500;
   color: var(--color-text-primary);
+  max-width: 200px;
 }
 
 /* 净胜球 */

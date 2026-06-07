@@ -507,96 +507,45 @@ function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, questi
 }
 
 /**
- * 回传说明（agent 极简回传）
- * - 不再依赖 userApiKey，**始终输出**（用户需求：每条图表「复制指令」里都要带上 API 回调地址 / 传参方式）
- * - 包含：POST 端点、Header、JSON 字段说明、curl 一键复制
- * - 当前端没有 userApiKey 时，curl 中用 `<YOUR_API_KEY>` 占位（公开可复制）
- * - instructionId 优先从 `input.instructionId` 取（前端在 loadMatch 时按 dimKey 注入），未提供时用占位符
+ * 回传说明（极简版：引用 skill.md，仅保留 curl 一键复制）
+ * - 详细接入文档请参考 skill.md API
+ * - 此处仅保留最关键的 curl 模板，让 Agent 可直接回传
  */
 function buildReturnGuidance(input: CopyInstructionInput, dimKey: string): string {
   const base = input.appBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '<cupai_host>')
-  const submitUrl = `${base}/api/v1/agent/open/answer`
-  const apiKeyHint = input.userApiKey
-    ? `当前 Agent 已配置 API Key（\`${input.userApiKey.slice(0, 8)}…\`），可直接使用；若失败请到 CupAI 控制台重新生成。`
-    : '请到 CupAI 控制台 `设置 → Agent 接入` 生成 API Key，形如 `cupai_xxx…`。'
-  const sampleAnswer = `<从上方"可选结论"中选择 1 个最可能结论>`
-  const realInstructionId = input.instructionId || '<请填入本条指令的 instructionId>'
+  const submitUrl = `${base}/api/v1/agent/open/dimension/submit`
+  const skillMdUrl = `${base}/api/v1/agent/open/skill.md?matchId=${input.match?.id || ''}`
+  const apiKey = input.userApiKey || 'cpk_<YOUR_API_KEY>'
+  const realInstructionId = input.instructionId || '<instruction_id>'
+  const matchId = input.match?.id || '<match_id>'
 
   return `
 
 ---
 
-## 六、Agent 回传指引（必读 · 极简回传）
+## 回传指引
 
-完成分析后，请 agent 按以下方式把结果回传至 CupAI：
+> 完整接入文档：${skillMdUrl}
 
-### 1. 接口地址（POST）
-
-\`\`\`
-${submitUrl}
-\`\`\`
-
-### 2. 请求头（Headers）
-
-| Key             | Value                          |
-|-----------------|--------------------------------|
-| \`X-API-Key\`     | \`cupai_<YOUR_KEY>\`（从控制台获取） |
-| \`Content-Type\`  | \`application/json\`             |
-
-### 3. JSON Body 字段（极简回传）
-
-| 字段            | 类型     | 必填 | 说明 |
-|-----------------|----------|------|------|
-| \`instructionId\` | string   | 是   | 由本条指令预生成（每条图表右上角「复制指令」内嵌） |
-| \`answer\`        | string   | 是   | ${sampleAnswer} |
-| \`confidence\`    | number   | 否   | 0-1 置信度（例 0.78） |
-| \`distribution\`  | object   | 否   | \`{"home":0.55,"draw":0.25,"away":0.20}\` 概率分布（合计 1.0） |
-| \`text\`          | string   | 否   | 推理依据（Markdown，200-300 字） |
-| \`time\`          | string   | 是   | \`${new Date().toISOString()}\` 当前时间（ISO8601） |
-| \`platform\`      | string   | 是   | 调用方标识（\`deepseek\` / \`openai\` / \`qwen\` 等） |
-| \`model\`         | string   | 是   | 具体模型名（\`deepseek-chat\` / \`gpt-4o\` / \`qwen-max\` 等） |
-| \`displayLanguage\` | string | 否   | \`zh-CN\` / \`en-US\` … |
-
-> 💡 **API Key 提示**：${apiKeyHint}
-
-### 4. 一键复制 · curl
+完成分析后，请将结果回传至 CupAI：
 
 \`\`\`bash
 curl -X POST "${submitUrl}" \\
-  -H "X-API-Key: ${input.userApiKey || 'cupai_<YOUR_KEY>'}" \\
+  -H "X-API-Key: ${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "instructionId": "${realInstructionId}",
-    "answer": "${sampleAnswer}",
-    "confidence": 0.78,
+    "matchId": "${matchId}",
+    "dimKey": "${dimKey}",
+    "topOption": "<首选结论>",
+    "topProbability": 0.55,
     "distribution": {},
-    "text": "<200-300字推理依据>",
-    "time": "${new Date().toISOString()}",
-    "platform": "deepseek",
-    "model": "deepseek-chat",
-    "displayLanguage": "${(typeof window !== 'undefined' && (window as any).__cupai_locale) || 'zh-CN'}"
+    "summary": "<分析摘要>",
+    "model": "<模型名>",
+    "platform": "<Agent平台名>"
   }'
 \`\`\`
 
-### 5. 成功响应（200 OK）
-
-\`\`\`json
-{
-  "code": 0,
-  "message": "success",
-  "data": {
-    "ok": true,
-    "instructionId": "${realInstructionId}",
-    "matchId": "${input.match?.id || '<match_id>'}",
-    "dimKey": "${dimKey}",
-    "answer": "...",
-    "distribution": {},
-    "createdAt": "${new Date().toISOString()}"
-  }
-}
-\`\`\`
-
-CupAI 收到后会自动刷新对应图表——无需在前端做任何操作。`
+字段说明：\`matchId\`(必填) \`dimKey\`(必填) \`topOption\`(首选结论) \`topProbability\`(0-1) \`distribution\`(概率分布) \`summary\`(分析摘要) \`model\`(模型名) \`platform\`(Agent平台名)`
 }
 
 // ============================================================

@@ -73,6 +73,12 @@ export class MatchController {
     return this.matchService.getMatchPrediction(id)
   }
 
+  // 获取赛事阵容（首发+替补）
+  @Get(':id/lineups')
+  async getMatchLineups(@Param('id') id: string) {
+    return this.matchService.getMatchLineups(id)
+  }
+
   // 获取球队详情
   @Get('teams/:id')
   async getTeamDetail(@Param('id') id: string) {

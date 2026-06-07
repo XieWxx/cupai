@@ -31,6 +31,10 @@ export const useUserStore = defineStore('user', () => {
     token.value = res.token
     user.value = res.user
     localStorage.setItem('cupai_token', res.token)
+    // 存储 apiKey 到 localStorage（供复制指令使用）
+    if (res.user?.apiKey) {
+      localStorage.setItem('cupai_api_key', res.user.apiKey)
+    }
     return res
   }
 
@@ -42,6 +46,10 @@ export const useUserStore = defineStore('user', () => {
     token.value = res.token
     user.value = res.user
     localStorage.setItem('cupai_token', res.token)
+    // 存储 apiKey 到 localStorage（供复制指令使用）
+    if (res.user?.apiKey) {
+      localStorage.setItem('cupai_api_key', res.user.apiKey)
+    }
     return res
   }
 
@@ -51,6 +59,10 @@ export const useUserStore = defineStore('user', () => {
   async function fetchProfile() {
     const res = await http.get<typeof user.value>('/user/profile')
     user.value = res
+    // 同步 apiKey 到 localStorage
+    if (res?.apiKey) {
+      localStorage.setItem('cupai_api_key', res.apiKey)
+    }
     return res
   }
 

@@ -1121,3 +1121,178 @@ const funny = row.funnyDataRate ?? row.funDataAccuracyRate ?? 0
 > - 任何接口变更（路径 / 参数 / 响应字段）须同步更新本文档
 > - 错误码新增需在 §1.6 中登记
 > - 后端 controller 修改须同步前端 `stores/*` 与 `views/*` 调用点
+
+---
+
+## 5. 赛事详情页数据字段 × 接口支持确认
+
+> **生成日期**：2026-06-07
+> **确认人**：AI 辅助审查（基于代码静态分析）
+> **目的**：逐一核实赛事详情页各模块所需数据字段在后端接口中的支持情况
+
+### 5.1 赛事基本信息
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| `homeTeam.name` | 主队名称 | `GET /match/:id` | ✅ | 关联加载 |
+| `homeTeam.countryCode` | 主队国旗 | `GET /match/:id` | ✅ | |
+| `homeTeam.fifaRank` | FIFA 排名 | `GET /match/:id` | ✅ | |
+| `homeTeam.fifaRankChange` | 排名变化 | `GET /match/:id` | ✅ | |
+| `homeTeam.formation` | 阵型 | `GET /match/:id` | ✅ | |
+| `homeTeam.playStyle` | 球风 | `GET /match/:id` | ✅ | |
+| `homeTeam.avgGoalsScored` | 场均进球 | `GET /match/:id` | ✅ | |
+| `homeTeam.avgGoalsConceded` | 场均失球 | `GET /match/:id` | ✅ | |
+| `homeTeam.avgPossession` | 场均控球率 | `GET /match/:id` | ✅ | |
+| `homeTeam.winRate` | 胜率 | `GET /match/:id` | ✅ | |
+| `awayTeam.*` | 客队同上 | `GET /match/:id` | ✅ | |
+| `status` | 赛事状态 | `GET /match/:id` | ✅ | upcoming/live/finished |
+| `homeScore` / `awayScore` | 比分 | `GET /match/:id` | ✅ | |
+| `halfTimeHome` / `halfTimeAway` | 半场比分 | `GET /match/:id` | ✅ | |
+| `leagueName` | 联赛名称 | `GET /match/:id` | ✅ | |
+| `startTime` | 开赛时间 | `GET /match/:id` | ✅ | |
+| `venue` | 比赛场地 | `GET /match/:id` | ✅ | |
+| `refereeName` | 裁判 | `GET /match/:id` | ✅ | |
+| `refereeNationality` | 裁判国籍 | `GET /match/:id` | ✅ | |
+| `refereeStyle` | 裁判风格 | `GET /match/:id` | ✅ | |
+| `stage` | 赛事阶段 | `GET /match/:id` | ✅ | |
+
+### 5.2 临场环境
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| `temperature` | 温度(℃) | `GET /match/:id` | ✅ | BSD 同步写入 |
+| `humidity` | 湿度(%) | `GET /match/:id` | ✅ | |
+| `weatherCondition` | 天气状况 | `GET /match/:id` | ✅ | |
+| `windSpeed` | 风速(km/h) | `GET /match/:id` | ✅ | |
+| `homeAttendance` | 主队球迷人数 | `GET /match/:id` | ✅ | |
+| `awayAttendance` | 客队球迷人数 | `GET /match/:id` | ✅ | |
+| `totalAttendance` | 总上座人数 | `GET /match/:id` | ✅ | |
+
+### 5.3 全维度因子分析
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| `dimensionReports[].dimKey` | 维度标识 | `GET /agent/open/dimensions` | ✅ | |
+| `dimensionReports[].distribution` | 概率分布 | `GET /agent/open/dimensions` | ✅ | |
+| `dimensionReports[].extras.winner` | 最高概率项 | `GET /agent/open/dimensions` | ✅ | |
+| `dimensionReports[].extras.confidence` | 置信度 | `GET /agent/open/dimensions` | ✅ | |
+| `prediction.homeWin/draw/awayWin` | 胜率预测 | `GET /matches/:id/prediction` | ✅ | 无数据时返回 null |
+| `prediction.reasoning` | AI 推理说明 | `GET /matches/:id/prediction` | ✅ | |
+| `prediction.source` | 预测来源 | `GET /matches/:id/prediction` | ✅ | |
+| `match.matchData` | 因子键值对 | `GET /match/:id` | ✅ | JSON 字段 |
+| `match.dataSource` | 数据来源 | `GET /match/:id` | ✅ | |
+| `match.dataSourceUrl` | 数据来源链接 | `GET /match/:id` | ✅ | |
+| `instructionMap[].id` | 指令 ID | `GET /agent/open/instructions` | ✅ | |
+
+### 5.4 首发阵容与球员信息
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| 球员列表 `players[]` | 球员信息 | `GET /match/teams/:id` | ✅ | 通过 teamId 查询 |
+| `player.name` | 球员中文名 | `GET /match/teams/:id` | ✅ | |
+| `player.nameEn` | 球员英文名 | `GET /match/teams/:id` | ✅ | |
+| `player.position` | 位置 | `GET /match/teams/:id` | ✅ | |
+| `player.age` | 年龄 | `GET /match/teams/:id` | ✅ | |
+| `player.isKeyPlayer` | 核心球员标记 | `GET /match/teams/:id` | ✅ | |
+| `player.seasonGoals` | 赛季进球 | `GET /match/teams/:id` | ✅ | |
+| `player.seasonAssists` | 赛季助攻 | `GET /match/teams/:id` | ✅ | |
+| `player.yellowCards` | 黄牌 | `GET /match/teams/:id` | ✅ | |
+| `player.redCards` | 红牌 | `GET /match/teams/:id` | ✅ | |
+| `player.injuryStatus` | 伤病状态 | `GET /match/teams/:id` | ✅ | |
+| `player.avatar` | 头像 | `GET /match/teams/:id` | ✅ | |
+| 首发阵容 `lineups.home/away` | 首发阵容 | `GET /match/:id/lineups` | ✅ 新增 | 读取 EventLineupEntity |
+| `lineup.isStarter` | 是否首发 | `GET /match/:id/lineups` | ✅ 新增 | |
+| `lineup.jerseyNumber` | 球衣号 | `GET /match/:id/lineups` | ✅ 新增 | |
+| `lineup.formation` | 阵型 | `GET /match/:id/lineups` | ✅ 新增 | |
+| `lineup.aiScore` | AI 评分 | `GET /match/:id/lineups` | ✅ 新增 | |
+| `lineup.lineupStatus` | 阵容确认状态 | `GET /match/:id/lineups` | ✅ 新增 | confirmed/predicted |
+
+### 5.5 舆情模块
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| `sampleCount` | 样本总数 | `GET /sentiment/match/:id` | ✅ | |
+| `avgScore` | 平均得分 | `GET /sentiment/match/:id` | ✅ | |
+| `positiveRatio` | 正面比例 | `GET /sentiment/match/:id` | ✅ | |
+| `negativeRatio` | 负面比例 | `GET /sentiment/match/:id` | ✅ | |
+| `neutralRatio` | 中性比例 | `GET /sentiment/match/:id` | ✅ | |
+| `pressureIndex` | 压力指数 | `GET /sentiment/match/:id` | ✅ | |
+| `topKeywords` | 热门关键词 | `GET /sentiment/match/:id` | ✅ | |
+| `recentItems[]` | 最近舆情条目 | `GET /sentiment/match/:id` | ✅ | |
+| `recentItems[].sentimentPolarity` | 情感极性 | `GET /sentiment/match/:id` | ✅ | |
+| `recentItems[].sourcePlatform` | 来源平台 | `GET /sentiment/match/:id` | ✅ | |
+| `recentItems[].originalText` | 原文内容 | `GET /sentiment/match/:id` | ✅ | |
+| 球队舆情 | 主/客队舆情 | `GET /sentiment/team/:teamId` | ✅ | 各调一次 |
+
+### 5.6 用户预测排行
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| `userId/username` | 用户名 | `GET /ranking/users` | ✅ | |
+| `countryCode` | 国旗 | `GET /ranking/users` | ✅ | |
+| `accuracyRate` | 准确率 | `GET /ranking/users` | ✅ | |
+| `platform/modelName` | 使用模型 | `GET /ranking/users` | ✅ | |
+
+### 5.7 实时更新
+
+| 字段 | 前端用途 | 接口 | 后端支持 | 备注 |
+|---|---|---|---|---|
+| `homeScore` / `awayScore` | 实时比分 | WebSocket `live_update` | ✅ | |
+| 全量 match 对象 | 状态更新 | WebSocket `match:update` | ✅ | |
+
+### 5.8 新增接口：赛事阵容
+
+**路径**：`GET /match/:id/lineups`
+
+**响应**：
+
+```json
+{
+  "home": {
+    "starters": [
+      {
+        "id": "uuid",
+        "matchId": "uuid",
+        "side": "home",
+        "isStarter": true,
+        "bsPlayerId": 12345,
+        "playerName": "球员名",
+        "shortName": "简称",
+        "position": "G",
+        "jerseyNumber": 1,
+        "aiScore": 0.85,
+        "lineupStatus": "confirmed",
+        "formation": "4-3-3",
+        "confidence": 0.9
+      }
+    ],
+    "substitutes": [...],
+    "formation": "4-3-3"
+  },
+  "away": {
+    "starters": [...],
+    "substitutes": [...],
+    "formation": "4-4-2"
+  }
+}
+```
+
+**数据来源**：`event_lineups` 表，由 `BsdSyncService.syncLineups()` 从 BSD API 同步写入
+
+**同步条件**：开赛时间在 6 小时内的赛事
+
+---
+
+### 5.9 总结
+
+| 模块 | 所需字段数 | 接口支持 | 备注 |
+|---|---|---|---|
+| 赛事基本信息 | 21 | ✅ 全部支持 | `GET /match/:id` |
+| 临场环境 | 7 | ✅ 全部支持 | `GET /match/:id` |
+| 全维度因子分析 | 11 | ✅ 全部支持 | 多接口组合 |
+| 首发阵容/球员 | 17 | ✅ 全部支持 | 新增 `GET /match/:id/lineups` |
+| 舆情模块 | 11 | ✅ 全部支持 | `GET /sentiment/match/:id` + `team/:id` |
+| 用户预测排行 | 4 | ✅ 全部支持 | `GET /ranking/users` |
+| 实时更新 | 2 | ✅ 全部支持 | WebSocket |
+
+**结论**：赛事详情页所有模块所需数据字段均已有后端接口支持，其中阵容接口为本次新增。

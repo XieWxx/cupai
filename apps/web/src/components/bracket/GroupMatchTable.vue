@@ -2,17 +2,17 @@
   <div class="group-match-table">
     <div v-if="loading" class="match-loading">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
     <div v-else-if="!hasData" class="match-empty">
-      <el-empty description="暂无小组赛程数据" />
+      <el-empty :description="t('matchCenter.noGroupMatches')" />
     </div>
     <div v-else class="groups-grid">
       <div v-for="group in groupSections" :key="group.name" class="group-block">
         <div class="group-title">
           <span class="group-badge">{{ group.name }}</span>
-          <span class="group-label">组赛程</span>
-          <span class="group-count">{{ group.matches.length }} 场</span>
+          <span class="group-label">{{ t('matchCenter.groupSchedule') }}</span>
+          <span class="group-count">{{ group.matches.length }} {{ t('matchCenter.matchCount') }}</span>
         </div>
         <div class="match-list">
           <div
@@ -48,10 +48,10 @@
             <!-- 状态 -->
             <div class="match-status">
               <span v-if="match.status === 'live'" class="status-live">
-                <span class="live-dot"></span> 进行中
+                <span class="live-dot"></span> {{ t('home.live') }}
               </span>
-              <span v-else-if="match.status === 'finished'" class="status-finished">已结束</span>
-              <span v-else class="status-upcoming">未开始</span>
+              <span v-else-if="match.status === 'finished'" class="status-finished">{{ t('matchCenter.finished') }}</span>
+              <span v-else class="status-upcoming">{{ t('matchCenter.upcoming') }}</span>
             </div>
           </div>
         </div>
@@ -62,10 +62,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Loading } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { getFlagClass } from '@/utils/flag'
 
+const { t, locale } = useI18n()
 const props = defineProps<{
   matches: any[]
   loading?: boolean
@@ -124,7 +126,7 @@ function formatDate(value: string | number | Date | undefined | null): string {
   try {
     const d = new Date(value)
     if (Number.isNaN(d.getTime())) return ''
-    return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+    return d.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' })
   } catch { return '' }
 }
 
@@ -133,7 +135,7 @@ function formatTime(value: string | number | Date | undefined | null): string {
   try {
     const d = new Date(value)
     if (Number.isNaN(d.getTime())) return ''
-    return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleTimeString(locale.value, { hour: '2-digit', minute: '2-digit' })
   } catch { return '' }
 }
 
@@ -160,14 +162,14 @@ function onMatchClick(match: any) {
 /* 小组网格 */
 .groups-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
   gap: 16px;
 }
 
 /* 小组块 */
 .group-block {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -177,8 +179,8 @@ function onMatchClick(match: any) {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: rgba(56, 189, 248, 0.06);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  background: var(--color-primary-bg);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .group-badge {
@@ -188,15 +190,15 @@ function onMatchClick(match: any) {
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
+  background: var(--color-primary);
+  color: #fff;
   font-size: 13px;
   font-weight: 700;
 }
 
 .group-label {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
@@ -315,14 +317,14 @@ function onMatchClick(match: any) {
 .score-away {
   font-size: 16px;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   min-width: 18px;
   text-align: center;
 }
 
 .score-home.is-winner,
 .score-away.is-winner {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .score-sep {
@@ -366,7 +368,7 @@ function onMatchClick(match: any) {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #ef4444;
+  background: var(--color-danger);
   animation: blink-dot 1.2s ease-in-out infinite;
 }
 

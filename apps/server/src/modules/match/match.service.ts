@@ -4,6 +4,8 @@ import { Repository } from 'typeorm'
 import { MatchEntity } from './entities/match.entity'
 import { TeamEntity } from './entities/team.entity'
 import { PlayerEntity } from './entities/player.entity'
+import { EventPredictionEntity } from './entities/event-prediction.entity'
+import { EventLineupEntity } from './entities/event-lineup.entity'
 import { RedisCacheService } from '../../config/redis-cache.service'
 
 /** 21 个维度的候选项 */
@@ -59,6 +61,10 @@ export class MatchService {
     private readonly teamRepo: Repository<TeamEntity>,
     @InjectRepository(PlayerEntity)
     private readonly playerRepo: Repository<PlayerEntity>,
+    @InjectRepository(EventPredictionEntity)
+    private readonly predictionRepo: Repository<EventPredictionEntity>,
+    @InjectRepository(EventLineupEntity)
+    private readonly lineupRepo: Repository<EventLineupEntity>,
     private readonly redisCache: RedisCacheService,
   ) {}
 
@@ -154,42 +160,39 @@ export class MatchService {
     const cached = await this.redisCache.get<any>(cacheKey)
     if (cached) return cached
 
-    const match = await this.matchRepo.findOne({
-      where: { id: matchId },
-      relations: ['homeTeam', 'awayTeam'],
+    // 优先从 event_predictions 表读取 BSD 真实预测数据
+    const realPred = await this.predictionRepo.findOne({
+      where: { matchId },
+      order: { updatedAt: 'DESC' },
     })
-    if (!match) return { homeWin: 0.33, draw: 0.34, awayWin: 0.33, reasoning: '暂无赛事数据', source: 'cupai-heuristic' }
 
-    const homeRank = match.homeTeam?.fifaRank || 10
-    const awayRank = match.awayTeam?.fifaRank || 10
-    const homeAdvantage = 0.15
-    const strengthDiff = (awayRank - homeRank) * 0.02
-    const homeBias = Math.max(-1, Math.min(1, strengthDiff + homeAdvantage))
-
-    // 复用 21 维度的概率分布生成器
-    const allDims = Object.entries(DIM_OPTION_MAP).map(([dimKey, options]) => ({
-      dimKey,
-      options: genDistribution(options, homeBias),
-    }))
-
-    // 从 match_result 维度抽取 1X2 概率作为顶层字段（前端 MatchDetailView 直接使用）
-    const matchResult = allDims.find((d) => d.dimKey === 'match_result')?.options ?? []
-    const homeWin = matchResult.find((o) => o.option === 'home')?.probability ?? 0.4
-    const draw = matchResult.find((o) => o.option === 'draw')?.probability ?? 0.3
-    const awayWin = matchResult.find((o) => o.option === 'away')?.probability ?? 0.3
-
-    const result = {
-      homeWin,
-      draw,
-      awayWin,
-      reasoning: `基于双方 FIFA 排名（主队 ${homeRank} / 客队 ${awayRank}）与 21 维度机器学习模型推算`,
-      source: 'cupai-ml-v1',
-      // 21 维度细分（用于详情页折叠面板）
-      dimensions: allDims,
+    if (realPred && typeof realPred.probHome === 'number') {
+      const result = {
+        homeWin: realPred.probHome,
+        draw: realPred.probDraw,
+        awayWin: realPred.probAway,
+        reasoning: realPred.favorite
+          ? `BSD AI 模型预测（${realPred.modelVersion || 'v1'}），倾向: ${realPred.favorite}，置信度: ${((realPred.confidence || 0) * 100).toFixed(0)}%`
+          : `BSD AI 模型预测（${realPred.modelVersion || 'v1'}）`,
+        source: `bsd-ml${realPred.modelVersion ? '-' + realPred.modelVersion : ''}`,
+        expectedGoals: {
+          home: realPred.expectedGoalsHome,
+          away: realPred.expectedGoalsAway,
+        },
+        overUnder: {
+          probOver15: realPred.probOver15,
+          probOver25: realPred.probOver25,
+          probOver35: realPred.probOver35,
+        },
+        btts: realPred.probBttsYes,
+        mostLikelyScore: realPred.mostLikelyScore,
+      }
+      await this.redisCache.set(cacheKey, result, 300)
+      return result
     }
 
-    await this.redisCache.set(cacheKey, result, 300)
-    return result
+    // 无真实预测数据时返回 null，前端展示"暂无预测数据"
+    return null
   }
 
   async getTeams() {
@@ -204,5 +207,30 @@ export class MatchService {
 
   async getPlayerDetail(playerId: string) {
     return this.playerRepo.findOne({ where: { id: playerId }, relations: ['team'] })
+  }
+
+  /**
+   * 获取赛事阵容（首发+替补）
+   * 数据来源：EventLineupEntity（由 BSD 同步服务写入）
+   * 返回格式：{ home: { starters: [], substitutes: [], formation }, away: { ... } }
+   */
+  async getMatchLineups(matchId: string) {
+    const rows = await this.lineupRepo.find({
+      where: { matchId },
+      order: { side: 'ASC', isStarter: 'DESC', jerseyNumber: 'ASC' },
+    })
+
+    const home = {
+      starters: rows.filter((r) => r.side === 'home' && r.isStarter),
+      substitutes: rows.filter((r) => r.side === 'home' && !r.isStarter),
+      formation: rows.find((r) => r.side === 'home' && r.formation)?.formation || null,
+    }
+    const away = {
+      starters: rows.filter((r) => r.side === 'away' && r.isStarter),
+      substitutes: rows.filter((r) => r.side === 'away' && !r.isStarter),
+      formation: rows.find((r) => r.side === 'away' && r.formation)?.formation || null,
+    }
+
+    return { home, away }
   }
 }

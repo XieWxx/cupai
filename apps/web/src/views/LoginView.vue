@@ -1,6 +1,12 @@
 <template>
   <div class="login-view">
     <div class="login-card">
+      <!-- 语言选择器 -->
+      <div class="lang-switcher">
+        <el-select v-model="currentLocale" size="small" @change="onLocaleChange">
+          <el-option v-for="l in localeOptions" :key="l.value" :label="l.label" :value="l.value" />
+        </el-select>
+      </div>
       <h1 class="login-title">⚽ {{ $t('common.appName') }}</h1>
       <p class="login-desc">{{ $t('login.welcomeDesc') }}</p>
       <el-tabs v-model="activeTab">
@@ -65,8 +71,26 @@ import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const userStore = useUserStore()
+
+// 语言选择器
+const currentLocale = ref(locale.value)
+const localeOptions = [
+  { value: 'zh-CN', label: '中文' },
+  { value: 'en-US', label: 'English' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'ko-KR', label: '한국어' },
+  { value: 'fr-FR', label: 'Français' },
+  { value: 'de-DE', label: 'Deutsch' },
+  { value: 'es-ES', label: 'Español' },
+  { value: 'pt-BR', label: 'Português' },
+]
+function onLocaleChange(val: string) {
+  locale.value = val
+  currentLocale.value = val
+  localStorage.setItem('locale', val)
+}
 
 const activeTab = ref('login')
 const loading = ref(false)
@@ -379,6 +403,17 @@ async function handleRegister() {
   border: 1px solid var(--color-border-light);
   position: relative;
   z-index: 1;
+}
+
+/* 语言选择器 */
+.lang-switcher {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.lang-switcher :deep(.el-select) {
+  width: 120px;
 }
 
 .login-title {

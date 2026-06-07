@@ -35,6 +35,12 @@ function hostToPlatformKey(host: string): string {
   if (/bigmodel\.cn|zhipu/.test(host)) return 'glm'
   if (/moonshot\.cn|kimi/.test(host)) return 'moonshot'
   if (/cohere\.ai/.test(host)) return 'cohere'
+  if (/codex-cli|codex/i.test(host)) return 'codex-cli'
+  if (/cursor/i.test(host)) return 'cursor'
+  if (/windsurf/i.test(host)) return 'windsurf'
+  if (/cline/i.test(host)) return 'cline'
+  if (/trae/i.test(host)) return 'trae'
+  if (/workbuddy/i.test(host)) return 'workbuddy'
   // 兜底：取主域名前缀
   const m = host.match(/^([a-z0-9-]+)/i)
   return m ? m[1] : 'unknown'
@@ -54,6 +60,12 @@ const PLATFORM_DISPLAY: Record<string, string> = {
   glm: '智谱清言',
   moonshot: 'Moonshot',
   cohere: 'Cohere',
+  'codex-cli': 'Codex CLI',
+  cursor: 'Cursor',
+  windsurf: 'Windsurf',
+  cline: 'Cline',
+  trae: 'Trae',
+  workbuddy: 'WorkBuddy',
   unknown: '未配置',
 }
 
@@ -251,23 +263,19 @@ export class RankingService {
   }
 
   /**
-   * 热门 Agent 平台排行（首页摘要用）
-   * 聚合 user_ai_configs.apiEndpoint，按域名归一化后按用户数降序
-   * 一个用户可被多个平台计数（按其全部 AI 配置）
-   *
-   * 返回结构：{ list: [{ platform, platformKey, userCount, totalPredictions }] }
+   * 热门 Agent 平台排行
+   * 双数据源聚合：
+   * 1. user_ai_configs.apiEndpoint -> 按域名归一化统计用户数
+   * 2. dimension_submissions.platform -> 按 platform 字段统计预测次数
+   * 合并逻辑：同一 platform 取 userCount 较大值，totalPredictions 使用 dimension_submissions 统计
    */
   async getPlatformRankings(limit?: number) {
+    // 数据源 1：从 user_ai_configs 聚合用户数
     const configs = await this.userAiConfigRepo.find({
       select: ['id', 'userId', 'apiEndpoint'],
     })
 
-    // 聚合：platformKey -> { userIds: Set, totalPredictions: 0 }
-    const agg = new Map<
-      string,
-      { userIds: Set<string>; totalPredictions: number }
-    >()
-
+    const userCountMap = new Map<string, Set<string>>()
     for (const cfg of configs) {
       let host = ''
       try {
@@ -278,19 +286,39 @@ export class RankingService {
         host = (cfg.apiEndpoint || '').split('/')[0].toLowerCase()
       }
       const key = hostToPlatformKey(host)
-      if (!agg.has(key)) {
-        agg.set(key, { userIds: new Set(), totalPredictions: 0 })
+      if (!userCountMap.has(key)) {
+        userCountMap.set(key, new Set())
       }
-      const bucket = agg.get(key)!
-      bucket.userIds.add(cfg.userId)
+      userCountMap.get(key)!.add(cfg.userId)
     }
 
-    let list = Array.from(agg.entries())
-      .map(([platformKey, info]) => ({
+    // 数据源 2：从 dimension_submissions 聚合预测次数
+    const submissionRows = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.platform', 'platform')
+      .addSelect('COUNT(*)', 'totalPredictions')
+      .where('s.platform IS NOT NULL')
+      .andWhere("s.platform != ''")
+      .groupBy('s.platform')
+      .getRawMany()
+
+    const predictionMap = new Map<string, number>()
+    for (const row of submissionRows) {
+      const rawPlatform: string = row.platform || ''
+      // dimension_submissions 中的 platform 可能是平台名或域名，统一归一化
+      const key = hostToPlatformKey(rawPlatform.toLowerCase())
+      const count = Number(row.totalPredictions) || 0
+      predictionMap.set(key, (predictionMap.get(key) || 0) + count)
+    }
+
+    // 合并两个数据源
+    const allKeys = new Set([...userCountMap.keys(), ...predictionMap.keys()])
+    let list = Array.from(allKeys)
+      .map((platformKey) => ({
         platform: PLATFORM_DISPLAY[platformKey] || platformKey,
         platformKey,
-        userCount: info.userIds.size,
-        totalPredictions: 0,
+        userCount: userCountMap.get(platformKey)?.size || 0,
+        totalPredictions: predictionMap.get(platformKey) || 0,
       }))
       .filter((row) => row.platformKey !== 'unknown')
       .sort((a, b) => b.userCount - a.userCount)

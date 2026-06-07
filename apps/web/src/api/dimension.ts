@@ -6,16 +6,17 @@
  */
 import { http } from './request'
 
-/** 维度报告条目（与 mockData.ts 中 MOCK_DIMENSION_REPORTS 同形） */
+/** 维度报告条目（与后端 DimensionSubmissionEntity 对应） */
 export interface IDimensionReport {
   id: string
   dimKey: string
-  dimensionName?: string
-  topOption: string
-  topProbability: number
-  distribution: Array<{ option: string; probability: number }>
-  summary?: string
-  updatedAt?: string
+  topOption: string | null
+  topProbability: number | null
+  distribution: Record<string, number> | null
+  summary: string | null
+  model: string | null
+  apiKeyHint?: string | null
+  createdAt: string
 }
 
 interface ListDimensionsResponse {

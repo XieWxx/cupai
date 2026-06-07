@@ -5,11 +5,14 @@ import { BsdcSyncService } from './bsd-sync.service'
 /**
  * BSD 同步调度器
  *
- * 多级频率：
- * - 10s   ：同步实时赛事（仅状态/比分/分钟，零拷贝快路径）
- * - 5min  ：同步赛事列表 + 比赛子数据（incidents/lineups/odds/stats/predictions）
- * - 30min ：同步积分榜
- * - 6h    ：同步球队 + 联赛元数据
+ * 多级频率（均可通过环境变量覆盖）：
+ * - BSD_SYNC_LIVE_INTERVAL_MS    (默认 10s)  ：同步实时赛事（仅状态/比分/分钟）
+ * - BSD_SYNC_EVENTS_INTERVAL_MS  (默认 5min)  ：同步赛事列表 + 比赛子数据
+ * - BSD_SYNC_AUX_INTERVAL_MS     (默认 5min)  ：同步 incidents/lineups/odds/stats/predictions
+ * - BSD_SYNC_STANDINGS_INTERVAL_MS (默认 30min)：同步积分榜
+ * - BSD_SYNC_TEAMS_INTERVAL_MS   (默认 6h)    ：同步球队元数据
+ * - BSD_SYNC_LEAGUES_INTERVAL_MS (默认 6h)    ：同步联赛元数据
+ * - BSD_SYNC_TICK_INTERVAL_MS    (默认 30s)   ：中频任务 tick 检查间隔
  *
  * 通过 `setEnabled(false)` 可暂停整体调度。
  */
@@ -42,11 +45,33 @@ export class BsdcSyncScheduler implements OnModuleInit, OnApplicationBootstrap {
     leagues: 0,
   }
 
+  /** 从环境变量读取的调度间隔（毫秒） */
+  private readonly intervals: Record<string, number>
+
   constructor(
     private readonly sync: BsdcSyncService,
     private readonly config: ConfigService,
   ) {
     this.bsdEnabled = (this.config.get<string>('BSD_ENABLED') ?? 'true') !== 'false'
+    // 从环境变量读取各任务间隔，未配置则使用默认值
+    this.intervals = {
+      live: this.parseMs('BSD_SYNC_LIVE_INTERVAL_MS', 10_000),           // 实时赛事：10秒
+      events: this.parseMs('BSD_SYNC_EVENTS_INTERVAL_MS', 5 * 60_000),   // 赛事列表：5分钟
+      aux: this.parseMs('BSD_SYNC_AUX_INTERVAL_MS', 5 * 60_000),         // 辅助数据：5分钟
+      standings: this.parseMs('BSD_SYNC_STANDINGS_INTERVAL_MS', 30 * 60_000), // 积分榜：30分钟
+      teams: this.parseMs('BSD_SYNC_TEAMS_INTERVAL_MS', 6 * 60 * 60_000),     // 球队：6小时
+      leagues: this.parseMs('BSD_SYNC_LEAGUES_INTERVAL_MS', 6 * 60 * 60_000), // 联赛：6小时
+      tick: this.parseMs('BSD_SYNC_TICK_INTERVAL_MS', 30_000),           // tick 检查：30秒
+    }
+  }
+
+  /** 解析环境变量中的毫秒值，无效值回退到默认值 */
+  private parseMs(key: string, defaultMs: number): number {
+    const raw = this.config.get<string>(key)
+    if (!raw) return defaultMs
+    const val = Number(raw)
+    if (Number.isNaN(val) || val < 1000) return defaultMs
+    return val
   }
 
   // ==================== 生命周期 ====================
@@ -65,7 +90,7 @@ export class BsdcSyncScheduler implements OnModuleInit, OnApplicationBootstrap {
     this.startLiveLoop()
     // 计算其它任务的下一次执行时刻
     this.scheduleNextRuns()
-    this.logger.log('BSD 同步调度器已启动：10s 实时 / 5min 列表 / 30min 积分榜 / 6h 元数据')
+    this.logger.log(`BSD 同步调度器已启动：${this.intervals.live / 1000}s 实时 / ${this.intervals.events / 60_000}min 列表 / ${this.intervals.standings / 60_000}min 积分榜 / ${this.intervals.teams / 3_600_000}h 元数据`)
   }
 
   onModuleInit() {
@@ -86,22 +111,21 @@ export class BsdcSyncScheduler implements OnModuleInit, OnApplicationBootstrap {
   }
 
   private startLiveLoop() {
-    // 10s 实时窗口用 setInterval：精度高且开销低
     this.liveTimer = setInterval(() => {
       if (!this.sync.isEnabled()) return
       this.safeRun('live', () => this.sync.syncLiveEvents()).catch(() => undefined)
-    }, 10_000)
+    }, this.intervals.live)
   }
 
   private scheduleNextRuns() {
     const now = Date.now()
-    this.nextRun.events = now + 5 * 60_000
-    this.nextRun.aux = now + 5 * 60_000
-    this.nextRun.standings = now + 30 * 60_000
-    this.nextRun.teams = now + 6 * 60 * 60_000
-    this.nextRun.leagues = now + 6 * 60 * 60_000
+    this.nextRun.events = now + this.intervals.events
+    this.nextRun.aux = now + this.intervals.aux
+    this.nextRun.standings = now + this.intervals.standings
+    this.nextRun.teams = now + this.intervals.teams
+    this.nextRun.leagues = now + this.intervals.leagues
 
-    setInterval(() => this.tickMediumFrequency(), 30_000)
+    setInterval(() => this.tickMediumFrequency(), this.intervals.tick)
   }
 
   /**
@@ -112,23 +136,23 @@ export class BsdcSyncScheduler implements OnModuleInit, OnApplicationBootstrap {
     const now = Date.now()
     if (now >= this.nextRun.events) {
       await this.safeRun('events', () => this.sync.syncEvents())
-      this.nextRun.events = now + 5 * 60_000
+      this.nextRun.events = now + this.intervals.events
     }
     if (now >= this.nextRun.aux) {
       await this.safeRun('aux', () => this.sync.syncMatchAuxData(20))
-      this.nextRun.aux = now + 5 * 60_000
+      this.nextRun.aux = now + this.intervals.aux
     }
     if (now >= this.nextRun.standings) {
       await this.safeRun('standings', () => this.sync.syncStandings())
-      this.nextRun.standings = now + 30 * 60_000
+      this.nextRun.standings = now + this.intervals.standings
     }
     if (now >= this.nextRun.teams) {
       await this.safeRun('teams', () => this.sync.syncTeams())
-      this.nextRun.teams = now + 6 * 60 * 60_000
+      this.nextRun.teams = now + this.intervals.teams
     }
     if (now >= this.nextRun.leagues) {
       await this.safeRun('leagues', () => this.sync.syncLeagues())
-      this.nextRun.leagues = now + 6 * 60 * 60_000
+      this.nextRun.leagues = now + this.intervals.leagues
     }
   }
 

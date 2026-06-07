@@ -54,22 +54,30 @@
         <!-- 比分板 -->
         <div v-if="match?.homeScore !== null && match?.homeScore !== undefined" class="scoreboard">
           <div class="score-row">
-            <div class="team-info">
-              <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
+            <div class="team-info team-info--home">
               <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
-              <span class="team-name">{{ match?.homeTeam?.name }}</span>
-              <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
+              <div class="team-info__text">
+                <span class="team-name">{{ match?.homeTeam?.name }}</span>
+                <div class="team-meta">
+                  <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
+                  <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
+                </div>
+              </div>
             </div>
             <div class="score-display">
               <span class="score-num">{{ match?.homeScore }}</span>
               <span class="score-sep">:</span>
               <span class="score-num">{{ match?.awayScore }}</span>
             </div>
-            <div class="team-info">
-              <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
+            <div class="team-info team-info--away">
+              <div class="team-info__text">
+                <span class="team-name">{{ match?.awayTeam?.name }}</span>
+                <div class="team-meta">
+                  <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
+                  <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
+                </div>
+              </div>
               <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
-              <span class="team-name">{{ match?.awayTeam?.name }}</span>
-              <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
             </div>
           </div>
           <div v-if="match?.halfTimeHome !== null" class="half-time">
@@ -80,20 +88,28 @@
         <!-- ========== 比分板（开赛前展示，标注主客队） ========== -->
         <div v-else class="scoreboard scoreboard--upcoming">
           <div class="score-row">
-            <div class="team-info">
-              <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
+            <div class="team-info team-info--home">
               <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
-              <span class="team-name">{{ match?.homeTeam?.name }}</span>
-              <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
+              <div class="team-info__text">
+                <span class="team-name">{{ match?.homeTeam?.name }}</span>
+                <div class="team-meta">
+                  <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
+                  <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
+                </div>
+              </div>
             </div>
             <div class="score-display score-display--vs">
               <span class="vs-text">{{ $t('common.vs') }}</span>
             </div>
-            <div class="team-info">
-              <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
+            <div class="team-info team-info--away">
+              <div class="team-info__text">
+                <span class="team-name">{{ match?.awayTeam?.name }}</span>
+                <div class="team-meta">
+                  <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
+                  <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
+                </div>
+              </div>
               <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
-              <span class="team-name">{{ match?.awayTeam?.name }}</span>
-              <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
             </div>
           </div>
         </div>
@@ -274,6 +290,15 @@
                 <div class="dim-chart-header">
                   <div class="dim-chart-title">
                     <span class="dim-chart-name">{{ $t(dim.i18nKey) }}</span>
+                    <el-tag
+                      v-if="dimPredictCount(dim.key) > 0"
+                      size="small"
+                      effect="plain"
+                      type="info"
+                      class="dim-count-tag"
+                    >
+                      {{ $t('match.dimPredictCount', { n: dimPredictCount(dim.key) }) }}
+                    </el-tag>
                     <el-tooltip
                       v-if="dimWinner(dim.key)"
                       :content="dimWinner(dim.key) + (dimConfidence(dim.key) ? ` · ${(dimConfidence(dim.key) * 100).toFixed(0)}%` : '')"
@@ -695,6 +720,63 @@
       :title="$t('copyIntro.title')"
       :tabs="copyDialogTabs"
     />
+
+    <!-- 右侧分享栏（跟随屏幕滚动） -->
+    <div class="share-sidebar" v-if="match">
+      <div class="share-sidebar__label">{{ $t('match.share') }}</div>
+      <!-- X / Twitter -->
+      <a class="share-btn share-btn--x" :href="shareUrlX" target="_blank" rel="noopener" title="X (Twitter)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+      <!-- Facebook -->
+      <a class="share-btn share-btn--facebook" :href="shareUrlFacebook" target="_blank" rel="noopener" title="Facebook">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+      </a>
+      <!-- WhatsApp -->
+      <a class="share-btn share-btn--whatsapp" :href="shareUrlWhatsApp" target="_blank" rel="noopener" title="WhatsApp">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      </a>
+      <!-- Telegram -->
+      <a class="share-btn share-btn--telegram" :href="shareUrlTelegram" target="_blank" rel="noopener" title="Telegram">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+      </a>
+      <!-- LinkedIn -->
+      <a class="share-btn share-btn--linkedin" :href="shareUrlLinkedIn" target="_blank" rel="noopener" title="LinkedIn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      </a>
+      <!-- Reddit -->
+      <a class="share-btn share-btn--reddit" :href="shareUrlReddit" target="_blank" rel="noopener" title="Reddit">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
+      </a>
+      <!-- 微博 -->
+      <a class="share-btn share-btn--weibo" :href="shareUrlWeibo" target="_blank" rel="noopener" title="微博">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM9.05 17.219c-.384.616-1.208.884-1.829.602-.612-.279-.793-.991-.406-1.593.379-.595 1.176-.861 1.793-.583.631.283.822.997.442 1.574zm1.27-1.627c-.141.237-.449.353-.689.253-.236-.09-.307-.363-.168-.596.141-.229.445-.35.681-.246.24.09.315.36.176.589zm.176-2.719c-1.893-.493-4.033.45-4.857 2.118-.836 1.704-.026 3.591 1.886 4.21 1.983.642 4.318-.341 5.132-2.145.8-1.752-.154-3.69-2.161-4.183zM17.616 3.68c-.998-.27-1.652-.084-1.96.244-.308.328-.26.834.124 1.165.384.33.932.328 1.28-.008.347-.336.295-.858-.444-1.401zm3.644 2.128c-.386-1.311-1.313-2.078-2.598-2.432-1.291-.355-2.426-.077-3.153.688-.727.766-.778 1.878-.074 2.738.704.86 1.924 1.084 2.933.578 1.015-.51 1.478-1.634.892-2.572z"/></svg>
+      </a>
+      <!-- 微信（弹出二维码弹窗） -->
+      <button class="share-btn share-btn--wechat" :title="$t('match.wechatShare')" @click="wechatQrVisible = true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.045c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-7.062-6.122zM14.033 13.3c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/></svg>
+      </button>
+      <!-- QQ -->
+      <a class="share-btn share-btn--qq" :href="shareUrlQQ" target="_blank" rel="noopener" title="QQ">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.396 1.025.116 0 .263-.072.42-.216-.156.553-.216 1.086-.216 1.544 0 .876.396 1.426.96 1.426.283 0 .613-.137.95-.415.238.578.6.927 1.013.927.38 0 .765-.283 1.088-.762.324.48.708.762 1.088.762.414 0 .776-.349 1.014-.927.337.278.667.415.95.415.563 0 .96-.55.96-1.426 0-.458-.06-.991-.217-1.544.158.144.305.216.42.216.227 0 .397-.36.397-1.025 0-2.514-2.163-6.954-2.163-6.954V9.325C18.294 3.364 14.268 2 12.003 2z"/></svg>
+      </a>
+      <!-- 复制链接 -->
+      <button class="share-btn share-btn--link" :title="$t('match.copyLink')" @click="copyShareLink">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
+    </div>
+
+    <!-- 微信二维码弹窗 -->
+    <el-dialog v-model="wechatQrVisible" :title="$t('match.wechatShare')" width="320px" center>
+      <div class="wechat-qr-dialog">
+        <img
+          :src="wechatQrUrl"
+          alt="QR Code"
+          class="wechat-qr-img"
+        />
+        <p class="wechat-qr-tip">{{ $t('match.wechatScanTip') }}</p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -797,38 +879,40 @@ async function loadUserRanking() {
 const dimensionReports = ref<any[]>([])
 const reportsLoading = ref(false)
 
-// 监听 dimensionReports 变化，自动聚合 result_wdl 维度生成 AI 胜负率预测
+// 监听 dimensionReports 变化，自动聚合 result_wdl 维度生成 AI 胜负率预测 + 重渲染图表
 watch(dimensionReports, (reports) => {
   const wdlReports = (reports || []).filter((r: any) => r?.dimKey === 'result_wdl' && r?.distribution)
   if (!wdlReports.length) {
     prediction.value = null
-    return
-  }
-  // 归一化 key：不同 Agent 可能用 home/home_win/主胜 等不同 key
-  const normalizeKey = (k: string): 'home' | 'draw' | 'away' => {
-    const kl = k.toLowerCase().trim()
-    if (kl === 'home' || kl === 'home_win' || kl === '主胜' || kl === 'h') return 'home'
-    if (kl === 'draw' || kl === '平' || kl === '平局' || kl === 'd') return 'draw'
-    if (kl === 'away' || kl === 'away_win' || kl === '客胜' || kl === 'a') return 'away'
-    return 'draw' // 未知 key 归入平局
-  }
-  const totals: Record<string, number> = { home: 0, draw: 0, away: 0 }
-  wdlReports.forEach((r: any) => {
-    const dist = r.distribution || {}
-    Object.entries(dist).forEach(([k, v]) => {
-      const nk = normalizeKey(k)
-      totals[nk] = (totals[nk] || 0) + Number(v || 0)
+  } else {
+    // 归一化 key：不同 Agent 可能用 home/home_win/主胜 等不同 key
+    const normalizeKey = (k: string): 'home' | 'draw' | 'away' => {
+      const kl = k.toLowerCase().trim()
+      if (kl === 'home' || kl === 'home_win' || kl === '主胜' || kl === 'h') return 'home'
+      if (kl === 'draw' || kl === '平' || kl === '平局' || kl === 'd') return 'draw'
+      if (kl === 'away' || kl === 'away_win' || kl === '客胜' || kl === 'a') return 'away'
+      return 'draw' // 未知 key 归入平局
+    }
+    const totals: Record<string, number> = { home: 0, draw: 0, away: 0 }
+    wdlReports.forEach((r: any) => {
+      const dist = r.distribution || {}
+      Object.entries(dist).forEach(([k, v]) => {
+        const nk = normalizeKey(k)
+        totals[nk] = (totals[nk] || 0) + Number(v || 0)
+      })
     })
-  })
-  const n = wdlReports.length
-  const latest = wdlReports[wdlReports.length - 1]
-  prediction.value = {
-    homeWin: Number((totals['home'] / n).toFixed(4)),
-    draw: Number((totals['draw'] / n).toFixed(4)),
-    awayWin: Number((totals['away'] / n).toFixed(4)),
-    reasoning: latest?.summary || '',
-    source: latest?.model || 'Agent',
+    const n = wdlReports.length
+    const latest = wdlReports[wdlReports.length - 1]
+    prediction.value = {
+      homeWin: Number((totals['home'] / n).toFixed(4)),
+      draw: Number((totals['draw'] / n).toFixed(4)),
+      awayWin: Number((totals['away'] / n).toFixed(4)),
+      reasoning: latest?.summary || '',
+      source: latest?.model || 'Agent',
+    }
   }
+  // 维度数据变化时重渲染所有图表
+  nextTick(() => renderAllDimensionCharts())
 }, { deep: true })
 // 21 个维度的图表容器与实例（按 dimKey 索引）
 const dimChartRefs = ref<Record<string, HTMLElement | null>>({})
@@ -989,6 +1073,11 @@ function dimWinner(dimKey: DimensionKey): string {
 function dimConfidence(dimKey: DimensionKey): number {
   const r = dimensionReports.value.find((x) => x?.dimKey === dimKey)
   return Number(r?.extras?.confidence) || 0
+}
+
+/** 获取某维度的预测次数（即该维度有多少条 agent 报告） */
+function dimPredictCount(dimKey: DimensionKey): number {
+  return (dimensionReports.value || []).filter((r) => r?.dimKey === dimKey && r?.distribution).length
 }
 
 /**
@@ -1245,6 +1334,41 @@ async function loadDimensionReports(matchId: string) {
     // 等待 DOM 更新后渲染所有维度的图表
     await nextTick()
     renderAllDimensionCharts()
+  }
+}
+
+// ========== 维度数据定时轮询（Agent 回调后前端自动刷新） ==========
+let dimensionPollTimer: ReturnType<typeof setInterval> | null = null
+
+/** 启动维度数据轮询（每 15 秒刷新一次） */
+function startDimensionPoll(matchId: string) {
+  stopDimensionPoll()
+  dimensionPollTimer = setInterval(async () => {
+    try {
+      const { listDimensions } = await import('@/api/dimension')
+      const res = await listDimensions(matchId, undefined, 200)
+      const newList = res?.list || []
+      // 数据变化时更新（长度变化或最新记录 ID 变化）
+      const oldLen = dimensionReports.value.length
+      const newLen = newList.length
+      const oldFirstId = dimensionReports.value[0]?.id
+      const newFirstId = newList[0]?.id
+      if (newLen !== oldLen || (newLen > 0 && oldFirstId !== newFirstId)) {
+        dimensionReports.value = newList
+        // 维度数据变化时同步刷新用户排行
+        loadUserRanking()
+      }
+    } catch (err) {
+      // 轮询失败静默，不打扰用户
+    }
+  }, 15000)
+}
+
+/** 停止维度数据轮询 */
+function stopDimensionPoll() {
+  if (dimensionPollTimer) {
+    clearInterval(dimensionPollTimer)
+    dimensionPollTimer = null
   }
 }
 
@@ -1742,6 +1866,76 @@ function renderSentimentCharts(data: any) {
   }
 }
 
+// ========== 分享链接 ==========
+const sharePageUrl = computed(() => {
+  if (!match.value) return ''
+  return `${window.location.origin}/match/${match.value.id}`
+})
+
+/** 自动识别当前页面信息，生成分享文案 */
+const shareText = computed(() => {
+  if (!match.value) return ''
+  const home = match.value.homeTeam?.name || ''
+  const away = match.value.awayTeam?.name || ''
+  const tournament = match.value.tournament?.name || ''
+  // 有比分时展示比分，无比分时展示 VS
+  const hs = match.value.homeScore
+  const as = match.value.awayScore
+  const scorePart = (hs !== null && hs !== undefined && as !== null && as !== undefined)
+    ? ` ${hs}:${as} ` : ' VS '
+  const prefix = tournament ? `【${tournament}】` : ''
+  return `${prefix}${home}${scorePart}${away} — CupAI AI预测`
+})
+
+const shareUrlX = computed(() =>
+  `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText.value)}&url=${encodeURIComponent(sharePageUrl.value)}`
+)
+
+const shareUrlFacebook = computed(() =>
+  `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(sharePageUrl.value)}`
+)
+
+const shareUrlWhatsApp = computed(() =>
+  `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText.value + ' ' + sharePageUrl.value)}`
+)
+
+const shareUrlTelegram = computed(() =>
+  `https://t.me/share/url?url=${encodeURIComponent(sharePageUrl.value)}&text=${encodeURIComponent(shareText.value)}`
+)
+
+const shareUrlLinkedIn = computed(() =>
+  `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(sharePageUrl.value)}`
+)
+
+const shareUrlReddit = computed(() =>
+  `https://www.reddit.com/submit?url=${encodeURIComponent(sharePageUrl.value)}&title=${encodeURIComponent(shareText.value)}`
+)
+
+const shareUrlWeibo = computed(() =>
+  `https://service.weibo.com/share/share.php?title=${encodeURIComponent(shareText.value)}&url=${encodeURIComponent(sharePageUrl.value)}`
+)
+
+/** 微信分享：弹出二维码弹窗 */
+const wechatQrVisible = ref(false)
+const wechatQrUrl = computed(() => {
+  // 使用免费 QR 码 API 生成当前页面链接的二维码
+  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(sharePageUrl.value)}`
+})
+
+const shareUrlQQ = computed(() =>
+  `https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(sharePageUrl.value)}&title=${encodeURIComponent(shareText.value)}&summary=${encodeURIComponent(shareText.value)}`
+)
+
+/** 复制当前页面链接到剪贴板 */
+async function copyShareLink() {
+  try {
+    await navigator.clipboard.writeText(sharePageUrl.value)
+    ElMessage.success(t('match.linkCopied'))
+  } catch {
+    ElMessage.warning(t('match.copyFailed'))
+  }
+}
+
 // ========== 主加载 ==========
 async function loadDetail() {
   const matchId = route.params.id as string
@@ -1751,6 +1945,7 @@ async function loadDetail() {
   }
   unsubscribe?.()
   unsubscribe = null
+  stopDimensionPoll()
   match.value = null
   matchSentiment.value = null
   // prediction 是 computed，不需要手动清空
@@ -1786,6 +1981,7 @@ async function loadDetail() {
     // prediction 从 dimensionReports 自动聚合，无需单独加载
     loadPlayers()
     loadDimensionReports(matchId)
+    startDimensionPoll(matchId)
     loadInstructions(matchId)
     loadUserRanking()
   } catch (e: any) {
@@ -1889,6 +2085,7 @@ watch(
 onUnmounted(() => {
   unsubscribe?.()
   unsubscribe = null
+  stopDimensionPoll()
   sentimentChart?.dispose()
   sentimentChart = null
   distributionChart?.dispose()
@@ -1931,12 +2128,6 @@ onUnmounted(() => {
 .scoreboard--upcoming {
   padding: var(--space-6) var(--space-6);
 }
-.scoreboard--upcoming .team-flag {
-  font-size: var(--text-4xl);
-}
-.scoreboard--upcoming .team-name {
-  font-size: var(--text-base);
-}
 .team-side-tag {
   letter-spacing: 0.04em;
   font-size: var(--text-xs);
@@ -1953,14 +2144,43 @@ onUnmounted(() => {
 }
 .team-info {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-width: 120px;
 }
+.team-info--home {
+  flex-direction: row;
+  justify-content: flex-end;
+  text-align: right;
+}
+.team-info--away {
+  flex-direction: row;
+  justify-content: flex-start;
+  text-align: left;
+}
+.team-info__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.team-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
 .team-flag {
-  font-size: var(--text-5xl);
+  width: 120px;
+  height: 80px;
   line-height: 1;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: inline-block;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: none !important;
 }
 .team-name {
   font-size: var(--text-lg);
@@ -2151,6 +2371,10 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.dim-count-tag {
+  font-weight: var(--font-normal);
+  flex-shrink: 0;
 }
 .dim-chart {
   width: 100%;
@@ -2469,7 +2693,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .score-row { gap: var(--space-4); }
   .score-num { font-size: var(--text-5xl); }
-  .team-flag { font-size: var(--text-4xl); }
+  .team-flag { width: 80px; height: 54px; }
   .team-name { font-size: var(--text-base); }
 }
 
@@ -2480,9 +2704,91 @@ onUnmounted(() => {
   }
   .score-row { gap: var(--space-2); }
   .score-num { font-size: var(--text-4xl); }
-  .team-flag { font-size: var(--text-3xl); }
+  .team-flag { width: 56px; height: 38px; }
   .dim-charts-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ========== 右侧分享栏 ========== */
+.share-sidebar {
+  position: fixed;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+}
+.share-sidebar__label {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.share-btn:hover {
+  transform: scale(1.12);
+  box-shadow: var(--shadow-md);
+}
+.share-btn--x:hover { color: #000; border-color: #000; }
+.share-btn--facebook:hover { color: #1877F2; border-color: #1877F2; }
+.share-btn--whatsapp:hover { color: #25D366; border-color: #25D366; }
+.share-btn--telegram:hover { color: #0088CC; border-color: #0088CC; }
+.share-btn--linkedin:hover { color: #0A66C2; border-color: #0A66C2; }
+.share-btn--reddit:hover { color: #FF4500; border-color: #FF4500; }
+.share-btn--weibo:hover { color: #E6162D; border-color: #E6162D; }
+.share-btn--wechat:hover { color: #07C160; border-color: #07C160; }
+.share-btn--qq:hover { color: #12B7F5; border-color: #12B7F5; }
+.share-btn--link:hover { color: var(--color-primary); border-color: var(--color-primary); }
+
+/* 微信二维码弹窗 */
+.wechat-qr-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}
+.wechat-qr-img {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light);
+}
+.wechat-qr-tip {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+@media (max-width: 1100px) {
+  .share-sidebar {
+    right: 8px;
+  }
+  .share-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+@media (max-width: 768px) {
+  .share-sidebar {
+    display: none;
   }
 }
 </style>

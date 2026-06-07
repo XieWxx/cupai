@@ -23,13 +23,13 @@
         </div>
       </div>
       <div class="hero-content">
-        <div class="hero-badge">WE ARE 26 · 48 TEAMS · 104 MATCHES</div>
+        <div class="hero-badge">{{ $t('home.heroBadge') }}</div>
         <h1 class="hero-title">
           <span class="hero-title-main">{{ $t('home.heroTitle') }}</span>
           <span class="hero-title-sub">{{ $t('home.heroSubtitle') }}</span>
         </h1>
         <p class="hero-desc">
-          开放 2026 美加墨世界杯全量赛事数据 API，供你的 AI Agent 实时分析、智能预测。
+          {{ $t('home.heroDesc') }}
         </p>
         <div class="hero-actions">
           <el-button type="primary" size="large" class="hero-cta-primary" @click="$router.push('/match')">
@@ -47,7 +47,7 @@
       <span class="wc-divider-flag fi fi-us"></span>
       <span class="wc-divider-flag fi fi-ca"></span>
       <span class="wc-divider-flag fi fi-mx"></span>
-      <span class="wc-divider-text">WE ARE 26</span>
+      <span class="wc-divider-text">{{ $t('home.wcBadge') }}</span>
     </div>
 
     <!-- 模块 1：赛事动态区（进行中 + 待开赛合并展示） -->
@@ -60,30 +60,68 @@
         <el-button text @click="$router.push('/match')"><el-icon><DataLine /></el-icon> {{ $t('common.more') }}</el-button>
       </div>
       <el-tabs v-model="dynamicsTab" class="dynamics-tabs">
-        <!-- 合并 live + upcoming 为"进行中 & 待开赛" -->
-        <el-tab-pane name="active">
+        <!-- 待开赛 tab -->
+        <el-tab-pane name="upcoming">
           <template #label>
             <span class="tab-with-badge">
-              {{ $t('home.live') }} & {{ $t('home.todayUpcoming') }}
+              {{ $t('home.todayUpcoming') }}
             </span>
           </template>
           <div v-loading="dynamicsLoading" class="match-card-grid">
-            <el-empty v-if="!dynamicsLoading && activeMatches.length === 0" :description="$t('home.noLive')" :image-size="80" />
+            <el-empty v-if="!dynamicsLoading && dynamicsMatches.upcoming.length === 0" :description="$t('home.noUpcoming')" :image-size="80" />
             <el-card
-              v-for="match in activeMatches"
+              v-for="match in dynamicsMatches.upcoming"
               :key="match.id"
               shadow="hover"
               class="match-card"
-              :class="{ 'match-card--live': match.status === 'live' }"
               @click="$router.push(`/match/${match.id}`)"
             >
               <div class="match-header">
-                <el-tag v-if="match.status === 'live'" size="small" type="danger" effect="dark">
-                  <span class="live-dot" />
-                  {{ match.matchMinute || $t('home.live') }}
-                </el-tag>
-                <el-tag v-else size="small" type="warning" effect="plain">
+                <el-tag size="small" type="warning" effect="plain">
                   {{ $t('home.todayUpcoming') }}
+                </el-tag>
+                <span class="match-stage">{{ match.stage }}</span>
+              </div>
+              <div class="match-teams">
+                <div class="team-info">
+                  <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam?.countryCode)} team-flag`" />
+                  <span class="team-name">{{ match.homeTeam?.name }}</span>
+                </div>
+                <div class="match-vs">
+                  <span class="score">{{ match.homeScore ?? '-' }} : {{ match.awayScore ?? '-' }}</span>
+                </div>
+                <div class="team-info">
+                  <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam?.countryCode)} team-flag`" />
+                  <span class="team-name">{{ match.awayTeam?.name }}</span>
+                </div>
+              </div>
+              <div class="match-meta">
+                <span class="match-time">{{ match.startTime ? new Date(match.startTime).toLocaleString(i18nLocale) : '-' }}</span>
+                <span class="match-venue" v-if="match.venue">{{ match.venue }}</span>
+              </div>
+            </el-card>
+          </div>
+        </el-tab-pane>
+        <!-- 进行中 tab -->
+        <el-tab-pane name="live">
+          <template #label>
+            <span class="tab-with-badge">
+              {{ $t('home.live') }}
+            </span>
+          </template>
+          <div v-loading="dynamicsLoading" class="match-card-grid">
+            <el-empty v-if="!dynamicsLoading && dynamicsMatches.live.length === 0" :description="$t('home.noLive')" :image-size="80" />
+            <el-card
+              v-for="match in dynamicsMatches.live"
+              :key="match.id"
+              shadow="hover"
+              class="match-card match-card--live"
+              @click="$router.push(`/match/${match.id}`)"
+            >
+              <div class="match-header">
+                <el-tag size="small" type="danger" effect="dark">
+                  <span class="live-dot" />
+                  {{ match.currentMinute ? `${match.currentMinute}'` : $t('home.live') }}
                 </el-tag>
                 <span class="match-stage">{{ match.stage }}</span>
               </div>
@@ -113,7 +151,7 @@
     <!-- ========== 2026 世界杯口号装饰条 ========== -->
     <div class="wc-slogan-bar">
       <span class="wc-slogan-emoji">⚽</span>
-      <span class="wc-slogan-text">One Tournament. Three Host Nations. Infinite Passion.</span>
+      <span class="wc-slogan-text">{{ $t('home.wcSlogan') }}</span>
       <span class="wc-slogan-emoji">🏆</span>
     </div>
 
@@ -221,7 +259,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Calendar, Trophy, User, Cpu, Connection, ChatDotRound, CopyDocument, DataLine } from '@element-plus/icons-vue'
 import PlatformBadge from '@/components/ranking/PlatformBadge.vue'
@@ -253,9 +291,6 @@ const userRanking = ref<any[]>([])
 const modelRanking = ref<any[]>([])
 const platformRanking = ref<any[]>([])
 let timer: ReturnType<typeof setInterval> | null = null
-
-// 合并进行中 + 待开赛
-const activeMatches = computed(() => [...dynamicsMatches.live, ...dynamicsMatches.upcoming])
 
 function getFlagClass(countryCode?: string): string {
   if (!countryCode) return ''
@@ -355,15 +390,16 @@ onUnmounted(() => {
   position: relative;
   padding: var(--space-10) var(--space-6);
   text-align: center;
-  border-radius: var(--radius-xl);
+  border-radius: 0;
   margin-bottom: var(--space-8);
   overflow: hidden;
   background: transparent;
-  /* 修复横向滚动条：原写法 width: 100vw + margin-left: calc(-50vw + 50%)
-     在页面出现垂直滚动条时，100vw 包含滚动条宽度（~17px），
-     会比父容器可视宽度大 15-17px，导致 body 出现横向滚动条。
-     改为 100% 即可与父容器同宽，避免溢出。*/
-  width: 100%;
+  /* 全屏宽度：突破 home-view 的 max-width 限制 */
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: auto;
+  margin-left: -50vw;
 }
 
 /* ========== 国旗滚动背景 ========== */
@@ -373,11 +409,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: var(--space-4);
+  /* 国旗上下间距增大 */
+  gap: var(--space-8);
   pointer-events: none;
-  /* 关键：让国旗层做"背景纹理"而非"前景遮罩"，配合 z-index:1 的 hero-content 形成层次 */
-  opacity: 0.35;
   z-index: 0;
+  /* 无遮罩 */
+  opacity: 1;
+  width: 100%;
+  padding: var(--space-6) 0;
 }
 
 .flag-scroll-row {
@@ -401,7 +440,7 @@ onUnmounted(() => {
 }
 
 .hero-flag {
-  font-size: 80px;
+  font-size: 120px;
   flex-shrink: 0;
 }
 
@@ -816,6 +855,9 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .hero-section {
     padding: var(--space-8) var(--space-4);
+    width: 100vw;
+    left: 50%;
+    margin-left: -50vw;
   }
   .hero-title-main {
     font-size: var(--text-2xl);
@@ -832,6 +874,9 @@ onUnmounted(() => {
 @media (max-width: 480px) {
   .hero-section {
     padding: var(--space-6) var(--space-3);
+    width: 100vw;
+    left: 50%;
+    margin-left: -50vw;
   }
   .hero-title-main {
     font-size: var(--text-xl);

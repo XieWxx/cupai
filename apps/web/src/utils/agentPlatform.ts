@@ -29,6 +29,17 @@ export interface AgentPlatform {
   iconSvg: string
   /** 首字母 badge 用（fallback） */
   letter: string
+  /**
+   * LobeHub Icons 对应的 icon ID
+   * 用于生成 CDN SVG URL：https://unpkg.com/@lobehub/icons-static-svg@latest/icons/{id}-color.svg
+   * 完整列表：https://icons.lobehub.com
+   */
+  lobeIconId?: string
+}
+
+/** 根据 LobeHub icon ID 生成 CDN SVG URL */
+export function getLobeIconUrl(lobeIconId: string): string {
+  return `https://unpkg.com/@lobehub/icons-static-svg@latest/icons/${lobeIconId}-color.svg`
 }
 
 /* ============================================================
@@ -70,6 +81,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#10a37f',
       iconSvg: ICON_OPENAI,
       letter: 'O',
+      lobeIconId: 'openai',
     },
   },
   {
@@ -82,6 +94,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#d97706',
       iconSvg: ICON_ANTHROPIC,
       letter: 'A',
+      lobeIconId: 'anthropic',
     },
   },
   {
@@ -94,6 +107,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#4285f4',
       iconSvg: ICON_GOOGLE,
       letter: 'G',
+      lobeIconId: 'google',
     },
   },
   {
@@ -106,6 +120,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#0066cc',
       iconSvg: ICON_DEEPSEEK,
       letter: 'D',
+      lobeIconId: 'deepseek',
     },
   },
   {
@@ -118,6 +133,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#615ced',
       iconSvg: ICON_QWEN,
       letter: 'Q',
+      lobeIconId: 'qwen',
     },
   },
   {
@@ -130,6 +146,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#2932e1',
       iconSvg: ICON_BAIDU,
       letter: 'E',
+      lobeIconId: 'baidu',
     },
   },
   {
@@ -142,6 +159,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#1c64f2',
       iconSvg: ICON_XFYUN,
       letter: 'S',
+      lobeIconId: 'iflytek',
     },
   },
   {
@@ -154,6 +172,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#3862ec',
       iconSvg: ICON_ZHIPU,
       letter: 'Z',
+      lobeIconId: 'zhipu',
     },
   },
   {
@@ -166,6 +185,7 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#000000',
       iconSvg: ICON_MOONSHOT,
       letter: 'M',
+      lobeIconId: 'moonshot',
     },
   },
   {
@@ -178,6 +198,84 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       color: '#ff5c4d',
       iconSvg: ICON_COHERE,
       letter: 'C',
+      lobeIconId: 'cohere',
+    },
+  },
+  {
+    key: 'codex-cli',
+    match: (h) => /codex-cli|codex/i.test(h),
+    meta: {
+      key: 'codex-cli',
+      name: 'Codex CLI',
+      nameEn: 'Codex CLI',
+      color: '#1a7f37',
+      iconSvg: '',
+      letter: 'C',
+      lobeIconId: 'openai',
+    },
+  },
+  {
+    key: 'cursor',
+    match: (h) => /cursor/i.test(h),
+    meta: {
+      key: 'cursor',
+      name: 'Cursor',
+      nameEn: 'Cursor',
+      color: '#6366f1',
+      iconSvg: '',
+      letter: 'C',
+      lobeIconId: 'cursor',
+    },
+  },
+  {
+    key: 'windsurf',
+    match: (h) => /windsurf/i.test(h),
+    meta: {
+      key: 'windsurf',
+      name: 'Windsurf',
+      nameEn: 'Windsurf',
+      color: '#0ea5e9',
+      iconSvg: '',
+      letter: 'W',
+      lobeIconId: 'windsurf',
+    },
+  },
+  {
+    key: 'cline',
+    match: (h) => /cline/i.test(h),
+    meta: {
+      key: 'cline',
+      name: 'Cline',
+      nameEn: 'Cline',
+      color: '#8b5cf6',
+      iconSvg: '',
+      letter: 'C',
+      lobeIconId: 'cline',
+    },
+  },
+  {
+    key: 'trae',
+    match: (h) => /trae/i.test(h),
+    meta: {
+      key: 'trae',
+      name: 'Trae',
+      nameEn: 'Trae',
+      color: '#f97316',
+      iconSvg: '',
+      letter: 'T',
+      lobeIconId: 'trae',
+    },
+  },
+  {
+    key: 'workbuddy',
+    match: (h) => /workbuddy/i.test(h),
+    meta: {
+      key: 'workbuddy',
+      name: 'WorkBuddy',
+      nameEn: 'WorkBuddy',
+      color: '#10b981',
+      iconSvg: '',
+      letter: 'W',
     },
   },
 ]
@@ -196,6 +294,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#10a37f',
       iconSvg: ICON_OPENAI,
       letter: 'G',
+      lobeIconId: 'openai',
     },
   },
   {
@@ -208,6 +307,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#d97706',
       iconSvg: ICON_ANTHROPIC,
       letter: 'C',
+      lobeIconId: 'anthropic',
     },
   },
   {
@@ -220,6 +320,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#4285f4',
       iconSvg: ICON_GOOGLE,
       letter: 'G',
+      lobeIconId: 'google',
     },
   },
   {
@@ -232,6 +333,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#0066cc',
       iconSvg: ICON_DEEPSEEK,
       letter: 'D',
+      lobeIconId: 'deepseek',
     },
   },
   {
@@ -244,6 +346,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#615ced',
       iconSvg: ICON_QWEN,
       letter: 'Q',
+      lobeIconId: 'qwen',
     },
   },
   {
@@ -256,6 +359,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#2932e1',
       iconSvg: ICON_BAIDU,
       letter: 'E',
+      lobeIconId: 'baidu',
     },
   },
   {
@@ -268,6 +372,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#1c64f2',
       iconSvg: ICON_XFYUN,
       letter: 'S',
+      lobeIconId: 'iflytek',
     },
   },
   {
@@ -280,6 +385,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#3862ec',
       iconSvg: ICON_ZHIPU,
       letter: 'Z',
+      lobeIconId: 'zhipu',
     },
   },
   {
@@ -292,6 +398,7 @@ const MODEL_RULES: Array<{ key: string; match: (name: string) => boolean; meta: 
       color: '#000000',
       iconSvg: ICON_MOONSHOT,
       letter: 'M',
+      lobeIconId: 'moonshot',
     },
   },
 ]
@@ -324,16 +431,31 @@ function extractHost(url: string): string {
 }
 
 /**
- * 根据 API endpoint URL 域名识别 Agent 平台
- * @param apiEndpoint 形如 https://api.openai.com/v1
+ * 根据 API endpoint URL 域名或平台名称识别 Agent 平台
+ * @param apiEndpoint 形如 https://api.openai.com/v1 或平台名称（如 codex-cli、cursor）
  */
 export function detectPlatform(apiEndpoint: string): AgentPlatform {
   if (!apiEndpoint) return { ...UNKNOWN_PLATFORM }
-  const host = extractHost(apiEndpoint)
-  for (const rule of PLATFORM_RULES) {
-    if (rule.match(host)) return rule.meta
+  // 判断是否为 URL（包含 . 或 ://）
+  const isUrl = apiEndpoint.includes('.') || apiEndpoint.includes('://')
+  if (isUrl) {
+    const host = extractHost(apiEndpoint)
+    for (const rule of PLATFORM_RULES) {
+      if (rule.match(host)) return rule.meta
+    }
+    return { ...UNKNOWN_PLATFORM, letter: host.charAt(0).toUpperCase() || '?' }
   }
-  return { ...UNKNOWN_PLATFORM, letter: host.charAt(0).toUpperCase() || '?' }
+  // 非 URL：直接作为平台名匹配 PLATFORM_RULES
+  for (const rule of PLATFORM_RULES) {
+    if (rule.match(apiEndpoint)) return rule.meta
+  }
+  // 兜底：用输入值作为平台名
+  return {
+    ...UNKNOWN_PLATFORM,
+    name: apiEndpoint,
+    nameEn: apiEndpoint,
+    letter: apiEndpoint.charAt(0).toUpperCase() || '?',
+  }
 }
 
 /**

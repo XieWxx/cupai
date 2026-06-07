@@ -121,18 +121,11 @@ export class RankingController {
   /**
    * 获取热门 AI 平台排行
    * GET /ranking/platforms/top
+   * 复用 getPlatformRankings 逻辑，默认返回 TOP 6
    */
   @Get('platforms/top')
-  async getTopPlatforms() {
-    const platforms = [
-      { platform: 'ChatGPT', platformValue: 'chatgpt', userCount: 120 },
-      { platform: 'Claude', platformValue: 'claude', userCount: 103 },
-      { platform: 'DeepSeek', platformValue: 'deepseek', userCount: 86 },
-      { platform: 'Cursor', platformValue: 'cursor', userCount: 69 },
-      { platform: 'Qwen', platformValue: 'qwen', userCount: 52 },
-      { platform: 'Gemini', platformValue: 'gemini', userCount: 35 },
-    ]
-    return { list: platforms }
+  async getTopPlatforms(@Query('limit') limit?: string) {
+    return this.rankingService.getPlatformRankings(limit ? Number(limit) : 6)
   }
 
   /**

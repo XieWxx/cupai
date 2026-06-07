@@ -27,11 +27,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '0.0.0.0',
     proxy: {
       // 开发环境代理后端 API
       '/api': {
         target: 'http://localhost:3002',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.log('[proxy error]', err.message)
+          })
+        },
       },
       // WebSocket 代理
       '/socket.io': {

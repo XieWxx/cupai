@@ -166,6 +166,11 @@
 
           <!-- 预测次数 -->
           <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="120" align="center" />
+
+          <!-- 空数据提示 -->
+          <template #empty>
+            <el-empty :description="$t('common.noData')" :image-size="80" />
+          </template>
         </el-table>
       </el-tab-pane>
 
@@ -193,6 +198,10 @@
               {{ Number(row.accuracyRate).toFixed(1) }}%
             </template>
           </el-table-column>
+          <!-- 空数据提示 -->
+          <template #empty>
+            <el-empty :description="$t('common.noData')" :image-size="80" />
+          </template>
         </el-table>
       </el-tab-pane>
     </el-tabs>

@@ -32,7 +32,8 @@ async function bootstrap() {
   })
 
   const port = process.env.SERVER_PORT || 3001
-  await app.listen(port)
+  // 监听 0.0.0.0 确保 IPv4 可访问（Vite 代理走 IPv4 127.0.0.1）
+  await app.listen(port, '0.0.0.0')
   console.log(`[CupAI] 后端服务已启动: http://localhost:${port}`)
 }
 

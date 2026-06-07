@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  BeforeInsert,
 } from 'typeorm'
 import { UserAiConfigEntity } from '../../ai/entities/user-ai-config.entity'
 import { WeightModelEntity } from '../../ranking/entities/weight-model.entity'
+import * as crypto from 'crypto'
 
 /**
  * 用户实体
@@ -39,11 +41,23 @@ export class UserEntity {
   @Column({ length: 50, default: 'Asia/Shanghai', comment: '默认时区' })
   timezone: string
 
+  /** 用户 API Key，用于 Agent 回调鉴权，注册时自动生成 */
+  @Column({ unique: true, length: 64, comment: 'API Key（Agent 回调鉴权）' })
+  apiKey: string
+
   @CreateDateColumn({ name: 'created_at', comment: '注册时间' })
   createdAt: Date
 
   @UpdateDateColumn({ name: 'updated_at', comment: '更新时间' })
   updatedAt: Date
+
+  /** 注册前自动生成 apiKey */
+  @BeforeInsert()
+  generateApiKey() {
+    if (!this.apiKey) {
+      this.apiKey = `cpk_${crypto.randomBytes(24).toString('hex')}`
+    }
+  }
 
   // 关联关系
   @OneToMany(() => UserAiConfigEntity, (config) => config.user)

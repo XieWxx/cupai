@@ -297,6 +297,37 @@ export class RankingService {
   }
 
   /**
+   * 用户提交维度分析后，更新用户排行记录
+   * 如果用户没有排行记录，则创建一条新记录
+   * @param userId 用户 ID
+   */
+  async incrementUserPredictions(userId: string): Promise<void> {
+    let ranking = await this.userRankingRepo.findOne({ where: { userId } })
+    if (!ranking) {
+      ranking = this.userRankingRepo.create({ userId, totalPredictions: 1 })
+    } else {
+      ranking.totalPredictions += 1
+    }
+    await this.userRankingRepo.save(ranking)
+  }
+
+  /**
+   * 模型提交维度分析后，更新模型排行记录
+   * 如果模型没有排行记录，则创建一条新记录
+   * @param modelName 模型名称（如 deepseek-chat、gpt-4o）
+   */
+  async incrementModelPredictions(modelName: string): Promise<void> {
+    if (!modelName) return
+    let ranking = await this.modelRankingRepo.findOne({ where: { modelName } })
+    if (!ranking) {
+      ranking = this.modelRankingRepo.create({ modelName, totalPredictions: 1 })
+    } else {
+      ranking.totalPredictions += 1
+    }
+    await this.modelRankingRepo.save(ranking)
+  }
+
+  /**
    * 获取用户个人排行信息
    */
   async getMyRanking(userId: string, seasonId?: string) {

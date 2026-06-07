@@ -50,6 +50,14 @@ export class UserRankingEntity {
   @Column({ name: 'accuracy_rate', type: 'decimal', precision: 5, scale: 2, default: 0, comment: '准确率(%)' })
   accuracyRate: number
 
+  /** 最近使用的模型名称（Agent 回调时更新） */
+  @Column({ name: 'last_model', length: 100, nullable: true, comment: '最近使用的模型' })
+  lastModel: string
+
+  /** 最近使用的 Agent 平台（Agent 回调时更新） */
+  @Column({ name: 'last_platform', length: 100, nullable: true, comment: '最近使用的Agent平台' })
+  lastPlatform: string
+
   /** 赛季ID（用于区分不同赛季排行） */
   @Column({ name: 'season_id', length: 50, nullable: true, comment: '赛季ID' })
   seasonId: string

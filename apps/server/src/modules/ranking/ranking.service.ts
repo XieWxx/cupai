@@ -5,7 +5,9 @@ import { WeightModelEntity } from './entities/weight-model.entity'
 import { UserRankingEntity } from './entities/user-ranking.entity'
 import { ModelRankingEntity } from './entities/model-ranking.entity'
 import { AnalysisReportEntity } from '../agent/entities/analysis-report.entity'
+import { DimensionSubmissionEntity } from '../agent/entities/dimension-submission.entity'
 import { UserAiConfigEntity } from '../ai/entities/user-ai-config.entity'
+import { UserEntity } from '../user/entities/user.entity'
 import { CreateWeightModelDto } from './dto/create-weight-model.dto'
 import { WEIGHT_SUM } from '@cupai/constants'
 
@@ -71,6 +73,10 @@ export class RankingService {
     private readonly reportRepo: Repository<AnalysisReportEntity>,
     @InjectRepository(UserAiConfigEntity)
     private readonly userAiConfigRepo: Repository<UserAiConfigEntity>,
+    @InjectRepository(DimensionSubmissionEntity)
+    private readonly submissionRepo: Repository<DimensionSubmissionEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepo: Repository<UserEntity>,
   ) {}
 
   // 创建权重模型
@@ -298,33 +304,108 @@ export class RankingService {
 
   /**
    * 用户提交维度分析后，更新用户排行记录
-   * 如果用户没有排行记录，则创建一条新记录
+   * 同时记录最近使用的模型和平台
    * @param userId 用户 ID
+   * @param model 模型名称
+   * @param platform 平台名称
    */
-  async incrementUserPredictions(userId: string): Promise<void> {
+  async incrementUserPredictions(userId: string, model?: string, platform?: string): Promise<void> {
     let ranking = await this.userRankingRepo.findOne({ where: { userId } })
     if (!ranking) {
-      ranking = this.userRankingRepo.create({ userId, totalPredictions: 1 })
+      ranking = this.userRankingRepo.create({
+        userId,
+        totalPredictions: 1,
+        lastModel: model || null,
+        lastPlatform: platform || null,
+      })
     } else {
       ranking.totalPredictions += 1
+      if (model) ranking.lastModel = model
+      if (platform) ranking.lastPlatform = platform
     }
     await this.userRankingRepo.save(ranking)
   }
 
   /**
    * 模型提交维度分析后，更新模型排行记录
-   * 如果模型没有排行记录，则创建一条新记录
+   * 同时记录所属平台
    * @param modelName 模型名称（如 deepseek-chat、gpt-4o）
+   * @param platform 平台名称
    */
-  async incrementModelPredictions(modelName: string): Promise<void> {
+  async incrementModelPredictions(modelName: string, platform?: string): Promise<void> {
     if (!modelName) return
     let ranking = await this.modelRankingRepo.findOne({ where: { modelName } })
     if (!ranking) {
-      ranking = this.modelRankingRepo.create({ modelName, totalPredictions: 1 })
+      ranking = this.modelRankingRepo.create({
+        modelName,
+        totalPredictions: 1,
+        platform: platform || null,
+      })
     } else {
       ranking.totalPredictions += 1
+      if (platform) ranking.platform = platform
     }
     await this.modelRankingRepo.save(ranking)
+  }
+
+  /**
+   * 按赛事维度获取用户预测排行
+   * 从 dimension_submissions 按 matchId 聚合，
+   * 统计每个用户（通过 apiKeyHint 反查）在该赛事的提交数、最近模型、最近平台
+   *
+   * @param matchId 赛事 ID
+   * @param limit   限制返回条数
+   */
+  async getMatchUserRankings(matchId: string, limit = 10) {
+    // 查询该赛事所有维度提交，按 api_key_hint 分组
+    const rows = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.apiKeyHint', 'apiKeyHint')
+      .addSelect('COUNT(*)', 'totalPredictions')
+      .addSelect('MAX(s.model)', 'lastModel')
+      .addSelect('MAX(s.createdAt)', 'lastActiveAt')
+      .where('s.matchId = :matchId', { matchId })
+      .andWhere('s.apiKeyHint IS NOT NULL')
+      .groupBy('s.apiKeyHint')
+      .orderBy('COUNT(*)', 'DESC')
+      .limit(limit)
+      .getRawMany()
+
+    if (rows.length === 0) {
+      return { list: [], total: 0 }
+    }
+
+    // 通过 apiKeyHint 反查用户信息
+    const hints = rows.map((r) => r.apiKeyHint)
+    // 查找 apiKey 以 hint 开头的用户
+    const users = await this.userRepo
+      .createQueryBuilder('u')
+      .select(['u.id', 'u.nickname', 'u.username', 'u.region', 'u.apiKey'])
+      .getMany()
+
+    // 建立 hint -> user 映射
+    const hintUserMap = new Map<string, UserEntity>()
+    for (const user of users) {
+      if (user.apiKey) {
+        const hint = user.apiKey.slice(0, 8)
+        hintUserMap.set(hint, user)
+      }
+    }
+
+    const list = rows.map((r) => {
+      const user = hintUserMap.get(r.apiKeyHint)
+      return {
+        userId: user?.id || null,
+        username: user?.nickname || user?.username || 'Anonymous',
+        countryCode: user?.region || '',
+        lastModel: r.lastModel || '',
+        lastPlatform: null, // dimension_submissions 中暂无 platform 字段
+        totalPredictions: Number(r.totalPredictions) || 0,
+        lastActiveAt: r.lastActiveAt,
+      }
+    })
+
+    return { list, total: list.length }
   }
 
   /**

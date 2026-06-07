@@ -767,22 +767,24 @@ const userPredictionRanking = ref<UserRankingItem[]>([])
 const userRankingLoading = ref(false)
 
 /**
- * 加载用户预测排行
- * 后端接口：GET /ranking/users（按 accuracyRate 降序）
- * 映射字段：userId / username / countryCode / platform / llmType / accuracy
+ * 加载用户预测排行（按当前赛事维度）
+ * 后端接口：GET /ranking/match/:matchId/users
+ * 映射字段：userId / username / countryCode / lastModel / totalPredictions
  */
 async function loadUserRanking() {
   userRankingLoading.value = true
   try {
-    const res: any = await http.get('/ranking/users', { params: { sort: 'accuracy', pageSize: 7 } })
+    const matchId = route.params.id as string
+    if (!matchId) return
+    const res: any = await http.get(`/ranking/match/${matchId}/users`, { params: { limit: 7 } })
     const list = res?.list || res || []
     userPredictionRanking.value = list.map((item: any) => ({
-      userId: item.userId || item.id || '',
-      username: item.user?.nickname || item.user?.username || item.username || '',
-      countryCode: item.user?.region || item.countryCode || '',
-      platform: item.user?.defaultAiConfig?.modelName || item.platform || '',
-      llmType: item.user?.defaultAiConfig?.modelName || item.llmType || '',
-      accuracy: Number(item.accuracyRate) || 0,
+      userId: item.userId || '',
+      username: item.username || 'Anonymous',
+      countryCode: item.countryCode || '',
+      platform: item.lastPlatform || '',
+      llmType: item.lastModel || '',
+      accuracy: Number(item.totalPredictions) || 0,
     }))
   } catch (err) {
     console.error('[loadUserRanking] failed:', err)

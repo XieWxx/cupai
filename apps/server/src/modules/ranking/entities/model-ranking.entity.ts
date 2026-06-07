@@ -16,8 +16,12 @@ export class ModelRankingEntity {
   id: string
 
   /** 模型名称（如 deepseek、gpt-4o 等） */
-  @Column({ name: 'model_name', length: 50, comment: '模型名称' })
+  @Column({ name: 'model_name', length: 100, comment: '模型名称' })
   modelName: string
+
+  /** 所属 Agent 平台（如 coze、dify、openai 等） */
+  @Column({ name: 'platform', length: 100, nullable: true, comment: '所属Agent平台' })
+  platform: string
 
   /** 总预测次数 */
   @Column({ name: 'total_predictions', type: 'int', default: 0, comment: '总预测次数' })

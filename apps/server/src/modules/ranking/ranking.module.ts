@@ -4,7 +4,9 @@ import { WeightModelEntity } from './entities/weight-model.entity'
 import { UserRankingEntity } from './entities/user-ranking.entity'
 import { ModelRankingEntity } from './entities/model-ranking.entity'
 import { AnalysisReportEntity } from '../agent/entities/analysis-report.entity'
+import { DimensionSubmissionEntity } from '../agent/entities/dimension-submission.entity'
 import { UserAiConfigEntity } from '../ai/entities/user-ai-config.entity'
+import { UserEntity } from '../user/entities/user.entity'
 import { RankingService } from './ranking.service'
 import { RankingController } from './ranking.controller'
 
@@ -16,7 +18,9 @@ import { RankingController } from './ranking.controller'
       UserRankingEntity,
       ModelRankingEntity,
       AnalysisReportEntity,
+      DimensionSubmissionEntity,
       UserAiConfigEntity,
+      UserEntity,
     ]),
   ],
   controllers: [RankingController],

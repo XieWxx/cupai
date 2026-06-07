@@ -51,6 +51,19 @@ export class RankingController {
 
   // ============ 排行榜 ============
 
+  // 按赛事维度的用户预测排行
+  // GET /ranking/match/:matchId/users
+  @Get('match/:matchId/users')
+  async getMatchUserRankings(
+    @Param('matchId') matchId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.rankingService.getMatchUserRankings(
+      matchId,
+      limit ? Number(limit) : 10,
+    )
+  }
+
   // 用户预测准确率排行
   // 支持参数：
   //   - seasonId: 赛季筛选

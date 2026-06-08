@@ -167,9 +167,18 @@ export class MatchService {
 
     const matches = await query.getMany()
 
+    // 检查小组赛是否全部结束
+    const groupStageFinished = await this.isGroupStageFinished(leagueId)
+
+    // 构建小组→球队映射（R32 始终从小组赛解析，后续轮次仅在小组赛结束时解析）
+    const groupTeamsMap = await this.buildGroupTeamsMap(leagueId)
+
+    // 解析占位球队：R32 始终解析，后续轮次仅小组赛结束后解析
+    const resolvedMatches = matches.map(m => this.resolvePlaceholderTeams(m, groupTeamsMap, groupStageFinished))
+
     // 按 stage 字段分组（1/16 决赛 → 1/8 决赛 → 1/4 决赛 → 半决赛 → 决赛）
     const grouped = { r32: [], r16: [], qf: [], sf: [], final: [] as MatchEntity[] }
-    for (const match of matches) {
+    for (const match of resolvedMatches) {
       const stage = match.stage?.toLowerCase()
       if (stage === 'round32' || stage === 'r32' || stage === '32') {
         grouped.r32.push(match)
@@ -184,7 +193,260 @@ export class MatchService {
       }
     }
 
-    return { list: matches, bracketStage: grouped }
+    return { list: resolvedMatches, bracketStage: grouped }
+  }
+
+  /**
+   * 检查小组赛是否全部结束
+   * 如果所有小组赛比赛状态都是 finished，则返回 true
+   */
+  private async isGroupStageFinished(leagueId?: string): Promise<boolean> {
+    const groupQuery = this.matchRepo
+      .createQueryBuilder('match')
+      .where('match.stage = :stage', { stage: 'group' })
+
+    if (leagueId) {
+      groupQuery.andWhere('match.leagueId = :leagueId', { leagueId })
+    } else {
+      groupQuery.andWhere('(match.leagueName LIKE :wc OR match.leagueName LIKE :wcCn)', {
+        wc: '%World Cup%',
+        wcCn: '%世界杯%',
+      })
+    }
+
+    const totalGroupMatches = await groupQuery.getCount()
+    if (totalGroupMatches === 0) return false
+
+    const finishedGroupMatches = await groupQuery
+      .clone()
+      .andWhere('match.status = :status', { status: 'finished' })
+      .getCount()
+
+    return finishedGroupMatches === totalGroupMatches
+  }
+
+  /**
+   * 构建小组→球队映射
+   * 从小组赛比赛中提取每个小组的参赛队伍及其当前排名
+   * 返回格式：{ "A": [{ rank: 1, team: TeamEntity }, ...], "B": [...] }
+   */
+  private async buildGroupTeamsMap(leagueId?: string): Promise<Record<string, Array<{ rank: number; team: TeamEntity }>>> {
+    const groupQuery = this.matchRepo
+      .createQueryBuilder('match')
+      .leftJoinAndSelect('match.homeTeam', 'homeTeam')
+      .leftJoinAndSelect('match.awayTeam', 'awayTeam')
+      .where('match.stage = :stage', { stage: 'group' })
+
+    if (leagueId) {
+      groupQuery.andWhere('match.leagueId = :leagueId', { leagueId })
+    } else {
+      groupQuery.andWhere('(match.leagueName LIKE :wc OR match.leagueName LIKE :wcCn)', {
+        wc: '%World Cup%',
+        wcCn: '%世界杯%',
+      })
+    }
+
+    const groupMatches = await groupQuery.getMany()
+
+    // 提取每个小组的参赛队伍（去重）
+    const groupTeamIds: Record<string, Set<string>> = {}
+    const teamCache: Record<string, TeamEntity> = {}
+
+    for (const m of groupMatches) {
+      const groupName = m.groupName?.replace('Group ', '').trim()
+      if (!groupName) continue
+
+      if (!groupTeamIds[groupName]) groupTeamIds[groupName] = new Set()
+
+      // 主队
+      if (m.homeTeam && m.homeTeam.countryCode !== 'INT') {
+        groupTeamIds[groupName].add(m.homeTeam.id)
+        teamCache[m.homeTeam.id] = m.homeTeam
+      }
+      // 客队
+      if (m.awayTeam && m.awayTeam.countryCode !== 'INT') {
+        groupTeamIds[groupName].add(m.awayTeam.id)
+        teamCache[m.awayTeam.id] = m.awayTeam
+      }
+    }
+
+    // 查询积分榜数据（如果有），用于确定排名
+    const standingsMap = await this.getGroupStandingsMap(leagueId)
+
+    // 构建每个小组的排名列表
+    const result: Record<string, Array<{ rank: number; team: TeamEntity }>> = {}
+    for (const [groupName, teamIds] of Object.entries(groupTeamIds)) {
+      const teamList = Array.from(teamIds).map(id => teamCache[id]).filter(Boolean)
+
+      // 如果有积分榜数据，按排名排序
+      if (standingsMap[groupName]) {
+        const standings = standingsMap[groupName]
+        teamList.sort((a, b) => {
+          const sa = standings.find(s => s.teamId === a.id)
+          const sb = standings.find(s => s.teamId === b.id)
+          // 按积分→净胜球→进球排序
+          if (sa && sb) {
+            if (sa.points !== sb.points) return sb.points - sa.points
+            if (sa.goalDifference !== sb.goalDifference) return sb.goalDifference - sa.goalDifference
+            return sb.goalsFor - sa.goalsFor
+          }
+          return 0
+        })
+      }
+
+      result[groupName] = teamList.map((team, idx) => ({
+        rank: idx + 1,
+        team,
+      }))
+    }
+
+    return result
+  }
+
+  /**
+   * 获取小组积分榜映射
+   * 返回格式：{ "A": [{ teamId, points, goalDifference, goalsFor, played }, ...], ... }
+   */
+  private async getGroupStandingsMap(leagueId?: string): Promise<Record<string, Array<{ teamId: string; points: number; goalDifference: number; goalsFor: number; played: number }>>> {
+    try {
+      // 从 group_standings 表查询（如果有世界杯小组积分数据）
+      const standingRepo = this.matchRepo.manager.getRepository('GroupStandingEntity')
+      const standings = await standingRepo
+        .createQueryBuilder('s')
+        .leftJoinAndSelect('s.team', 'team')
+        .orderBy('s.groupName', 'ASC')
+        .addOrderBy('s.points', 'DESC')
+        .addOrderBy('s.goalDifference', 'DESC')
+        .addOrderBy('s.goalsFor', 'DESC')
+        .getMany()
+
+      const result: Record<string, Array<{ teamId: string; points: number; goalDifference: number; goalsFor: number; played: number }>> = {}
+      for (const s of standings) {
+        // 将 "Group A" → "A"，"A" → "A"
+        const groupName = (s.groupName || '').replace('Group ', '').trim()
+        if (!groupName || groupName === 'LEAGUE') continue
+        if (!result[groupName]) result[groupName] = []
+        result[groupName].push({
+          teamId: s.teamId,
+          points: s.points || 0,
+          goalDifference: s.goalDifference || 0,
+          goalsFor: s.goalsFor || 0,
+          played: s.played || 0,
+        })
+      }
+      return result
+    } catch {
+      return {}
+    }
+  }
+
+  /**
+   * 解析占位球队
+   * R32（1/16 决赛）：始终从小组赛解析，显示各小组当前排名队伍
+   * 后续轮次（R16/QF/SF/Final）：仅小组赛全部结束后才解析
+   */
+  private resolvePlaceholderTeams(match: MatchEntity, groupTeamsMap: Record<string, Array<{ rank: number; team: TeamEntity }>>, groupStageFinished: boolean): any {
+    const result: any = { ...match }
+    const stage = match.stage?.toLowerCase()
+    const isR32 = ['round32', 'r32', '32'].includes(stage)
+
+    // R32 始终解析；后续轮次仅小组赛结束后解析
+    if (!isR32 && !groupStageFinished) return result
+
+    // 解析主队占位
+    if (match.homeTeam?.countryCode === 'INT' && this.isPlaceholderTeam(match.homeTeam.name)) {
+      const resolved = this.resolvePlaceholder(match.homeTeam.name, groupTeamsMap)
+      if (resolved) {
+        result.homeTeam = resolved.team
+        result.homeTeamPlaceholder = match.homeTeam.name
+        // 小组赛未结束时标记为待确认
+        if (!groupStageFinished) result.homeTeamConfirmed = false
+      }
+    }
+
+    // 解析客队占位
+    if (match.awayTeam?.countryCode === 'INT' && this.isPlaceholderTeam(match.awayTeam.name)) {
+      const resolved = this.resolvePlaceholder(match.awayTeam.name, groupTeamsMap)
+      if (resolved) {
+        result.awayTeam = resolved.team
+        result.awayTeamPlaceholder = match.awayTeam.name
+        if (!groupStageFinished) result.awayTeamConfirmed = false
+      }
+    }
+
+    return result
+  }
+
+  /** 判断是否为占位球队（如 "1A", "2L", "3A/3B/3C/3D/3F"） */
+  private isPlaceholderTeam(name: string): boolean {
+    if (!name) return false
+    // 匹配 "1A"-"9Z" 或 "3A/3B/..." 格式
+    return /^\d[A-Z](\/\d[A-Z])*$/.test(name)
+  }
+
+  /**
+   * 解析单个占位符为实际球队
+   * "1A" → Group A 排名第1的球队
+   * "3A/3B/3C/3D/3F" → 这些小组第3名中成绩最好的球队
+   */
+  private resolvePlaceholder(placeholder: string, groupTeamsMap: Record<string, Array<{ rank: number; team: TeamEntity }>>): { rank: number; team: TeamEntity } | null {
+    // 简单占位符：如 "1A", "2L"
+    const simpleMatch = placeholder.match(/^(\d)([A-L])$/)
+    if (simpleMatch) {
+      const rank = parseInt(simpleMatch[1])
+      const group = simpleMatch[2]
+      const groupTeams = groupTeamsMap[group]
+      if (groupTeams && groupTeams.length >= rank) {
+        return groupTeams[rank - 1]
+      }
+      return null
+    }
+
+    // 复杂占位符：如 "3A/3B/3C/3D/3F"（多个小组第3名中的最佳）
+    const complexMatch = placeholder.match(/^3([A-Z](?:\/3[A-Z])*)$/)
+    if (complexMatch) {
+      const groups = complexMatch[1].split('/3')
+      const thirdPlaceTeams = groups
+        .map(g => groupTeamsMap[g]?.[2]) // 第3名（索引2）
+        .filter(Boolean)
+
+      if (thirdPlaceTeams.length > 0) {
+        // 返回第一个有数据的第3名球队（实际应按成绩排序，但小组赛未结束无法确定）
+        return thirdPlaceTeams[0]
+      }
+      return null
+    }
+
+    return null
+  }
+
+  /**
+   * 获取占位符对应的候选球队列表
+   * 用于前端展示 "1A" 对应的 Group A 所有参赛队伍
+   */
+  private getCandidates(placeholder: string, groupTeamsMap: Record<string, Array<{ rank: number; team: TeamEntity }>>): Array<{ rank: number; team: any }> {
+    // 简单占位符
+    const simpleMatch = placeholder.match(/^(\d)([A-L])$/)
+    if (simpleMatch) {
+      const group = simpleMatch[1] === '0' ? simpleMatch[2] : simpleMatch[2]
+      return groupTeamsMap[group] || []
+    }
+
+    // 复杂占位符
+    const complexMatch = placeholder.match(/^3([A-Z](?:\/3[A-Z])*)$/)
+    if (complexMatch) {
+      const groups = complexMatch[1].split('/3')
+      const candidates: Array<{ rank: number; team: any }> = []
+      for (const g of groups) {
+        const groupTeams = groupTeamsMap[g]
+        if (groupTeams) {
+          candidates.push(...groupTeams)
+        }
+      }
+      return candidates
+    }
+
+    return []
   }
 
   async getMatchDetail(matchId: string) {

@@ -30,14 +30,18 @@
               </div>
               <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
-                <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
+                <span v-if="getFlagClass(getTeamInfo(match, 'home')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'home').countryCode)} team-flag`"></span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamInfo(match, 'home')?.name || $t('bracket.tbd') }}</span>
+                <span v-if="match?.homeTeamPlaceholder" class="team-placeholder">{{ match.homeTeamPlaceholder }}</span>
+                <span v-if="match?.homeTeamConfirmed === false" class="team-pending">待确认</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
               <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
-                <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
+                <span v-if="getFlagClass(getTeamInfo(match, 'away')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'away').countryCode)} team-flag`"></span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamInfo(match, 'away')?.name || $t('bracket.tbd') }}</span>
+                <span v-if="match?.awayTeamPlaceholder" class="team-placeholder">{{ match.awayTeamPlaceholder }}</span>
+                <span v-if="match?.awayTeamConfirmed === false" class="team-pending">待确认</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
               </div>
               <!-- 开赛时间 -->
@@ -107,14 +111,18 @@
               </div>
               <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
-                <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
+                <span v-if="getFlagClass(getTeamInfo(match, 'home')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'home').countryCode)} team-flag`"></span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamInfo(match, 'home')?.name || $t('bracket.tbd') }}</span>
+                <span v-if="match?.homeTeamPlaceholder" class="team-placeholder">{{ match.homeTeamPlaceholder }}</span>
+                <span v-if="match?.homeTeamConfirmed === false" class="team-pending">待确认</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
               <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
-                <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
+                <span v-if="getFlagClass(getTeamInfo(match, 'away')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'away').countryCode)} team-flag`"></span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamInfo(match, 'away')?.name || $t('bracket.tbd') }}</span>
+                <span v-if="match?.awayTeamPlaceholder" class="team-placeholder">{{ match.awayTeamPlaceholder }}</span>
+                <span v-if="match?.awayTeamConfirmed === false" class="team-pending">待确认</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
               </div>
               <!-- 开赛时间 -->
@@ -199,6 +207,27 @@ function isWinner(match: any, side: 'home' | 'away'): boolean {
 /** 是否有比分 */
 function hasScore(match: any): boolean {
   return match?.homeScore != null && match?.awayScore != null
+}
+
+/** 获取球队信息：如果是占位球队（countryCode=INT 且无 placeholder 标记），返回 null 让模板显示 TBD */
+function getTeamInfo(match: any, side: 'home' | 'away'): any {
+  const team = side === 'home' ? match?.homeTeam : match?.awayTeam
+  // 如果有 placeholder 标记，说明已解析为实际球队
+  const placeholderKey = side === 'home' ? 'homeTeamPlaceholder' : 'awayTeamPlaceholder'
+  if (match?.[placeholderKey]) return team
+  // 如果是占位球队（countryCode=INT），不显示
+  if (team?.countryCode === 'INT') return null
+  return team
+}
+
+/** 判断是否为未解析的占位球队 */
+function isPlaceholderTeam(match: any, side: 'home' | 'away'): boolean {
+  const team = side === 'home' ? match?.homeTeam : match?.awayTeam
+  const placeholderKey = side === 'home' ? 'homeTeamPlaceholder' : 'awayTeamPlaceholder'
+  // 已解析的占位球队不算
+  if (match?.[placeholderKey]) return false
+  // countryCode=INT 且无 placeholder 标记的是未解析占位球队
+  return team?.countryCode === 'INT'
 }
 
 /** 比赛状态样式 */
@@ -430,6 +459,39 @@ function onMatchClick(match: any) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+}
+
+/* 占位来源标签（如 "1A"、"3B/3E/3F/3I/3J"） */
+.team-placeholder {
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-muted);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 未解析的占位球队名称淡化 */
+.team-name.is-placeholder {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* 待确认状态（小组赛未结束，排名尚未确定） */
+.team-name.is-pending {
+  opacity: 0.7;
+}
+
+.team-pending {
+  font-size: 9px;
+  color: var(--color-warning);
+  background: var(--color-warning-bg, rgba(251, 191, 36, 0.1));
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .team-score {

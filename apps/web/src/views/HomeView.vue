@@ -172,10 +172,10 @@
               <span>{{ $t('home.topUsers') }}</span>
             </div>
             <div class="panel-body">
-              <div v-for="(u, i) in userRanking.slice(0, 5)" :key="u.id" class="panel-item" @click="$router.push(`/ranking`)">
+              <div v-for="(u, i) in userRanking.slice(0, 5)" :key="u.id || u.userId" class="panel-item" @click="$router.push(`/ranking`)">
                 <span :class="['panel-rank', i < 3 ? `rank-${i + 1}` : '']">{{ i + 1 }}</span>
-                <span :class="`fi fi-${u.flag} panel-flag`" />
-                <span class="panel-name">{{ u.nickname }}</span>
+                <span :class="`fi fi-${regionToFlagClass(u.user?.region)} panel-flag`" />
+                <span class="panel-name">{{ u.user?.nickname || u.nickname || t('common.anonymous') }}</span>
                 <span class="panel-value">{{ u.totalPredictions || '-' }}</span>
               </div>
               <p v-if="!userRanking.length" class="panel-empty">—</p>
@@ -263,10 +263,10 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Calendar, Trophy, User, Cpu, Connection, ChatDotRound, CopyDocument, DataLine } from '@element-plus/icons-vue'
 import PlatformBadge from '@/components/ranking/PlatformBadge.vue'
-import { detectModel, detectPlatform, type AgentPlatform } from '@/utils/agentPlatform'
+import { detectModel, detectPlatform, regionToFlagClass, type AgentPlatform } from '@/utils/agentPlatform'
 import { http } from '@/api/request'
 
-const { locale: i18nLocale } = useI18n()
+const { t, locale: i18nLocale } = useI18n()
 
 const heroFlags = ['us', 'ca', 'mx', 'ar', 'au', 'be', 'br', 'cn', 'co', 'cr', 'cv', 'cz', 'de', 'ec', 'eg', 'es', 'fi', 'fr', 'gb', 'gh', 'gr', 'hu', 'id', 'ie', 'ir', 'il', 'it', 'jp', 'kr', 'ma', 'nl', 'ng', 'nz', 'pa', 'pe', 'ph', 'pl', 'pt', 'qa', 'ro', 'rs', 'ru', 'sa', 'se', 'sg', 'si', 'sk', 'sn', 'tr']
 

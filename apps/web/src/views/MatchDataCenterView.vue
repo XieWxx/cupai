@@ -6,14 +6,9 @@
       <p class="page-subtitle">{{ $t('matchCenter.subtitle') }}</p>
     </header>
 
-    <!-- Tab 切换：小组积分榜 / 小组赛程 / 淘汰赛对阵图 -->
+    <!-- Tab 切换：小组赛程 / 淘汰赛对阵图 -->
     <el-tabs v-model="activeTab" class="data-tabs">
-      <!-- 小组积分榜 -->
-      <el-tab-pane :label="t('matchCenter.groupStandings')" name="standings">
-        <el-card class="common-card" shadow="never">
-          <GroupStandings :groups="standingsGroups" :loading="loading.standings" />
-        </el-card>
-      </el-tab-pane>
+      <!-- 小组积分榜（暂时隐藏，待数据完善后开放） -->
 
       <!-- 小组赛程 -->
       <el-tab-pane :label="t('matchCenter.groupMatches')" name="groupMatches">
@@ -45,7 +40,7 @@ const { t } = useI18n()
 const matchStore = useMatchStore()
 
 // 当前激活的 Tab
-const activeTab = ref('standings')
+const activeTab = ref('groupMatches')
 
 // 加载状态
 const loading = reactive({

@@ -486,12 +486,17 @@ const NICKNAMES = [
 ]
 const REGIONS = ['us', 'ca', 'mx', 'bra', 'ar', 'fr', 'gb-eng', 'de', 'es', 'jp', 'kr', 'pt', 'nl', 'it', 'co', 'cl']
 const PLATFORMS = [
-  { name: 'ChatGPT', value: 'chatgpt' },
-  { name: 'Claude', value: 'claude' },
+  { name: 'OpenAI', value: 'openai' },
+  { name: 'Anthropic', value: 'anthropic' },
   { name: 'DeepSeek', value: 'deepseek' },
   { name: 'Cursor', value: 'cursor' },
   { name: 'Qwen', value: 'qwen' },
   { name: 'Gemini', value: 'gemini' },
+  { name: '豆包', value: 'doubao' },
+  { name: '腾讯混元', value: 'hunyuan' },
+  { name: '阶跃星辰', value: 'stepfun' },
+  { name: '零一万物', value: 'yi' },
+  { name: 'Mistral', value: 'mistral' },
 ]
 const MODELS = [
   { name: 'GPT-4o', value: 'gpt-4o' },
@@ -500,6 +505,11 @@ const MODELS = [
   { name: 'Qwen2.5-Max', value: 'qwen2.5-max' },
   { name: 'Gemini 1.5 Pro', value: 'gemini-1.5-pro' },
   { name: 'Llama 3.1 405B', value: 'llama-3.1-405b' },
+  { name: '豆包 Pro', value: 'doubao-pro' },
+  { name: 'Hunyuan Pro', value: 'hunyuan-pro' },
+  { name: 'Step-1', value: 'step-1' },
+  { name: 'Yi-Large', value: 'yi-large' },
+  { name: 'Mistral Large', value: 'mistral-large' },
 ]
 
 function genUserRankings(sort: 'total' | 'exact' | 'funny') {

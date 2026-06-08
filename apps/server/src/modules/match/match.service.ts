@@ -6,6 +6,8 @@ import { TeamEntity } from './entities/team.entity'
 import { PlayerEntity } from './entities/player.entity'
 import { EventPredictionEntity } from './entities/event-prediction.entity'
 import { EventLineupEntity } from './entities/event-lineup.entity'
+import { EventIncidentEntity } from './entities/event-incident.entity'
+import { EventOddsEntity } from './entities/event-odds.entity'
 import { RedisCacheService } from '../../config/redis-cache.service'
 
 /** 21 个维度的候选项 */
@@ -65,6 +67,10 @@ export class MatchService {
     private readonly predictionRepo: Repository<EventPredictionEntity>,
     @InjectRepository(EventLineupEntity)
     private readonly lineupRepo: Repository<EventLineupEntity>,
+    @InjectRepository(EventIncidentEntity)
+    private readonly incidentRepo: Repository<EventIncidentEntity>,
+    @InjectRepository(EventOddsEntity)
+    private readonly oddsRepo: Repository<EventOddsEntity>,
     private readonly redisCache: RedisCacheService,
   ) {}
 
@@ -74,7 +80,6 @@ export class MatchService {
    */
   async getMatchDynamics(limit = 6) {
     const now = new Date()
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
 
     // 进行中：status=live，按 startTime 升序
     const live = await this.matchRepo
@@ -86,13 +91,14 @@ export class MatchService {
       .take(limit)
       .getMany()
 
-    // 待开赛：status=upcoming 且 startTime 在 [now, now+24h]
+    // 待开赛：status=upcoming 且 startTime 在 [now, now+7天]，按开球时间升序（最近开赛的排前面）
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     const upcoming = await this.matchRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.homeTeam', 'homeTeam')
       .leftJoinAndSelect('m.awayTeam', 'awayTeam')
       .where('m.status = :status', { status: 'upcoming' })
-      .andWhere('m.startTime BETWEEN :now AND :tomorrow', { now, tomorrow })
+      .andWhere('m.startTime BETWEEN :now AND :nextWeek', { now, nextWeek })
       .orderBy('m.startTime', 'ASC')
       .take(limit)
       .getMany()
@@ -232,5 +238,26 @@ export class MatchService {
     }
 
     return { home, away }
+  }
+
+  /**
+   * 获取赛事事件流（进球/红黄牌/换人等）
+   * 数据来源：EventIncidentEntity（由 BSD 同步服务写入）
+   * 返回格式：按时间升序的事件数组
+   */
+  async getMatchIncidents(matchId: string) {
+    return this.incidentRepo.find({
+      where: { matchId },
+      order: { minute: 'ASC', id: 'ASC' },
+    })
+  }
+
+  /**
+   * 获取赛事赔率（1X2 + Over/Under + BTTS）
+   * 数据来源：EventOddsEntity（由 BSD 同步服务写入）
+   * 返回格式：单条记录或 null
+   */
+  async getMatchOdds(matchId: string) {
+    return this.oddsRepo.findOne({ where: { matchId } })
   }
 }

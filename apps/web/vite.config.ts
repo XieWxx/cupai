@@ -29,19 +29,14 @@ export default defineConfig({
     port: 5173,
     host: '0.0.0.0',
     proxy: {
-      // 开发环境代理后端 API
+      // 开发环境代理后端 API（target 用 127.0.0.1 强制 IPv4，避免 localhost 在 macOS 上解析到 IPv6 ::1）
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
-        configure: (proxy) => {
-          proxy.on('error', (err) => {
-            console.log('[proxy error]', err.message)
-          })
-        },
       },
       // WebSocket 代理
       '/socket.io': {
-        target: 'ws://localhost:3002',
+        target: 'ws://127.0.0.1:3002',
         ws: true,
       },
     },

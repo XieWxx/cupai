@@ -32,16 +32,16 @@
             <div class="match-versus">
               <div class="versus-team home" :class="{ 'is-winner': isHomeWinner(match) }">
                 <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match.homeTeam?.name || 'TBD' }}</span>
+                <span class="team-name">{{ match.homeTeam?.name || t('bracket.tbd') }}</span>
               </div>
               <div class="versus-score">
                 <span v-if="hasScore(match)" class="score-home" :class="{ 'is-winner': isHomeWinner(match) }">{{ match.homeScore }}</span>
                 <span class="score-sep">:</span>
                 <span v-if="hasScore(match)" class="score-away" :class="{ 'is-winner': isAwayWinner(match) }">{{ match.awayScore }}</span>
-                <span v-else class="score-vs">VS</span>
+                <span v-else class="score-vs">{{ t('match.vs') }}</span>
               </div>
               <div class="versus-team away" :class="{ 'is-winner': isAwayWinner(match) }">
-                <span class="team-name">{{ match.awayTeam?.name || 'TBD' }}</span>
+                <span class="team-name">{{ match.awayTeam?.name || t('bracket.tbd') }}</span>
                 <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
               </div>
             </div>

@@ -32,7 +32,8 @@ async function bootstrap() {
   })
 
   const port = process.env.SERVER_PORT || 3001
-  // 监听 0.0.0.0 确保 IPv4 可访问（Vite 代理走 IPv4 127.0.0.1）
+  // 显式监听 IPv4 0.0.0.0，避免 macOS 下 Node.js 默认仅监听 IPv6
+  // 导致 Vite 代理（127.0.0.1）ECONNREFUSED
   await app.listen(port, '0.0.0.0')
   console.log(`[CupAI] 后端服务已启动: http://localhost:${port}`)
 }

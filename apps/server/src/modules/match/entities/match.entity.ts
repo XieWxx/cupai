@@ -172,6 +172,42 @@ export class MatchEntity {
   @Column({ name: 'match_data', type: 'json', nullable: true, comment: '赛事详细数据(射门/控球/角球等)' })
   matchData: Record<string, unknown>
 
+  /** 交锋记录 JSON（来自 /events/{id}/h2h/） */
+  @Column({ name: 'h2h_data', type: 'json', nullable: true, comment: '交锋记录数据' })
+  h2hData: Record<string, unknown>
+
+  /** 赛事元数据 JSON（来自 /events/{id}/metadata/，含球衣颜色+趣味事实+AI预览） */
+  @Column({ name: 'metadata', type: 'json', nullable: true, comment: '赛事元数据(球衣/趣味事实/AI预览)' })
+  metadata: Record<string, unknown>
+
+  /** 主教练姓名（从 BSD event detail 提取，BSD 仅给 coach_id，需要查 coach 详情） */
+  @Column({ name: 'home_coach', length: 100, nullable: true, comment: '主队主教练姓名' })
+  homeCoach: string
+
+  /** 客队主教练姓名 */
+  @Column({ name: 'away_coach', length: 100, nullable: true, comment: '客队主教练姓名' })
+  awayCoach: string
+
+  /** 比赛精彩集锦（来自 BSD event detail.highlights） */
+  @Column({ name: 'highlights', type: 'json', nullable: true, comment: '比赛精彩集锦' })
+  highlights: Array<{ kind: string; title: string; url: string; thumbnail: string; published_at: string }>
+
+  /** 单场球员统计 JSON（来自 /events/{id}/player-stats/） */
+  @Column({ name: 'player_stats_data', type: 'json', nullable: true, comment: '单场球员统计数据' })
+  playerStatsData: Record<string, unknown>
+
+  /** 赔率对比 JSON（来自 /events/{id}/odds/comparison/） */
+  @Column({ name: 'odds_comparison', type: 'json', nullable: true, comment: '博彩公司赔率对比' })
+  oddsComparison: Record<string, unknown>
+
+  /** 社交媒体内容 JSON（来自 /events/{id}/social/） */
+  @Column({ name: 'social_data', type: 'json', nullable: true, comment: '社交媒体内容' })
+  socialData: Record<string, unknown>
+
+  /** 场馆容量（来自 /venues/{id}/） */
+  @Column({ name: 'venue_capacity', type: 'int', nullable: true, comment: '场馆容量' })
+  venueCapacity: number
+
   // ==================== 数据来源 ====================
 
   @Column({ name: 'data_source', length: 255, nullable: true, comment: '数据来源唯一标识 (如 bsd_12345)' })

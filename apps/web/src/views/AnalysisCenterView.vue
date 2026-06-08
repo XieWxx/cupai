@@ -208,9 +208,9 @@ async function startAnalysis() {
       promptTemplateId: analysisForm.promptTemplateId,
     })
     analysisResult.value = res?.content || ''
-    ElMessage.success($t('analysis.analysisSuccess'))
+    ElMessage.success(t('analysis.generateSuccess'))
   } catch (err: any) {
-    const msg = err?.response?.data?.message || $t('common.fail')
+    const msg = err?.response?.data?.message || t('common.fail')
     ElMessage.error(msg)
   } finally {
     analyzing.value = false

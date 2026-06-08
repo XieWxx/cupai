@@ -22,6 +22,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface MatchLite {
   startTime?: string
@@ -72,9 +75,9 @@ const countdownText = computed(() => {
   const d = startDate.value
   if (!d) return ''
   if (props.match?.status === 'live') {
-    return props.match?.matchMinute ? `Live · ${props.match.matchMinute}` : 'Live'
+    return props.match?.matchMinute ? `${t('match.live')} · ${props.match.matchMinute}` : t('match.live')
   }
-  if (props.match?.status === 'finished') return 'FT'
+  if (props.match?.status === 'finished') return t('match.ft')
   const diff = Math.max(0, d.getTime() - now.value)
   const totalSec = Math.floor(diff / 1000)
   const days = Math.floor(totalSec / 86400)

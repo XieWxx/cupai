@@ -140,11 +140,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import { http } from '@/api/request'
 import { useI18n } from 'vue-i18n'
-const { t } = useI18n()
+const { t, locale: i18nLocale } = useI18n()
 
 const overview = ref<any>({})
 const timeline = ref<any[]>([])
@@ -343,6 +343,15 @@ onMounted(() => {
   loadOverview()
   loadTimeline()
   loadDerivedData()
+})
+
+/** 语言切换时重渲染所有图表 */
+watch(i18nLocale, () => {
+  renderTrendChart()
+  renderLangChart()
+  renderPlatformChart()
+  renderRegionChart()
+  renderScoreChart()
 })
 
 onUnmounted(() => {

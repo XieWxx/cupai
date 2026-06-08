@@ -38,8 +38,8 @@ export class EventLineupEntity {
   @Column({ name: 'is_starter', type: 'boolean', default: true, comment: '是否首发' })
   isStarter: boolean
 
-  @Column({ name: 'bs_player_id', type: 'int', comment: 'BSD 球员 ID' })
-  bsPlayerId: number
+  @Column({ name: 'bs_player_id', type: 'int', nullable: true, comment: 'BSD 球员 ID（BSD lineups 端点可能不返回，nullable）' })
+  bsPlayerId: number | null
 
   @Column({ name: 'player_name', length: 100, comment: '球员姓名' })
   playerName: string

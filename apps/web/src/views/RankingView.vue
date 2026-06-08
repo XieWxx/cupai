@@ -27,7 +27,7 @@
           :title="$t('ranking.overview.totalAnalyses')"
         >
           <template #suffix>
-            <span class="ov-suffix">次</span>
+            <span class="ov-suffix">{{ $t('ranking.times') }}</span>
           </template>
         </el-statistic>
       </el-card>
@@ -61,7 +61,7 @@
                   :class="['flag-icon', 'fi', `fi-${flagClass(row.user?.region)}`]"
                   :title="row.user?.region || 'XX'"
                 />
-                <span class="user-nickname">{{ row.user?.nickname || 'Anonymous' }}</span>
+                <span class="user-nickname">{{ row.user?.nickname || $t('common.anonymous') }}</span>
               </div>
             </template>
           </el-table-column>
@@ -124,7 +124,7 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('ranking.platform')" min-width="200">
+          <el-table-column :label="$t('ranking.platformLabel')" min-width="200">
             <template #default="{ row }">
               <PlatformBadge :platform="detectPlatform(row.platformKey || row.platform)" :show-name="true" />
             </template>

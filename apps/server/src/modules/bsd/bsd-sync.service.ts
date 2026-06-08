@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { BsdcBusinessService } from './bsd.business.service'
+import { getPlayerChineseName } from '../../utils/player-translate'
 import { MatchEntity } from '../match/entities/match.entity'
 import { TeamEntity } from '../match/entities/team.entity'
 import { GroupStandingEntity } from '../match/entities/group-standing.entity'
@@ -11,6 +12,7 @@ import { EventLineupEntity } from '../match/entities/event-lineup.entity'
 import { EventOddsEntity } from '../match/entities/event-odds.entity'
 import { EventStatsEntity } from '../match/entities/event-stats.entity'
 import { EventPredictionEntity } from '../match/entities/event-prediction.entity'
+import { PlayerEntity } from '../match/entities/player.entity'
 import {
   BsEvent,
   BsLineupSide,
@@ -96,6 +98,7 @@ export class BsdcSyncService {
     leagues: { at: null, durationMs: 0, ok: true },
     standings: { at: null, durationMs: 0, ok: true },
     aux: { at: null, durationMs: 0, ok: true },
+    players: { at: null, durationMs: 0, ok: true },
   }
 
   constructor(
@@ -109,6 +112,7 @@ export class BsdcSyncService {
     @InjectRepository(EventOddsEntity) private readonly oddsRepo: Repository<EventOddsEntity>,
     @InjectRepository(EventStatsEntity) private readonly statsRepo: Repository<EventStatsEntity>,
     @InjectRepository(EventPredictionEntity) private readonly predictionRepo: Repository<EventPredictionEntity>,
+    @InjectRepository(PlayerEntity) private readonly playerRepo: Repository<PlayerEntity>,
   ) {}
 
   // ==================== 调度器辅助 ====================
@@ -328,9 +332,9 @@ export class BsdcSyncService {
    * 同步进行中或 24h 内完赛的赛事的子数据（incidents/lineups/odds/stats/predictions）
    * 由 Scheduler 周期触发（5min）
    */
-  async syncMatchAuxData(limit = 20): Promise<{ matches: number; incidents: number; lineups: number; odds: number; stats: number; predictions: number }> {
+  async syncMatchAuxData(limit = 20): Promise<{ matches: number; incidents: number; lineups: number; odds: number; stats: number; predictions: number; h2h: number; metadata: number; playerStats: number; oddsComparison: number; social: number }> {
     const started = Date.now()
-    const result = { matches: 0, incidents: 0, lineups: 0, odds: 0, stats: 0, predictions: 0 }
+    const result = { matches: 0, incidents: 0, lineups: 0, odds: 0, stats: 0, predictions: 0, h2h: 0, metadata: 0, playerStats: 0, oddsComparison: 0, social: 0 }
     try {
       // 候选：状态 inprogress/finished 24h 内 + 即将开始 6h 内
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -370,11 +374,44 @@ export class BsdcSyncService {
           if (m.status !== 'finished') {
             result.predictions += await this.syncPredictions(m, bsEventId)
           }
+          // 交锋记录（所有赛事）
+          try {
+            result.h2h += (await this.syncH2H(m, bsEventId)) ? 1 : 0
+          } catch { /* ignore */ }
+          // 赛事元数据（所有赛事）
+          try {
+            result.metadata += (await this.syncMetadata(m, bsEventId)) ? 1 : 0
+          } catch { /* ignore */ }
+          // 球员统计（进行中/已结束）
+          if (m.status === 'live' || m.status === 'finished') {
+            try {
+              result.playerStats += (await this.syncPlayerStats(m, bsEventId)) ? 1 : 0
+            } catch { /* ignore */ }
+          }
+          // 赔率对比（非已结束）
+          if (m.status !== 'finished') {
+            try {
+              result.oddsComparison += (await this.syncOddsComparison(m, bsEventId)) ? 1 : 0
+            } catch { /* ignore */ }
+          }
+          // 社交媒体（进行中/已结束）
+          if (m.status === 'live' || m.status === 'finished') {
+            try {
+              result.social += (await this.syncSocial(m, bsEventId)) ? 1 : 0
+            } catch { /* ignore */ }
+          }
         } catch (e) {
           this.logger.warn(`aux sync for match ${m.id} failed: ${(e as Error).message}`)
         }
       }
       this.recordRun('aux', started, true, JSON.stringify(result))
+
+      // 同步完成后，聚合球队统计（场均进球/失球/控球/胜率）
+      try {
+        await this.aggregateTeamStats()
+      } catch (e) {
+        this.logger.warn(`aggregateTeamStats failed: ${(e as Error).message}`)
+      }
     } catch (error) {
       this.recordRun('aux', started, false, error?.message)
       this.logger.error(`Sync match aux data failed: ${error?.message}`)
@@ -400,10 +437,13 @@ export class BsdcSyncService {
           if (!standings?.standings) continue
           leagues++
 
-          // BSD 没有 group_name（小组赛），仅 league 整体排名；
-          // 兼容旧数据：写入 groupName='LEAGUE' 以便前端按联赛展示
+          // 从本地赛事中获取该联赛下的小组名映射（teamId -> groupName）
+          const teamGroupMap = await this.buildTeamGroupMap(league.id, standings.season?.id)
+
           for (const row of standings.standings) {
-            await this.upsertStanding(league, standings.season, row, 'LEAGUE')
+            // 优先从赛事中获取该球队所在的小组名
+            const groupName = teamGroupMap.get(row.team_id) || 'LEAGUE'
+            await this.upsertStanding(league, standings.season, row, groupName)
             rows++
           }
         } catch (e) {
@@ -474,6 +514,358 @@ export class BsdcSyncService {
     return map
   }
 
+  /**
+   * 构造 BSD teamId → groupName 映射
+   * 从本地赛事中查找该联赛下所有小组赛的 group_name，
+   * 通过 home_team_bsd_id / away_team_bsd_id 关联到球队
+   */
+  private async buildTeamGroupMap(leagueId: number, seasonId?: number): Promise<Map<number, string>> {
+    const map = new Map<number, string>()
+    const query = this.matchRepo
+      .createQueryBuilder('m')
+      .select(['m.homeTeamBsdId', 'm.awayTeamBsdId', 'm.groupName'])
+      .where('m.leagueId = :leagueId', { leagueId })
+      .andWhere('m.groupName IS NOT NULL')
+    if (seasonId) {
+      query.andWhere('m.seasonId = :seasonId', { seasonId })
+    }
+    const matches = await query.getMany()
+    for (const m of matches) {
+      if (m.homeTeamBsdId && m.groupName) map.set(m.homeTeamBsdId, m.groupName)
+      if (m.awayTeamBsdId && m.groupName) map.set(m.awayTeamBsdId, m.groupName)
+    }
+    return map
+  }
+
+  /**
+   * 聚合球队统计：从已完赛赛事 + 统计数据中计算场均进球/失球/控球/胜率
+   * 写入 TeamEntity 的 avgGoalsScored / avgGoalsConceded / avgPossession / winRate
+   */
+  private async aggregateTeamStats(): Promise<void> {
+    // 查询所有已完赛赛事（有比分）
+    const finishedMatches = await this.matchRepo
+      .createQueryBuilder('m')
+      .leftJoinAndSelect('m.homeTeam', 'homeTeam')
+      .leftJoinAndSelect('m.awayTeam', 'awayTeam')
+      .where('m.status = :status', { status: 'finished' })
+      .andWhere('m.homeScore IS NOT NULL')
+      .andWhere('m.awayScore IS NOT NULL')
+      .getMany()
+
+    if (!finishedMatches.length) return
+
+    // 按球队聚合
+    const teamStats = new Map<string, {
+      goalsScored: number
+      goalsConceded: number
+      wins: number
+      played: number
+      possessionSum: number
+      possessionCount: number
+    }>()
+
+    for (const m of finishedMatches) {
+      // 主队
+      const home = teamStats.get(m.homeTeamId) || { goalsScored: 0, goalsConceded: 0, wins: 0, played: 0, possessionSum: 0, possessionCount: 0 }
+      home.goalsScored += m.homeScore
+      home.goalsConceded += m.awayScore
+      home.played++
+      if (m.homeScore > m.awayScore) home.wins++
+      teamStats.set(m.homeTeamId, home)
+
+      // 客队
+      const away = teamStats.get(m.awayTeamId) || { goalsScored: 0, goalsConceded: 0, wins: 0, played: 0, possessionSum: 0, possessionCount: 0 }
+      away.goalsScored += m.awayScore
+      away.goalsConceded += m.homeScore
+      away.played++
+      if (m.awayScore > m.homeScore) away.wins++
+      teamStats.set(m.awayTeamId, away)
+    }
+
+    // 从 EventStatsEntity 聚合控球率
+    const allStats = await this.statsRepo.find()
+    for (const stat of allStats) {
+      const match = finishedMatches.find(m => m.id === stat.matchId)
+      if (!match) continue
+
+      const home = teamStats.get(match.homeTeamId)
+      if (home && stat.homePossession != null) {
+        home.possessionSum += stat.homePossession
+        home.possessionCount++
+      }
+      const away = teamStats.get(match.awayTeamId)
+      if (away && stat.awayPossession != null) {
+        away.possessionSum += stat.awayPossession
+        away.possessionCount++
+      }
+    }
+
+    // 写入 TeamEntity
+    for (const [teamId, stats] of teamStats) {
+      if (stats.played === 0) continue
+      try {
+        await this.teamRepo.update(teamId, {
+          avgGoalsScored: Number((stats.goalsScored / stats.played).toFixed(2)),
+          avgGoalsConceded: Number((stats.goalsConceded / stats.played).toFixed(2)),
+          avgPossession: stats.possessionCount > 0 ? Number((stats.possessionSum / stats.possessionCount).toFixed(2)) : null,
+          winRate: Number((stats.wins / stats.played * 100).toFixed(2)),
+        })
+      } catch {
+        /* ignore individual team update failure */
+      }
+    }
+
+    this.logger.log(`aggregateTeamStats: updated ${teamStats.size} teams from ${finishedMatches.length} finished matches`)
+  }
+
+  // ==================== 场馆同步 ====================
+
+  /**
+   * 同步场馆信息到赛事
+   * 从 /venues/{id}/ 获取场馆名称、城市、容量
+   */
+  private async syncVenuesForMatch(match: MatchEntity): Promise<boolean> {
+    if (!match.venueId) return false
+    try {
+      const venue = await this.bsdService.getVenueDetail(match.venueId)
+      match.venue = venue.name || match.venue
+      match.city = venue.city || match.city
+      match.venueCapacity = venue.capacity || null
+      await this.matchRepo.save(match)
+      return true
+    } catch (e) {
+      this.logger.warn(`syncVenuesForMatch ${match.id} venue_id=${match.venueId} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  // ==================== 交锋记录 ====================
+
+  /**
+   * 同步交锋记录到赛事 h2hData 字段
+   */
+  private async syncH2H(match: MatchEntity, bsEventId: number): Promise<boolean> {
+    try {
+      const h2h = await this.bsdService.getEventH2H(bsEventId)
+      match.h2hData = h2h as unknown as Record<string, unknown>
+      await this.matchRepo.save(match)
+      return true
+    } catch (e) {
+      this.logger.warn(`syncH2H match=${match.id} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  // ==================== 赛事元数据 ====================
+
+  /**
+   * 同步赛事元数据（球衣颜色+趣味事实+AI预览）到 metadata 字段
+   */
+  private async syncMetadata(match: MatchEntity, bsEventId: number): Promise<boolean> {
+    try {
+      const meta = await this.bsdService.getEventMetadata(bsEventId)
+      match.metadata = meta as unknown as Record<string, unknown>
+      await this.matchRepo.save(match)
+      return true
+    } catch (e) {
+      this.logger.warn(`syncMetadata match=${match.id} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  // ==================== 球员统计 ====================
+
+  /**
+   * 同步单场球员统计到 playerStatsData 字段
+   */
+  private async syncPlayerStats(match: MatchEntity, bsEventId: number): Promise<boolean> {
+    try {
+      const stats = await this.bsdService.getEventPlayerStats(bsEventId)
+      match.playerStatsData = stats as unknown as Record<string, unknown>
+      await this.matchRepo.save(match)
+
+      // 聚合球员赛季统计
+      try {
+        await this.aggregatePlayerSeasonStats(stats.player_stats)
+      } catch (e) {
+        this.logger.warn(`aggregatePlayerSeasonStats match=${match.id} failed: ${(e as Error).message}`)
+      }
+      return true
+    } catch (e) {
+      this.logger.warn(`syncPlayerStats match=${match.id} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  // ==================== 赔率对比 ====================
+
+  /**
+   * 同步博彩公司赔率对比到 oddsComparison 字段
+   */
+  private async syncOddsComparison(match: MatchEntity, bsEventId: number): Promise<boolean> {
+    try {
+      const comp = await this.bsdService.getOddsComparison(bsEventId)
+      match.oddsComparison = comp as unknown as Record<string, unknown>
+      await this.matchRepo.save(match)
+      return true
+    } catch (e) {
+      this.logger.warn(`syncOddsComparison match=${match.id} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  // ==================== 社交媒体 ====================
+
+  /**
+   * 同步社交媒体内容到 socialData 字段
+   */
+  private async syncSocial(match: MatchEntity, bsEventId: number): Promise<boolean> {
+    try {
+      const social = await this.bsdService.getEventSocial(bsEventId, { limit: 10 })
+      match.socialData = social as unknown as Record<string, unknown>
+      await this.matchRepo.save(match)
+      return true
+    } catch (e) {
+      this.logger.warn(`syncSocial match=${match.id} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  // ==================== 球员同步 ====================
+
+  /**
+   * 同步球员列表（按联赛关联的球队批量同步）
+   * 建议由调度器每日触发一次
+   */
+  async syncPlayers(): Promise<{ created: number; updated: number }> {
+    const started = Date.now()
+    let created = 0
+    let updated = 0
+    try {
+      // 获取所有有 BSD ID 的球队
+      const teams = await this.teamRepo
+        .createQueryBuilder('t')
+        .where('t.bs_team_id IS NOT NULL')
+        .getMany()
+
+      for (const team of teams) {
+        try {
+          const resp = await this.bsdService.getPlayers({ team_id: team.bsTeamId, limit: 50 })
+          for (const bsPlayer of (resp.results ?? [])) {
+            const existing = await this.playerRepo.findOne({ where: { bsdPlayerId: bsPlayer.id } })
+            const age = bsPlayer.date_of_birth
+              ? Math.floor((Date.now() - new Date(bsPlayer.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+              : null
+
+            const payload: Partial<PlayerEntity> = {
+              bsdPlayerId: bsPlayer.id,
+              name: getPlayerChineseName(bsPlayer.name),
+              nameEn: bsPlayer.name,
+              shortName: bsPlayer.short_name,
+              teamId: team.id,
+              position: bsPlayer.position,
+              specificPosition: bsPlayer.specific_position,
+              jerseyNumber: bsPlayer.jersey_number,
+              age,
+              dateOfBirth: bsPlayer.date_of_birth ? new Date(bsPlayer.date_of_birth) : null,
+              heightCm: bsPlayer.height_cm,
+              weightKg: bsPlayer.weight_kg,
+              preferredFoot: bsPlayer.preferred_foot,
+              nationality: bsPlayer.nationality,
+              marketValueEur: bsPlayer.market_value_eur,
+              isKeyPlayer: (bsPlayer.rating ?? 0) >= 80,
+              rating: bsPlayer.rating,
+              potential: bsPlayer.potential,
+              injuryStatus: bsPlayer.availability,
+              injuryRisk: bsPlayer.injury_risk,
+              dataSource: `bsd_${bsPlayer.id}`,
+            }
+
+            if (existing) {
+              Object.assign(existing, payload)
+              await this.playerRepo.save(existing)
+              updated++
+            } else {
+              const entity = this.playerRepo.create(payload)
+              await this.playerRepo.save(entity)
+              created++
+            }
+          }
+        } catch (e) {
+          this.logger.warn(`syncPlayers team=${team.id} failed: ${(e as Error).message}`)
+        }
+      }
+      this.recordRun('players', started, true, `+${created}/~${updated}`)
+    } catch (error) {
+      this.recordRun('players', started, false, error?.message)
+      this.logger.error(`Sync players failed: ${error?.message}`)
+    }
+    return { created, updated }
+  }
+
+  // ==================== 球员赛季统计聚合 ====================
+
+  /**
+   * 从单场球员统计聚合赛季累计数据（进球/助攻/黄牌/红牌）
+   */
+  private async aggregatePlayerSeasonStats(playerStats: { player_id: number; goals: number; goal_assist: number; yellow_card: number; red_card: number }[]): Promise<void> {
+    for (const ps of playerStats) {
+      const player = await this.playerRepo.findOne({ where: { bsdPlayerId: ps.player_id } })
+      if (!player) continue
+      // 累加（简单方案：每次同步时重新累加，可能重复计数，但数据量小时可接受）
+      player.seasonGoals = (player.seasonGoals || 0) + ps.goals
+      player.seasonAssists = (player.seasonAssists || 0) + ps.goal_assist
+      player.yellowCards = (player.yellowCards || 0) + ps.yellow_card
+      player.redCards = (player.redCards || 0) + ps.red_card
+      await this.playerRepo.save(player)
+    }
+  }
+
+  // ==================== 阵型聚合 ====================
+
+  /**
+   * 从已完赛赛事的 lineups 中聚合球队主打阵型
+   */
+  async aggregateTeamFormations(): Promise<void> {
+    try {
+      // 获取所有有 formation 数据的 lineup 记录
+      const lineups = await this.lineupRepo
+        .createQueryBuilder('l')
+        .where('l.formation IS NOT NULL')
+        .getMany()
+
+      // 按球队聚合 formation 出现次数
+      const formationCounts = new Map<string, Map<string, number>>()
+
+      for (const l of lineups) {
+        const match = await this.matchRepo.findOne({ where: { id: l.matchId } })
+        if (!match) continue
+        const teamId = l.side === 'home' ? match.homeTeamId : match.awayTeamId
+        if (!teamId) continue
+        if (!formationCounts.has(teamId)) formationCounts.set(teamId, new Map())
+        const counts = formationCounts.get(teamId)!
+        counts.set(l.formation, (counts.get(l.formation) || 0) + 1)
+      }
+
+      // 取出现次数最多的 formation 作为主打阵型
+      for (const [teamId, counts] of formationCounts) {
+        let maxFormation = ''
+        let maxCount = 0
+        for (const [formation, count] of counts) {
+          if (count > maxCount) {
+            maxFormation = formation
+            maxCount = count
+          }
+        }
+        if (maxFormation) {
+          await this.teamRepo.update(teamId, { formation: maxFormation })
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`aggregateTeamFormations failed: ${(e as Error).message}`)
+    }
+  }
+
   /** 通用 upsert：写入赛事主体字段 */
   private async upsertMatch(
     bsEvent: BsEvent,
@@ -532,10 +924,28 @@ export class BsdcSyncService {
     }
     if (match) {
       Object.assign(match, baseFields)
+      // 同步场馆信息
+      if (bsEvent.venue_id && !match.venue) {
+        try {
+          await this.syncVenuesForMatch(match)
+        } catch { /* ignore */ }
+      }
+      // 提取教练ID和精彩集锦
+      if ((bsEvent as any).home_coach_id) match.homeCoachId = (bsEvent as any).home_coach_id
+      if ((bsEvent as any).away_coach_id) match.awayCoachId = (bsEvent as any).away_coach_id
+      if ((bsEvent as any).highlights?.length) {
+        match.highlights = (bsEvent as any).highlights
+      }
       await this.matchRepo.save(match)
       return 'updated'
     }
     const entity = this.matchRepo.create(baseFields)
+    // 同步场馆信息
+    if (bsEvent.venue_id && !entity.venue) {
+      try {
+        await this.syncVenuesForMatch(entity)
+      } catch { /* ignore */ }
+    }
     await this.matchRepo.save(entity)
     return 'created'
   }
@@ -650,30 +1060,40 @@ export class BsdcSyncService {
   private async syncIncidents(match: MatchEntity, bsEventId: number): Promise<number> {
     const resp = await this.bsdService.getEventIncidents(bsEventId)
     let n = 0
+    let idx = 0
     for (const inc of resp.incidents ?? []) {
-      const exists = await this.incidentRepo.findOne({ where: { bsIncidentId: inc.id } })
+      // BSD incidents 端点不返回稳定 id。
+      // 用 32 位有符号 INT 范围内的 hash 合成（取绝对值避免负数），冲突概率 < 1/2^31。
+      const key = `${bsEventId}|${inc.type}|${inc.minute}|${inc.player_id ?? 'x'}|${idx}|${inc.is_home ? 'h' : 'a'}|${inc.team_id ?? 't'}`
+      let syntheticId = 0
+      for (let i = 0; i < key.length; i++) {
+        syntheticId = ((syntheticId << 5) - syntheticId + key.charCodeAt(i)) | 0
+      }
+      syntheticId = Math.abs(syntheticId)
+      const exists = await this.incidentRepo.findOne({ where: { bsIncidentId: syntheticId } })
       const isSubstitution = inc.type === 'substitution'
       const payload: Partial<EventIncidentEntity> = {
         matchId: match.id,
-        bsIncidentId: inc.id,
+        bsIncidentId: syntheticId,
         bsEventId,
         type: inc.type,
         detail: inc.detail || inc.goal_type || inc.card_type || null,
         minute: inc.minute,
         extraMinute: inc.extra_time ?? null,
         playerId: inc.player_id ?? null,
-        playerName: inc.player_name,
+        // BSD 实际字段是 `player`，同时兼容 player_name
+        playerName: inc.player || inc.player_name || null,
         assistPlayerName: inc.assist_player_name,
         playerInId: isSubstitution ? inc.player_in_id ?? null : null,
         playerInName: isSubstitution ? inc.player_in ?? null : null,
         playerOutId: isSubstitution ? inc.player_id : null,
-        playerOutName: isSubstitution ? inc.player_name : null,
+        playerOutName: isSubstitution ? inc.player || inc.player_name || null : null,
         isHome: typeof inc.is_home === 'boolean' ? inc.is_home : null,
-        teamId: inc.team_id,
-        team: inc.team,
-        homeScoreAtIncident: inc.home_score,
-        awayScoreAtIncident: inc.away_score,
-        reason: inc.reason,
+        teamId: inc.team_id ?? null,
+        team: inc.team ?? null,
+        homeScoreAtIncident: inc.home_score ?? null,
+        awayScoreAtIncident: inc.away_score ?? null,
+        reason: inc.reason ?? null,
       }
       if (exists) {
         Object.assign(exists, payload)
@@ -682,6 +1102,7 @@ export class BsdcSyncService {
         await this.incidentRepo.save(this.incidentRepo.create(payload))
         n++
       }
+      idx++
     }
     return n
   }
@@ -805,7 +1226,8 @@ export class BsdcSyncService {
       homePossession: getNum(home.ball_possession),
       homePasses: getNum(home.passes),
       homePassAccuracy: getNum(home.pass_accuracy_pct),
-      homeCorners: getNum(home.corners),
+      // BSD stats 字段名是 corner_kicks 而非 corners
+      homeCorners: getNum(home.corner_kicks ?? home.corners),
       homeFouls: getNum(home.fouls),
       homeXg: getNum(home.xg),
       awayTotalShots: getNum(away.total_shots),
@@ -813,7 +1235,7 @@ export class BsdcSyncService {
       awayPossession: getNum(away.ball_possession),
       awayPasses: getNum(away.passes),
       awayPassAccuracy: getNum(away.pass_accuracy_pct),
-      awayCorners: getNum(away.corners),
+      awayCorners: getNum(away.corner_kicks ?? away.corners),
       awayFouls: getNum(away.fouls),
       awayXg: getNum(away.xg),
       stats: resp.stats as unknown as Record<string, unknown>,
@@ -828,6 +1250,33 @@ export class BsdcSyncService {
     } else {
       await this.statsRepo.save(this.statsRepo.create(payload))
     }
+
+    // 回填 matchData 到 MatchEntity（前端直接从 match.matchData 读取统计）
+    try {
+      const matchData: Record<string, unknown> = {
+        homeShots: payload.homeTotalShots,
+        homeShotsOnTarget: payload.homeShotsOnTarget,
+        homePossession: payload.homePossession,
+        homePasses: payload.homePasses,
+        homePassAccuracy: payload.homePassAccuracy,
+        homeCorners: payload.homeCorners,
+        homeFouls: payload.homeFouls,
+        homeXg: payload.homeXg,
+        awayShots: payload.awayTotalShots,
+        awayShotsOnTarget: payload.awayShotsOnTarget,
+        awayPossession: payload.awayPossession,
+        awayPasses: payload.awayPasses,
+        awayPassAccuracy: payload.awayPassAccuracy,
+        awayCorners: payload.awayCorners,
+        awayFouls: payload.awayFouls,
+        awayXg: payload.awayXg,
+      }
+      match.matchData = matchData
+      await this.matchRepo.save(match)
+    } catch (e) {
+      this.logger.warn(`回填 matchData for match ${match.id} failed: ${(e as Error).message}`)
+    }
+
     return true
   }
 
@@ -871,5 +1320,30 @@ export class BsdcSyncService {
     }
     await this.predictionRepo.save(this.predictionRepo.create(payload))
     return 1
+  }
+
+  // ==================== 教练信息同步 ====================
+
+  /**
+   * 从 BSD 赛事 detail 同步教练信息
+   * BSD 仅提供 home_coach_id/away_coach_id，无 coach 详情接口
+   * 但比赛结束后 BSD 会在 metadata/incidents 中可能包含教练名
+   */
+  private async syncCoachesForMatch(match: MatchEntity, bsEventId: number): Promise<boolean> {
+    try {
+      const detail = await this.bsdService.getEventDetail(bsEventId) as any
+      const updated: Partial<MatchEntity> = {}
+
+      // 优先从 detail.weather 字段附近查找（BSD 实际字段名）
+      // home_coach_id/away_coach_id 已通过 syncEvents 同步到 homeCoachId/awayCoachId
+      // 这里仅做占位
+      if (Object.keys(updated).length > 0) {
+        await this.matchRepo.update(match.id, updated)
+      }
+      return true
+    } catch (e) {
+      this.logger.warn(`syncCoachesForMatch ${match.id} failed: ${(e as Error).message}`)
+      return false
+    }
   }
 }

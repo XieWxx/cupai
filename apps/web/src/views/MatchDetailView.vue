@@ -235,7 +235,10 @@
             </div>
             <div class="key-info-card__body">
               <div class="key-info-card__label">{{ $t('match.venue') }}</div>
-              <div class="key-info-card__value" :title="match?.venue">{{ match?.venue || '-' }}</div>
+              <div class="key-info-card__value" :title="match?.venue">
+                {{ match?.venue || '-' }}{{ match?.city ? `, ${match.city}` : '' }}
+                <span v-if="match?.venueCapacity" class="venue-capacity">({{ match.venueCapacity.toLocaleString() }})</span>
+              </div>
             </div>
           </div>
           <div class="key-info-card">
@@ -251,6 +254,40 @@
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- 交锋记录 -->
+        <div v-if="h2hData && h2hData.total_matches > 0" class="h2h-card" style="margin-top: var(--space-4)">
+          <h4>{{ $t('match.h2h') }}</h4>
+          <div class="h2h-stats">
+            <div class="h2h-stat">
+              <span class="h2h-num">{{ h2hData.home_wins }}</span>
+              <span class="h2h-label">{{ $t('match.h2hHomeWins') }}</span>
+            </div>
+            <div class="h2h-stat">
+              <span class="h2h-num">{{ h2hData.draws }}</span>
+              <span class="h2h-label">{{ $t('match.h2hDraws') }}</span>
+            </div>
+            <div class="h2h-stat">
+              <span class="h2h-num">{{ h2hData.away_wins }}</span>
+              <span class="h2h-label">{{ $t('match.h2hAwayWins') }}</span>
+            </div>
+          </div>
+          <div v-if="h2hData.recent_matches?.length" class="h2h-recent">
+            <div v-for="rm in h2hData.recent_matches.slice(0, 5)" :key="rm.date" class="h2h-match">
+              <span class="h2h-teams">{{ rm.home }} vs {{ rm.away }}</span>
+              <span class="h2h-score">{{ rm.score }}</span>
+              <span class="h2h-date">{{ new Date(rm.date).toLocaleDateString() }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 趣味事实 -->
+        <div v-if="metadataData?.funfacts?.length" class="funfacts" style="margin-top: var(--space-4)">
+          <h4>{{ $t('match.funFacts') }}</h4>
+          <div v-for="(ff, i) in metadataData.funfacts" :key="i" class="funfact-item">
+            {{ ff.sentence }}
           </div>
         </div>
 
@@ -506,6 +543,55 @@
           </div>
         </SectionCard>
 
+        <!-- 球员统计面板 -->
+        <div v-if="playerStatsData?.player_stats?.length" class="player-stats-panel" style="margin-top: var(--space-4)">
+          <h4>{{ $t('match.playerStats') }}</h4>
+          <div class="player-stats-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ $t('match.playerName') }}</th>
+                  <th>{{ $t('match.rating') }}</th>
+                  <th>{{ $t('match.goals') }}</th>
+                  <th>{{ $t('match.assists') }}</th>
+                  <th>{{ $t('match.shots') }}</th>
+                  <th>{{ $t('match.passes') }}</th>
+                  <th>{{ $t('match.cards') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ps in playerStatsData.player_stats" :key="ps.player_id">
+                  <td>{{ ps.player_id }}</td>
+                  <td>{{ ps.rating ?? '-' }}</td>
+                  <td>{{ ps.goals || 0 }}</td>
+                  <td>{{ ps.goal_assist || 0 }}</td>
+                  <td>{{ ps.total_shots ?? '-' }}</td>
+                  <td>{{ ps.accurate_pass ?? '-' }}/{{ ps.total_pass ?? '-' }}</td>
+                  <td>
+                    <span v-if="ps.yellow_card" class="card-yellow">Y{{ ps.yellow_card }}</span>
+                    <span v-if="ps.red_card" class="card-red">R{{ ps.red_card }}</span>
+                    <span v-if="!ps.yellow_card && !ps.red_card">-</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 精彩集锦 -->
+        <div v-if="highlightsData.length > 0" class="highlights-card" style="margin-top: var(--space-4)">
+          <h4>{{ $t('match.highlights') }}</h4>
+          <div class="highlights-list">
+            <a v-for="h in highlightsData" :key="h.url" :href="h.url" target="_blank" rel="noopener" class="highlight-item">
+              <img :src="h.thumbnail" :alt="h.title" class="highlight-thumb" />
+              <div class="highlight-info">
+                <span class="highlight-title">{{ h.title }}</span>
+                <span class="highlight-date">{{ new Date(h.published_at).toLocaleDateString() }}</span>
+              </div>
+            </a>
+          </div>
+        </div>
+
         <!-- ========== 赛事信息 + 临场环境（两列布局，缩短页面长度） ========== -->
         <div class="info-row-2col" style="margin-top: var(--space-4)">
           <!-- 左：赛事信息 -->
@@ -549,6 +635,17 @@
           >
             <el-empty :description="$t('match.environment')" :image-size="60" />
           </SectionCard>
+        </div>
+
+        <!-- 天气湿度信息（基于场馆经纬度从外部天气 API 拉取） -->
+        <div v-if="weatherData" class="weather-card" style="margin-top: var(--space-4)">
+          <h4>{{ $t('match.weather') }}</h4>
+          <div class="weather-info">
+            <span v-if="weatherData.temperature != null">🌡️ {{ weatherData.temperature }}°C</span>
+            <span v-if="weatherData.humidity != null">💧 {{ $t('match.humidity') }} {{ weatherData.humidity }}%</span>
+            <span v-if="weatherData.windSpeed != null">💨 {{ weatherData.windSpeed.toFixed(1) }} km/h</span>
+            <span v-if="weatherData.weatherDescription">☁️ {{ weatherData.weatherDescription }}</span>
+          </div>
         </div>
 
         <!-- ========== 全维度因子数据 + 数据来源（两列布局，缩短页面长度） ========== -->
@@ -749,7 +846,7 @@
         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
       </a>
       <!-- 微博 -->
-      <a class="share-btn share-btn--weibo" :href="shareUrlWeibo" target="_blank" rel="noopener" title="微博">
+      <a class="share-btn share-btn--weibo" :href="shareUrlWeibo" target="_blank" rel="noopener" :title="$t('match.platformWeibo')">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM9.05 17.219c-.384.616-1.208.884-1.829.602-.612-.279-.793-.991-.406-1.593.379-.595 1.176-.861 1.793-.583.631.283.822.997.442 1.574zm1.27-1.627c-.141.237-.449.353-.689.253-.236-.09-.307-.363-.168-.596.141-.229.445-.35.681-.246.24.09.315.36.176.589zm.176-2.719c-1.893-.493-4.033.45-4.857 2.118-.836 1.704-.026 3.591 1.886 4.21 1.983.642 4.318-.341 5.132-2.145.8-1.752-.154-3.69-2.161-4.183zM17.616 3.68c-.998-.27-1.652-.084-1.96.244-.308.328-.26.834.124 1.165.384.33.932.328 1.28-.008.347-.336.295-.858-.444-1.401zm3.644 2.128c-.386-1.311-1.313-2.078-2.598-2.432-1.291-.355-2.426-.077-3.153.688-.727.766-.778 1.878-.074 2.738.704.86 1.924 1.084 2.933.578 1.015-.51 1.478-1.634.892-2.572z"/></svg>
       </a>
       <!-- 微信（弹出二维码弹窗） -->
@@ -835,7 +932,79 @@ const match = ref<any>(null)
 const errorState = ref<'' | 'not_found' | 'network'>('')
 let unsubscribe: (() => void) | null = null
 
-// ========== AI 胜率预测（占位，在 dimensionReports 定义后重新赋值）==========
+// ========== 扩展数据（交锋记录、赛事元数据、球员统计、赔率对比、社交媒体）==========
+const h2hData = ref<any>(null)
+const metadataData = ref<any>(null)
+const playerStatsData = ref<any>(null)
+const oddsComparisonData = ref<any>(null)
+const socialData = ref<any>(null)
+
+/** 获取赛事扩展数据 */
+async function fetchExtendedData(matchId: string) {
+  try {
+    const [h2h, meta, pStats, odds, social] = await Promise.allSettled([
+      http.get(`/matches/${matchId}/h2h`),
+      http.get(`/matches/${matchId}/metadata`),
+      http.get(`/matches/${matchId}/player-stats`),
+      http.get(`/matches/${matchId}/odds-comparison`),
+      http.get(`/matches/${matchId}/social`),
+    ])
+    if (h2h.status === 'fulfilled') h2hData.value = h2h.value
+    if (meta.status === 'fulfilled') metadataData.value = meta.value
+    if (pStats.status === 'fulfilled') playerStatsData.value = pStats.value
+    if (odds.status === 'fulfilled') oddsComparisonData.value = odds.value
+    if (social.status === 'fulfilled') socialData.value = social.value
+  } catch (e) {
+    console.warn('fetchExtendedData failed', e)
+  }
+}
+
+// ========== 精彩集锦 / 赛事天气（湿度+温度+风速+描述）==========
+// 精彩集锦数据（视频/新闻链接）
+const highlightsData = ref<Array<{ kind: string; title: string; url: string; thumbnail: string; published_at: string }>>([])
+// 湿度/天气
+const weatherData = ref<{ humidity: number | null; temperature: number | null; windSpeed: number | null; weatherDescription: string } | null>(null)
+
+// AbortController 防止组件卸载后 setState 触发警告 / 消除 net::ERR_ABORTED 日志
+let fetchAbortCtrl: AbortController | null = null
+function getAbortSignal(): AbortSignal {
+  if (!fetchAbortCtrl) fetchAbortCtrl = new AbortController()
+  return fetchAbortCtrl.signal
+}
+
+/** 获取精彩集锦（视频/新闻） */
+async function fetchHighlights(matchId: string) {
+  try {
+    const r: any = await http.get(`/matches/${matchId}/highlights`, { signal: getAbortSignal() })
+    if (!fetchAbortCtrl) return // 已被 abort
+    highlightsData.value = r?.data ?? r ?? []
+  } catch (e: any) {
+    if (e?.name !== 'CanceledError' && e?.code !== 'ERR_CANCELED') {
+      console.warn('fetchHighlights failed', e)
+    }
+  }
+}
+
+/** 获取赛事天气（湿度+温度+风速+描述） */
+async function fetchWeatherData(matchId: string) {
+  try {
+    const detail: any = await http.get(`/matches/${matchId}`, { signal: getAbortSignal() })
+    if (!fetchAbortCtrl) return
+    const d = detail?.data ?? detail
+    const lat = d?.venueLatitude
+    const lon = d?.venueLongitude
+    if (lat && lon && d?.eventDate) {
+      const w: any = await http.get(`/external/weather?lat=${lat}&lon=${lon}&date=${encodeURIComponent(d.eventDate)}`, { signal: getAbortSignal() })
+      if (!fetchAbortCtrl) return
+      weatherData.value = w?.data ?? w ?? null
+    }
+  } catch (e: any) {
+    if (e?.name !== 'CanceledError' && e?.code !== 'ERR_CANCELED') {
+      console.warn('fetchWeatherData failed', e)
+    }
+  }
+}
+
 let prediction = ref<{
   homeWin: number
   draw: number
@@ -862,7 +1031,7 @@ async function loadUserRanking() {
     const list = res?.list || res || []
     userPredictionRanking.value = list.map((item: any) => ({
       userId: item.userId || '',
-      username: item.username || 'Anonymous',
+      username: item.username || t('common.anonymous'),
       countryCode: item.countryCode || '',
       platform: item.lastPlatform || '',
       llmType: item.lastModel || '',
@@ -1884,7 +2053,7 @@ const shareText = computed(() => {
   const scorePart = (hs !== null && hs !== undefined && as !== null && as !== undefined)
     ? ` ${hs}:${as} ` : ' VS '
   const prefix = tournament ? `【${tournament}】` : ''
-  return `${prefix}${home}${scorePart}${away} — CupAI AI预测`
+  return `${prefix}${home}${scorePart}${away} — CupAI ${t('match.aiPrediction')}`
 })
 
 const shareUrlX = computed(() =>
@@ -1984,6 +2153,9 @@ async function loadDetail() {
     startDimensionPoll(matchId)
     loadInstructions(matchId)
     loadUserRanking()
+    fetchExtendedData(matchId)
+    fetchHighlights(matchId)
+    fetchWeatherData(matchId)
   } catch (e: any) {
     if (e?.response?.status === 404) {
       errorState.value = 'not_found'
@@ -2090,6 +2262,9 @@ onUnmounted(() => {
   sentimentChart = null
   distributionChart?.dispose()
   distributionChart = null
+  // 取消未完成的 fetch，避免组件卸载后 setState 与 net::ERR_ABORTED
+  fetchAbortCtrl?.abort()
+  fetchAbortCtrl = null
 })
 </script>
 
@@ -2790,5 +2965,206 @@ onUnmounted(() => {
   .share-sidebar {
     display: none;
   }
+}
+
+/* ========== 交锋记录 ========== */
+.h2h-card {
+  background: var(--el-bg-color-overlay);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.h2h-card h4 {
+  margin: 0 0 12px;
+  color: var(--el-text-color-primary);
+}
+.h2h-stats {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.h2h-stat {
+  text-align: center;
+}
+.h2h-num {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--el-color-primary);
+}
+.h2h-label {
+  display: block;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.h2h-recent {
+  border-top: 1px solid var(--el-border-color-lighter);
+  padding-top: 8px;
+}
+.h2h-match {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.h2h-score {
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+}
+.h2h-date {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+/* ========== 趣味事实 ========== */
+.funfacts {
+  background: var(--el-bg-color-overlay);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.funfacts h4 {
+  margin: 0 0 8px;
+  color: var(--el-text-color-primary);
+}
+.funfact-item {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.funfact-item:last-child {
+  border-bottom: none;
+}
+
+/* ========== 球员统计面板 ========== */
+.player-stats-panel {
+  background: var(--el-bg-color-overlay);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.player-stats-panel h4 {
+  margin: 0 0 12px;
+  color: var(--el-text-color-primary);
+}
+.player-stats-table {
+  overflow-x: auto;
+}
+.player-stats-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.player-stats-table th,
+.player-stats-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.player-stats-table th {
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.player-stats-table td:first-child {
+  text-align: left;
+}
+.card-yellow {
+  color: #f0c000;
+  font-weight: 600;
+}
+.card-red {
+  color: #f56c6c;
+  font-weight: 600;
+}
+.venue-capacity {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+/* ========== 精彩集锦 ========== */
+.highlights-card {
+  background: var(--el-bg-color-overlay);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.highlights-card h4 {
+  margin: 0 0 12px;
+  color: var(--el-text-color-primary);
+}
+.highlights-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.highlight-item {
+  display: flex;
+  gap: 8px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+  padding: 8px;
+  text-decoration: none;
+  color: var(--el-text-color-primary);
+  transition: all 0.2s;
+}
+.highlight-item:hover {
+  background: var(--el-fill-color);
+  transform: translateY(-2px);
+}
+.highlight-thumb {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.highlight-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+}
+.highlight-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.highlight-date {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+
+/* ========== 天气湿度信息 ========== */
+.weather-card {
+  background: var(--el-bg-color-overlay);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+}
+.weather-card h4 {
+  margin: 0 0 8px;
+  color: var(--el-text-color-primary);
+}
+.weather-info {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  flex-wrap: wrap;
+}
+.weather-humidity {
+  color: var(--el-text-color-regular);
+}
+.weather-desc {
+  color: var(--el-text-color-secondary);
 }
 </style>

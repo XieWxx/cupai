@@ -113,7 +113,7 @@ const benefitIcons = [
 /** 联系赞助（占位） */
 function contactSponsor() {
   // TODO: 跳转联系表单或邮件
-  window.open('mailto:sponsor@cupai.ai', '_blank')
+  window.open('mailto:15639480130@163.com', '_blank')
 }
 </script>
 

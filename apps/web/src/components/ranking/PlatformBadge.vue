@@ -11,25 +11,17 @@
     <!-- 第 2 列：icon -->
     <span
       class="badge-icon"
-      :title="platform?.nameEn || platform?.name"
+      :title="platform?.nameEn || displayName"
       :style="{ backgroundColor: platform?.color || '#94a3b8' }"
     >
-      <!-- 优先使用 LobeHub CDN icon -->
+      <!-- 优先使用本地 SVG（@lobehub/icons-static-svg，通过 Vite ?url import） -->
       <img
-        v-if="platform?.lobeIconId"
-        :src="lobeIconUrl"
-        :alt="platform.nameEn"
-        class="badge-lobe-img"
-        @error="onLobeIconError"
+        v-if="platform?.iconUrl"
+        :src="platform.iconUrl"
+        :alt="platform?.nameEn || ''"
+        class="badge-local-img"
       />
-      <svg
-        v-else-if="platform?.iconSvg"
-        viewBox="0 0 24 24"
-        class="badge-svg"
-        aria-hidden="true"
-      >
-        <path :d="platform.iconSvg" fill="currentColor" />
-      </svg>
+      <!-- 降级：首字母 badge -->
       <span v-else class="badge-letter">{{ platform?.letter || '?' }}</span>
     </span>
     <!-- 第 3 列：name -->
@@ -37,27 +29,19 @@
       {{ displayName }}
     </span>
   </template>
-  <div v-else class="platform-badge" :title="platform?.nameEn || platform?.name">
+  <div v-else class="platform-badge" :title="platform?.nameEn || displayName">
     <span
       class="badge-icon"
       :style="{ backgroundColor: platform?.color || '#94a3b8' }"
     >
-      <!-- 优先使用 LobeHub CDN icon -->
+      <!-- 优先使用本地 SVG（@lobehub/icons-static-svg，通过 Vite ?url import） -->
       <img
-        v-if="platform?.lobeIconId"
-        :src="lobeIconUrl"
+        v-if="platform?.iconUrl"
+        :src="platform.iconUrl"
         :alt="platform?.nameEn || ''"
-        class="badge-lobe-img"
-        @error="onLobeIconError"
+        class="badge-local-img"
       />
-      <svg
-        v-else-if="platform?.iconSvg"
-        viewBox="0 0 24 24"
-        class="badge-svg"
-        aria-hidden="true"
-      >
-        <path :d="platform.iconSvg" fill="currentColor" />
-      </svg>
+      <!-- 降级：首字母 badge -->
       <span v-else class="badge-letter">{{ platform?.letter || '?' }}</span>
     </span>
     <span v-if="showName" class="badge-name">
@@ -70,14 +54,17 @@
 /**
  * PlatformBadge：Agent 平台 / 大模型的统一 icon + 名称展示
  *
- * - 优先使用 LobeHub Icons CDN（高质量官方 logo）
- * - 降级1：内联 SVG（离线可用）
- * - 降级2：首字母圆形 badge
- * - 用于 RankingView、报告卡片、HomeView 等场景
+ * 两级降级渲染策略：
+ * 1. 本地 SVG（iconUrl → @lobehub/icons-static-svg，通过 Vite ?url import）
+ * 2. 首字母圆形 badge（最终兜底）
+ *
+ * 用于 RankingView、报告卡片、HomeView 等场景
  */
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AgentPlatform } from '@/utils/agentPlatform'
-import { getLobeIconUrl } from '@/utils/agentPlatform'
+
+const { t } = useI18n()
 
 const props = withDefaults(
   defineProps<{
@@ -97,22 +84,19 @@ const props = withDefaults(
   { showName: true, split: false },
 )
 
-/** LobeHub CDN icon 加载失败标记 */
-const lobeError = ref(false)
-
-/** LobeHub CDN SVG URL */
-const lobeIconUrl = computed(() => {
-  if (!props.platform?.lobeIconId || lobeError.value) return ''
-  return getLobeIconUrl(props.platform.lobeIconId)
+/** 解析平台名称：name 为 i18n key 时通过 t() 解析，否则直接展示 */
+const displayName = computed(() => {
+  if (!props.platform) return '—'
+  const name = props.platform.name
+  // name 以 'platform.' 开头时视为 i18n key，通过 t() 解析
+  if (name.startsWith('platform.')) {
+    const resolved = t(name)
+    // 如果 t() 未找到翻译，会返回 key 本身，此时回退到 nameEn
+    return resolved === name ? (props.platform.nameEn || name) : resolved
+  }
+  // 兜底：直接展示原始值（动态输入等场景）
+  return name
 })
-
-/** LobeHub icon 加载失败时降级到内联 SVG / 字母 badge */
-function onLobeIconError() {
-  lobeError.value = true
-}
-
-/** 中文环境显示中文，其它语言显示英文名 */
-const displayName = computed(() => props.platform?.name || '—')
 </script>
 
 <style scoped>
@@ -142,20 +126,13 @@ const displayName = computed(() => props.platform?.name || '—')
   overflow: hidden;
 }
 
-/* LobeHub CDN icon 图片 */
-.badge-lobe-img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  /* 深色背景上让浅色 logo 更清晰 */
-  filter: brightness(0) invert(1);
-}
-
-.badge-svg {
+/* 本地 SVG icon 图片（@lobehub/icons-static-svg，单色） */
+.badge-local-img {
   width: 16px;
   height: 16px;
-  color: #fff;
-  fill: #fff;
+  object-fit: contain;
+  /* 本地 SVG 是单色版本，在深色背景上反色显示 */
+  filter: brightness(0) invert(1);
 }
 
 .badge-letter {

@@ -2,10 +2,10 @@
   <div class="knockout-bracket">
     <div v-if="loading" class="bracket-loading">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>加载中...</span>
+      <span>{{ $t('common.loading') }}</span>
     </div>
     <div v-else-if="!hasData" class="bracket-empty">
-      <el-empty description="暂无淘汰赛数据" />
+      <el-empty :description="$t('bracket.noData')" />
     </div>
     <div v-else class="bracket-tree">
       <!-- 左半区 -->
@@ -22,12 +22,12 @@
             >
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.homeTeam?.name || 'TBD' }}</span>
+                <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
                 <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.awayTeam?.name || 'TBD' }}</span>
+                <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
               </div>
             </div>
@@ -37,7 +37,7 @@
 
       <!-- 决赛 -->
       <div class="bracket-center">
-        <div class="round-label final-label">决赛</div>
+        <div class="round-label final-label">{{ $t('bracket.final') }}</div>
         <div
           v-for="match in finalMatch"
           :key="match?.id || 'final'"
@@ -47,18 +47,18 @@
         >
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
             <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-            <span class="team-name">{{ match?.homeTeam?.name || 'TBD' }}</span>
+            <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
             <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
           </div>
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
             <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
-            <span class="team-name">{{ match?.awayTeam?.name || 'TBD' }}</span>
+            <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
             <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
           </div>
           <!-- 冠军标识 -->
           <div v-if="match?.status === 'finished'" class="champion-badge">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 4l4 2 6-2 6 2 4-2v14l-4 2-6-2-6 2-4-2V4z" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5"/></svg>
-            <span>冠军</span>
+            <span>{{ $t('bracket.champion') }}</span>
           </div>
         </div>
       </div>
@@ -77,12 +77,12 @@
             >
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.homeTeam?.name || 'TBD' }}</span>
+                <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
                 <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match?.awayTeam?.name || 'TBD' }}</span>
+                <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
               </div>
             </div>
@@ -97,6 +97,7 @@
 import { computed } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getFlagClass } from '@/utils/flag'
 
 const props = defineProps<{
@@ -105,6 +106,7 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
+const { t } = useI18n()
 
 /** 是否有淘汰赛数据 */
 const hasData = computed(() => {
@@ -120,16 +122,16 @@ const finalMatch = computed(() => props.bracketData?.final || [])
 
 /** 左半区轮次：R16前4场 → QF前2场 → SF第1场 */
 const leftRounds = computed(() => [
-  { key: 'r16-left', label: '1/8 决赛', matches: r16.value.slice(0, 4) },
-  { key: 'qf-left', label: '1/4 决赛', matches: qf.value.slice(0, 2) },
-  { key: 'sf-left', label: '半决赛', matches: sf.value.slice(0, 1) },
+  { key: 'r16-left', label: t('bracket.r16'), matches: r16.value.slice(0, 4) },
+  { key: 'qf-left', label: t('bracket.qf'), matches: qf.value.slice(0, 2) },
+  { key: 'sf-left', label: t('bracket.sf'), matches: sf.value.slice(0, 1) },
 ].filter(r => r.matches.length > 0))
 
 /** 右半区轮次：R16后4场 → QF后2场 → SF第2场 */
 const rightRounds = computed(() => [
-  { key: 'sf-right', label: '半决赛', matches: sf.value.slice(1, 2) },
-  { key: 'qf-right', label: '1/4 决赛', matches: qf.value.slice(2, 4) },
-  { key: 'r16-right', label: '1/8 决赛', matches: r16.value.slice(4, 8) },
+  { key: 'sf-right', label: t('bracket.sf'), matches: sf.value.slice(1, 2) },
+  { key: 'qf-right', label: t('bracket.qf'), matches: qf.value.slice(2, 4) },
+  { key: 'r16-right', label: t('bracket.r16'), matches: r16.value.slice(4, 8) },
 ].filter(r => r.matches.length > 0))
 
 /** 判断胜方 */

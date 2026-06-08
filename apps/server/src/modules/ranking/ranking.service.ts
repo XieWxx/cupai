@@ -20,29 +20,83 @@ import { WEIGHT_SUM } from '@cupai/constants'
 export type UserRankingSort = 'total' | 'exact' | 'funny'
 
 /**
- * 域名 -> 平台 key 的归一化映射
+ * 域名 / 平台字符串 -> 平台 key 的归一化映射
  * 平台识别失败时按 host 首字符兜底
+ *
+ * 兼容：URL 主机名、agent 客户端名、口语化别名
+ *  - 真实域名（如 api.openai.com）按 host 匹配
+ *  - 客户端/别名（如 'cursor'、'claude'、'chatgpt'）通过别名归一到标准 key
+ *  - 标准 key 本身（如 'openai'、'anthropic'）原样返回
  */
 function hostToPlatformKey(host: string): string {
   if (!host) return 'unknown'
-  if (/openai\.com/.test(host)) return 'openai'
-  if (/anthropic\.com/.test(host)) return 'anthropic'
-  if (/googleapis\.com|gemini|google\.com/.test(host)) return 'gemini'
-  if (/deepseek\.com/.test(host)) return 'deepseek'
-  if (/dashscope|aliyuncs\.com|qwen/.test(host)) return 'qwen'
-  if (/qianfan|baidubce\.com|baidu/.test(host)) return 'ernie'
-  if (/spark-api|xf-yun\.com|iflytek/.test(host)) return 'spark'
-  if (/bigmodel\.cn|zhipu/.test(host)) return 'glm'
-  if (/moonshot\.cn|kimi/.test(host)) return 'moonshot'
-  if (/cohere\.ai/.test(host)) return 'cohere'
-  if (/codex-cli|codex/i.test(host)) return 'codex-cli'
-  if (/cursor/i.test(host)) return 'cursor'
-  if (/windsurf/i.test(host)) return 'windsurf'
-  if (/cline/i.test(host)) return 'cline'
-  if (/trae/i.test(host)) return 'trae'
-  if (/workbuddy/i.test(host)) return 'workbuddy'
+  const h = host.toLowerCase()
+
+  // 0) 标准 key 透传（后端 dimension_submissions.platform 直填 platformKey 的场景）
+  const standardKeys = [
+    'openai', 'anthropic', 'gemini', 'deepseek', 'qwen', 'ernie', 'spark',
+    'glm', 'moonshot', 'cohere', 'cursor', 'windsurf', 'cline', 'trae',
+    'codex-cli', 'workbuddy', 'agnes', 'coze',
+    'doubao', 'hunyuan', 'stepfun', 'yi', 'meta', 'mistral', 'baichuan',
+  ]
+  if (standardKeys.includes(h)) return h
+
+  // 1) 客户端 / 口语化别名映射
+  const aliasMap: Record<string, string> = {
+    chatgpt: 'openai',
+    gpt: 'openai',
+    'open-ai': 'openai',
+    claude: 'anthropic',
+    'claude-ai': 'anthropic',
+    bard: 'gemini',
+    google: 'gemini',
+    tongyi: 'qwen',
+    wenxin: 'ernie',
+    yiyan: 'ernie',
+    xinghuo: 'spark',
+    iflytek: 'spark',
+    zhipu: 'glm',
+    chatglm: 'glm',
+    kimi: 'moonshot',
+    bytedance: 'doubao',
+    volcengine: 'doubao',
+    tencent: 'hunyuan',
+    '01-ai': 'yi',
+    llama: 'meta',
+    mixtral: 'mistral',
+    codex: 'codex-cli',
+  }
+  if (aliasMap[h]) return aliasMap[h]
+
+  // 2) 真实域名匹配
+  if (/openai\.com/.test(h)) return 'openai'
+  if (/anthropic\.com/.test(h)) return 'anthropic'
+  if (/googleapis\.com|gemini|google\.com/.test(h)) return 'gemini'
+  if (/deepseek\.com/.test(h)) return 'deepseek'
+  if (/dashscope|aliyuncs\.com|qwen/.test(h)) return 'qwen'
+  if (/qianfan|baidubce\.com|baidu/.test(h)) return 'ernie'
+  if (/spark-api|xf-yun\.com|iflytek/.test(h)) return 'spark'
+  if (/bigmodel\.cn|zhipu/.test(h)) return 'glm'
+  if (/moonshot\.cn|kimi/.test(h)) return 'moonshot'
+  if (/cohere\.ai/.test(h)) return 'cohere'
+  if (/codex-cli|codex/i.test(h)) return 'codex-cli'
+  if (/cursor/i.test(h)) return 'cursor'
+  if (/windsurf/i.test(h)) return 'windsurf'
+  if (/cline/i.test(h)) return 'cline'
+  if (/trae/i.test(h)) return 'trae'
+  if (/workbuddy/i.test(h)) return 'workbuddy'
+  if (/agnes/i.test(h)) return 'agnes'
+  if (/coze/i.test(h)) return 'coze'
+  if (/doubao|volcengine|bytedance/i.test(h)) return 'doubao'
+  if (/hunyuan|tencent/i.test(h)) return 'hunyuan'
+  if (/stepfun|step/i.test(h)) return 'stepfun'
+  if (/\byi-|01\.ai|\byi\b/.test(h)) return 'yi'
+  if (/\bllama\b|meta\.com|meta-llama/i.test(h)) return 'meta'
+  if (/mistral|mixtral|codestral/i.test(h)) return 'mistral'
+  if (/baichuan/i.test(h)) return 'baichuan'
+
   // 兜底：取主域名前缀
-  const m = host.match(/^([a-z0-9-]+)/i)
+  const m = h.match(/^([a-z0-9-]+)/i)
   return m ? m[1] : 'unknown'
 }
 
@@ -66,7 +120,46 @@ const PLATFORM_DISPLAY: Record<string, string> = {
   cline: 'Cline',
   trae: 'Trae',
   workbuddy: 'WorkBuddy',
+  agnes: 'Agnes',
+  coze: 'Coze',
+  doubao: '豆包',
+  hunyuan: '腾讯混元',
+  stepfun: '阶跃星辰',
+  yi: '零一万物',
+  meta: 'Meta Llama',
+  mistral: 'Mistral',
+  baichuan: '百川',
   unknown: '未配置',
+}
+
+/**
+ * 模型名 -> 平台 key 的映射
+ * 用于 dimension_submissions 中 platform 为空时从 model 字段推断平台
+ */
+function modelToPlatformKey(model: string): string {
+  if (!model) return 'unknown'
+  const m = model.toLowerCase().trim()
+  if (/^(gpt-|o1-|o3-|chatgpt)/.test(m)) return 'openai'
+  if (/^claude-/.test(m)) return 'anthropic'
+  if (/gemini-/.test(m)) return 'gemini'
+  if (/deepseek/.test(m)) return 'deepseek'
+  if (/qwen|qwq/.test(m)) return 'qwen'
+  if (/ernie-/.test(m)) return 'ernie'
+  if (/spark|iflytek/.test(m)) return 'spark'
+  if (/glm-|chatglm/.test(m)) return 'glm'
+  if (/moonshot-|kimi/.test(m)) return 'moonshot'
+  if (/cohere/.test(m)) return 'cohere'
+  if (/workbuddy/.test(m)) return 'workbuddy'
+  if (/agnes/.test(m)) return 'agnes'
+  if (/coze/.test(m)) return 'coze'
+  if (/doubao-|skylark-|volcengine/.test(m)) return 'doubao'
+  if (/hunyuan-/.test(m)) return 'hunyuan'
+  if (/\bstep-1\b|\bstep-2\b|stepfun/.test(m)) return 'stepfun'
+  if (/(^|[-_/])yi-?\d|yi-large|yi-medium|yi-vision|01-ai/.test(m)) return 'yi'
+  if (/llama|meta-llama/.test(m)) return 'meta'
+  if (/mistral|mixtral|codestral/.test(m)) return 'mistral'
+  if (/baichuan/.test(m)) return 'baichuan'
+  return 'unknown'
 }
 
 /**
@@ -199,10 +292,9 @@ export class RankingService {
       query.andWhere('r.seasonId = :seasonId', { seasonId })
     }
 
-    // 主排序：按 sort 字段降序；缺字段时按 totalScore / accuracyRate 兜底
-    query.orderBy(orderColumn, 'DESC')
+    // 主排序：按预测次数降序；预测次数相同时按 totalScore 兜底
+    query.orderBy('r.totalPredictions', 'DESC')
     query.addOrderBy('r.totalScore', 'DESC')
-    query.addOrderBy('r.accuracyRate', 'DESC')
 
     let list: UserRankingEntity[]
     let total = 0
@@ -245,7 +337,7 @@ export class RankingService {
       query.andWhere('r.seasonId = :seasonId', { seasonId })
     }
 
-    query.orderBy('r.totalScore', 'DESC')
+    query.orderBy('r.totalPredictions', 'DESC')
     query.addOrderBy('r.accuracyRate', 'DESC')
 
     let list: ModelRankingEntity[]
@@ -293,20 +385,26 @@ export class RankingService {
     }
 
     // 数据源 2：从 dimension_submissions 聚合预测次数
+    // 优先使用 platform 字段，若为空则从 model 字段推断平台
     const submissionRows = await this.submissionRepo
       .createQueryBuilder('s')
       .select('s.platform', 'platform')
+      .addSelect('s.model', 'model')
       .addSelect('COUNT(*)', 'totalPredictions')
-      .where('s.platform IS NOT NULL')
-      .andWhere("s.platform != ''")
-      .groupBy('s.platform')
+      .groupBy('s.platform, s.model')
       .getRawMany()
 
     const predictionMap = new Map<string, number>()
     for (const row of submissionRows) {
       const rawPlatform: string = row.platform || ''
-      // dimension_submissions 中的 platform 可能是平台名或域名，统一归一化
-      const key = hostToPlatformKey(rawPlatform.toLowerCase())
+      const rawModel: string = row.model || ''
+      // 优先使用 platform 字段，若为空则从 model 推断
+      let key = rawPlatform ? hostToPlatformKey(rawPlatform.toLowerCase()) : ''
+      if (!key || key === 'unknown') {
+        // 从 model 名推断：如 deepseek-chat -> deepseek, gpt-4o -> openai
+        key = modelToPlatformKey(rawModel)
+      }
+      if (!key || key === 'unknown') continue
       const count = Number(row.totalPredictions) || 0
       predictionMap.set(key, (predictionMap.get(key) || 0) + count)
     }
@@ -321,7 +419,7 @@ export class RankingService {
         totalPredictions: predictionMap.get(platformKey) || 0,
       }))
       .filter((row) => row.platformKey !== 'unknown')
-      .sort((a, b) => b.userCount - a.userCount)
+      .sort((a, b) => b.totalPredictions - a.totalPredictions)
 
     if (limit && limit > 0) {
       list = list.slice(0, limit)
@@ -391,6 +489,7 @@ export class RankingService {
       .select('s.apiKeyHint', 'apiKeyHint')
       .addSelect('COUNT(*)', 'totalPredictions')
       .addSelect('MAX(s.model)', 'lastModel')
+      .addSelect('MAX(s.platform)', 'lastPlatform')
       .addSelect('MAX(s.createdAt)', 'lastActiveAt')
       .where('s.matchId = :matchId', { matchId })
       .andWhere('s.apiKeyHint IS NOT NULL')
@@ -427,7 +526,7 @@ export class RankingService {
         username: user?.nickname || user?.username || 'Anonymous',
         countryCode: user?.region || '',
         lastModel: r.lastModel || '',
-        lastPlatform: null, // dimension_submissions 中暂无 platform 字段
+        lastPlatform: r.lastPlatform || null,
         totalPredictions: Number(r.totalPredictions) || 0,
         lastActiveAt: r.lastActiveAt,
       }

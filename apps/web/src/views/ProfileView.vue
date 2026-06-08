@@ -18,7 +18,7 @@
       <div class="api-key-section">
         <h3 class="api-key-title">
           <el-icon><Key /></el-icon>
-          API Key
+          {{ t('profile.apiKey') }}
         </h3>
         <div class="api-key-display">
           <span class="api-key-value">{{ userStore.user?.apiKey || '-' }}</span>

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common'
 import { MatchService } from './match.service'
 import { StandingService } from './standing.service'
 import { BsdcBusinessService } from '../bsd/bsd.business.service'
@@ -61,6 +61,56 @@ export class MatchController {
     return this.matchService.getMatches(status, stage, Number(page) || 1, Number(pageSize) || 20)
   }
 
+  // ==================== 赛事扩展数据 ====================
+
+  /** 获取赛事交锋记录 */
+  @Get(':id/h2h')
+  async getH2H(@Param('id') id: string) {
+    const match = await this.matchService.getMatchDetail(id)
+    if (!match) throw new NotFoundException('Match not found')
+    return match.h2hData || null
+  }
+
+  /** 获取赛事元数据（球衣颜色+趣味事实+AI预览） */
+  @Get(':id/metadata')
+  async getMetadata(@Param('id') id: string) {
+    const match = await this.matchService.getMatchDetail(id)
+    if (!match) throw new NotFoundException('Match not found')
+    return match.metadata || null
+  }
+
+  /** 获取赛事球员统计 */
+  @Get(':id/player-stats')
+  async getPlayerStats(@Param('id') id: string) {
+    const match = await this.matchService.getMatchDetail(id)
+    if (!match) throw new NotFoundException('Match not found')
+    return match.playerStatsData || null
+  }
+
+  /** 获取赛事赔率对比 */
+  @Get(':id/odds-comparison')
+  async getOddsComparison(@Param('id') id: string) {
+    const match = await this.matchService.getMatchDetail(id)
+    if (!match) throw new NotFoundException('Match not found')
+    return match.oddsComparison || null
+  }
+
+  /** 获取赛事社交媒体内容 */
+  @Get(':id/social')
+  async getSocial(@Param('id') id: string) {
+    const match = await this.matchService.getMatchDetail(id)
+    if (!match) throw new NotFoundException('Match not found')
+    return match.socialData || null
+  }
+
+  /** 获取比赛精彩集锦 */
+  @Get(':id/highlights')
+  async getHighlights(@Param('id') id: string) {
+    const match = await this.matchService.getMatchDetail(id)
+    if (!match) throw new NotFoundException('Match not found')
+    return match.highlights || []
+  }
+
   // 获取赛事详情（必须在所有固定路由之后，避免 :id 通配吞掉固定路径）
   @Get(':id')
   async getMatchDetail(@Param('id') id: string) {
@@ -77,6 +127,18 @@ export class MatchController {
   @Get(':id/lineups')
   async getMatchLineups(@Param('id') id: string) {
     return this.matchService.getMatchLineups(id)
+  }
+
+  // 获取赛事事件流（进球/红黄牌/换人）
+  @Get(':id/incidents')
+  async getMatchIncidents(@Param('id') id: string) {
+    return this.matchService.getMatchIncidents(id)
+  }
+
+  // 获取赛事赔率（1X2 + Over/Under + BTTS）
+  @Get(':id/odds')
+  async getMatchOdds(@Param('id') id: string) {
+    return this.matchService.getMatchOdds(id)
   }
 
   // 获取球队详情

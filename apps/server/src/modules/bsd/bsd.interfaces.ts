@@ -260,23 +260,26 @@ export interface BsIncidents {
 }
 
 export interface BsIncident {
-  id: number
+  id?: number
   minute: number
   extra_time: number | null
-  player_id: number
-  player_name: string
+  player_id: number | null
+  /** BSD 实际字段名为 `player`（非 player_name） */
+  player?: string
+  /** 部分场景使用 player_name 字段名（兼容保留） */
+  player_name?: string
   type: string
-  detail: string
-  goal_type: string | null
+  detail?: string
+  goal_type?: string | null
   card_type?: string | null
   assist_player_name: string | null
   body_part: string | null
   situation: string | null
-  team: string
-  team_id: number
-  home_score: number | null
-  away_score: number | null
-  reason: string | null
+  team?: string
+  team_id?: number | null
+  home_score?: number | null
+  away_score?: number | null
+  reason?: string | null
   related_incident_id: number | null
   comments: string | null
   extended: boolean
@@ -401,4 +404,302 @@ export interface BsPaginated<T> {
   next: string | null
   previous: string | null
   results: T[]
+}
+
+// ==================== 场馆相关 ====================
+
+/** BSD 场馆列表项 */
+export interface BsVenue {
+  id: number
+  name: string
+  city: string
+  country: string
+  country_code: string
+  capacity: number | null
+  latitude: number | null
+  longitude: number | null
+  pitch_length_m: number | null
+  pitch_width_m: number | null
+  built_year: number | null
+  home_team_id: number | null
+}
+
+/** BSD 场馆详情（含赛事分配） */
+export interface BsVenueDetail extends BsVenue {
+  competition_assignments: unknown[]
+}
+
+// ==================== 球员相关 ====================
+
+/** BSD 球员列表项 */
+export interface BsPlayer {
+  id: number
+  name: string
+  short_name: string
+  position: string
+  specific_position: string
+  jersey_number: number | null
+  date_of_birth: string | null
+  height_cm: number | null
+  weight_kg: number | null
+  preferred_foot: string
+  nationality: string
+  current_team_id: number | null
+  national_team_id: number | null
+  market_value_eur: number | null
+  contract_until: string | null
+  availability: string
+  attributes: unknown
+  strengths: string[]
+  weaknesses: string[]
+  rating: number | null
+  potential: string | null
+  injury_risk: string | null
+  wage_eur_annual: number | null
+}
+
+/** BSD 球员赛季统计（逐场） */
+export interface BsPlayerStats {
+  id: number
+  player_id: number
+  event_id: number
+  team_id: number
+  minutes_played: number
+  rating: number | null
+  touches: number | null
+  goals: number
+  goal_assist: number
+  expected_goals: number | null
+  expected_assists: number | null
+  total_shots: number | null
+  shots_on_target: number | null
+  key_pass: number | null
+  total_pass: number | null
+  accurate_pass: number | null
+  total_long_balls: number | null
+  accurate_long_balls: number | null
+  total_cross: number | null
+  accurate_cross: number | null
+  total_contest: number | null
+  won_contest: number | null
+  duel_won: number | null
+  duel_lost: number | null
+  aerial_won: number | null
+  aerial_lost: number | null
+  total_tackle: number | null
+  won_tackle: number | null
+  total_clearance: number | null
+  interception: number | null
+  ball_recovery: number | null
+  blocked_scoring_attempt: number | null
+  dispossessed: number | null
+  possession_lost: number | null
+  was_fouled: number | null
+  fouls: number | null
+  yellow_card: number
+  red_card: number
+  saves: number | null
+  goals_conceded: number | null
+  punches: number | null
+}
+
+/** BSD 单场球员统计响应 */
+export interface BsEventPlayerStats {
+  event_id: number
+  count: number
+  player_stats: BsPlayerStats[]
+}
+
+/** BSD 球员转会记录 */
+export interface BsPlayerTransfer {
+  player_id: number
+  count: number
+  transfers: unknown[]
+}
+
+// ==================== 交锋记录 ====================
+
+/** BSD 交锋记录 */
+export interface BsH2H {
+  total_matches: number
+  home_wins: number
+  draws: number
+  away_wins: number
+  home_goals: number
+  away_goals: number
+  avg_total_goals: number
+  home_win_rate: number
+  away_win_rate: number
+  recent_matches: BsH2HMatch[]
+}
+
+/** BSD 交锋记录中的单场比赛 */
+export interface BsH2HMatch {
+  home: string
+  away: string
+  date: string
+  score: string
+}
+
+// ==================== 赛事元数据 ====================
+
+/** BSD 赛事元数据 */
+export interface BsEventMetadata {
+  event_id: number
+  jerseys: BsJerseys
+  funfacts: BsFunFact[]
+  ai_preview: string | null
+}
+
+/** 球衣颜色 */
+export interface BsJerseys {
+  home: BsJerseySide
+  away: BsJerseySide
+}
+
+/** 单侧球衣 */
+export interface BsJerseySide {
+  GK: BsJerseyKit
+  player: BsJerseyKit
+}
+
+/** 球衣套装 */
+export interface BsJerseyKit {
+  base: string
+  real: boolean
+  type: string
+  number: string
+  sleeve: string
+}
+
+/** 趣味事实 */
+export interface BsFunFact {
+  type_id: number
+  sentence: string
+}
+
+// ==================== 赔率对比 ====================
+
+/** BSD 博彩公司赔率对比 */
+export interface BsOddsComparison {
+  event_id: number
+  event_date: string
+  league_id: number
+  league_name: string
+  home_team_id: number
+  home_team: string
+  away_team_id: number
+  away_team: string
+  bookmakers_count: number
+  total_odds: number
+  markets: Record<string, BsOddsComparisonMarket>
+}
+
+/** 赔率对比市场 */
+export interface BsOddsComparisonMarket {
+  [outcome: string]: BsOddsComparisonOutcome
+}
+
+/** 赔率对比结果 */
+export interface BsOddsComparisonOutcome {
+  outcome: string
+  line: number | null
+  outcome_name: string
+  best_odds: number
+  best_bookmaker_slug: string
+  best_bookmaker_name: string
+  bookmakers: Record<string, BsBookmakerOdds>
+}
+
+/** 单个博彩公司赔率 */
+export interface BsBookmakerOdds {
+  decimal_odds: number
+  movement: string
+  updated_at: string
+}
+
+// ==================== 社交媒体 ====================
+
+/** BSD 社交媒体内容 */
+export interface BsSocial {
+  count: number
+  next: string | null
+  previous: string | null
+  results: BsSocialItem[]
+}
+
+/** 社交媒体条目 */
+export interface BsSocialItem {
+  id: number
+  type: string
+  url: string
+  text: string
+  title: string
+  thumbnail: string
+  media: unknown[]
+  account: BsSocialAccount
+  published_at: string
+  linked: BsSocialLinked
+}
+
+/** 社交媒体账号 */
+export interface BsSocialAccount {
+  handle: string
+  name: string
+  verified: boolean
+}
+
+/** 社交媒体关联实体 */
+export interface BsSocialLinked {
+  teams: { id: number; name: string }[]
+  events: { id: number; home_team: string; away_team: string; event_date: string }[]
+  players: unknown[]
+  managers: unknown[]
+}
+
+// ==================== 转播信息 ====================
+
+/** BSD 转播信息 */
+export interface BsBroadcast {
+  id: number
+  event_id: number
+  home_team_id: number
+  home_team: string
+  away_team_id: number
+  away_team: string
+  league_id: number
+  league_name: string
+  event_date: string
+  country_code: string
+  channel_id: number
+  channel_name: string
+  channel_link: string
+  scheduled_start_time: string
+}
+
+// ==================== 博彩公司 ====================
+
+/** BSD 博彩公司 */
+export interface BsBookmaker {
+  slug: string
+  name: string
+}
+
+// ==================== 联赛赛季 ====================
+
+/** BSD 联赛赛季列表 */
+export interface BsLeagueSeasons {
+  league_id: number
+  count: number
+  seasons: BsSeason[]
+}
+
+/** BSD 赛季 */
+export interface BsSeason {
+  id: number
+  name: string
+  year: number
+  start_date: string
+  end_date: string
+  is_current: boolean
 }

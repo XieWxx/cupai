@@ -72,17 +72,31 @@ export class BsdcSyncController {
     return this.syncService.syncMatchAuxData(body?.limit ?? 20)
   }
 
+  /** 手动触发球员同步 */
+  @Post('players')
+  async syncPlayers() {
+    return this.syncService.syncPlayers()
+  }
+
+  /** 手动触发阵型聚合 */
+  @Post('formations')
+  async syncFormations() {
+    await this.syncService.aggregateTeamFormations()
+    return { ok: true }
+  }
+
   /** 一键冷启动同步 */
   @Post('full')
   async syncFull() {
-    const [teams, leagues, events, standings, live, aux] = await Promise.all([
+    const [teams, leagues, events, standings, live, aux, players] = await Promise.all([
       this.syncService.syncTeams(),
       this.syncService.syncLeagues(),
       this.syncService.syncEvents(),
       this.syncService.syncStandings(),
       this.syncService.syncLiveEvents(),
       this.syncService.syncMatchAuxData(20),
+      this.syncService.syncPlayers(),
     ])
-    return { teams, leagues, events, standings, live, aux }
+    return { teams, leagues, events, standings, live, aux, players }
   }
 }

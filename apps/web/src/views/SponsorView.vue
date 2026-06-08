@@ -65,21 +65,25 @@
       <div class="donate-grid">
         <!-- 微信收款码 -->
         <div class="donate-card">
-          <div class="donate-qr-placeholder">
-            <svg viewBox="0 0 24 24" width="48" height="48" fill="#07C160" opacity="0.3">
-              <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348z"/>
-            </svg>
-            <span>{{ $t('sponsor.wechatPay') }}</span>
+          <div class="donate-qr-img">
+            <img
+              src="/weixin.JPG"
+              :alt="$t('sponsor.wechatPay')"
+              class="donate-qr"
+              loading="lazy"
+            />
           </div>
           <p class="donate-label">{{ $t('sponsor.wechatPay') }}</p>
         </div>
         <!-- 支付宝收款码 -->
         <div class="donate-card">
-          <div class="donate-qr-placeholder">
-            <svg viewBox="0 0 24 24" width="48" height="48" fill="#1677FF" opacity="0.3">
-              <path d="M21.422 15.358c-3.32-1.326-6.092-2.786-6.092-2.786s1.439-3.667.697-5.678c-.743-2.01-2.898-1.856-3.89-.89-.993.967-.782 3.098-.163 4.772.617 1.674 2.04 3.623 2.04 3.623s-2.272 4.284-4.39 6.715c-2.117 2.432-4.52 3.958-5.925 3.265-1.404-.694-.577-3.265.544-4.97 1.12-1.704 3.47-3.623 3.47-3.623l-.544-1.28s-3.858 2.38-5.655 5.078C-.628 22.682.09 24.87 1.79 24.87c1.7 0 4.965-2.047 7.23-5.078 2.267-3.032 4.118-6.327 4.118-6.327s2.928 1.393 5.7 2.624c2.773 1.231 5.163 2.01 5.163 2.01v-2.74z"/>
-            </svg>
-            <span>{{ $t('sponsor.alipay') }}</span>
+          <div class="donate-qr-img">
+            <img
+              src="/zhifubao.JPG"
+              :alt="$t('sponsor.alipay')"
+              class="donate-qr"
+              loading="lazy"
+            />
           </div>
           <p class="donate-label">{{ $t('sponsor.alipay') }}</p>
         </div>
@@ -265,18 +269,30 @@ function contactSponsor() {
   gap: var(--space-3);
 }
 
-.donate-qr-placeholder {
+.donate-qr-img {
   width: 180px;
   height: 220px;
-  border: 2px dashed var(--color-border);
+  padding: 8px;
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
+  background: #ffffff;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  color: var(--color-text-tertiary);
-  font-size: var(--text-sm);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.donate-qr-img:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.donate-qr {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .donate-label {

@@ -232,6 +232,20 @@ All AI analysis results on this platform are **for sports data entertainment ana
 
 ---
 
+## 💖 Sponsor / Donate
+
+If CupAI helps you, consider a small donation to fuel ongoing development ☕
+All donations go to BSD data API renewal, server maintenance, and community operations.
+
+| WeChat Pay | Alipay |
+| :---: | :---: |
+| ![WeChat Pay](./weixin.JPG) | ![Alipay](./zhifubao.JPG) |
+
+> ⚠️ Donations are purely voluntary and grant no additional entitlements or commercial commitments.
+> The platform is committed to a **zero-betting, zero-gambling** policy.
+
+---
+
 ## License
 
 This project is licensed under the [Apache License 2.0](./LICENSE).

@@ -232,6 +232,20 @@ Todos os resultados de análise de IA nesta plataforma são **exclusivamente par
 
 ---
 
+## 💖 Patrocínio / Doação
+
+Se o CupAI te ajuda, considere uma pequena doação para impulsionar o desenvolvimento contínuo ☕
+Todas as doações vão para a renovação da API de dados BSD, manutenção do servidor e operações da comunidade.
+
+| WeChat Pay | Alipay |
+| :---: | :---: |
+| ![WeChat Pay](./weixin.JPG) | ![Alipay](./zhifubao.JPG) |
+
+> ⚠️ As doações são totalmente voluntárias e não concedem direitos adicionais nem compromissos comerciais.
+> A plataforma mantém uma política de **zero apostas, zero jogos de azar**.
+
+---
+
 ## Licença
 
 Este projeto está licenciado sob a [Apache License 2.0](./LICENSE).

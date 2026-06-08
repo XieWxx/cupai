@@ -7,18 +7,19 @@
 
 <h1 align="center">🏆 CupAI</h1>
 <p align="center">
-  <strong>世界杯自定义 AI 赛事分析预测平台</strong><br>
-  <em>World Cup Custom AI Match Analysis Platform</em>
+  <strong>开源 可自定义 AI 足球赛事分析预测平台</strong><br>
+  <em>Open-Source Customizable AI Football Match Analysis Platform</em>
 </p>
 
 <p align="center">
   <a href="https://github.com/XieWxx/cupai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/XieWxx/cupai?style=flat-square&color=2563eb" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue"></a>
-  <a href="#"><img src="https://img.shields.io/badge/NestJS-latest-E0234E?style=flat-square&logo=nestjs&logoColor=white" alt="NestJS"></a>
+  <a href="#"><img src="https://img.shields.io/badge/NestJS-10.x-E0234E?style=flat-square&logo=nestjs&logoColor=white" alt="NestJS"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"></a>
   <a href="#"><img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white" alt="MySQL"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Redis-latest-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Docker-Supported-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker"></a>
+  <a href="#"><img src="https://img.shields.io/badge/i18n-8_languages-brightgreen?style=flat-square" alt="i18n"></a>
 </p>
 
 <p align="center">
@@ -35,110 +36,146 @@
 
 ---
 
-## 项目简介
+## ✨ CupAI 是什么？
 
-**CupAI** 是一个面向全球球迷的**纯数据驱动 + 用户私有AI**世界杯赛事分析平台。平台不自带AI生成能力，定位为「全域赛事数据服务商 + 分析工具载体」—— 只输出完整、实时、精准的赛事底层数据，由用户配置私有大模型、自定义 Prompt、调节赛事因子权重，自主完成赛事深度分析。
+**CupAI** 是一个**完全开源、纯数据驱动的足球赛事分析平台**，核心理念是 **BYOAK（Bring Your Own API Key — 用户自备大模型）**。它不是博彩、不是投注，它是一个**足球数据服务 + 分析工具箱**：
 
-### 核心差异化
+- 🛰️ **同步每一次触球** — 接入 BSD v2 15+ 端点（实时比分/统计/阵容/事件流/赔率/历史交锋/社媒/精彩集锦/天气等）写入自有数据库
+- 🧠 **接入自有大模型** — DeepSeek / 豆包 / GPT / 通义千问 / GLM / Claude，用户自备 API Key
+- 📝 **市场化的 Prompt** — 共享、复用最优质足球分析模板
+- ⚖️ **可调权重因子** — 8 大类分析因子（状态/历史/天气/伤停等）0%-100% 自由配比
+- 🏆 **三个维度排行** — 用户 / 大模型 / Agent 平台（均按预测次数排序）
+- 🌍 **8 种语言** — 中/英/西/法/葡/阿/日/韩，覆盖世界杯主要参赛国
 
-| 特色 | 说明 |
-|------|------|
-| 🔑 **用户私有化大模型** | 支持豆包、DeepSeek、GPT、通义千问等主流模型，用户自备 API Key，平台零 AI 成本 |
-| 🧩 **自定义 Prompt 市场** | 创建、分享、复用 Prompt 模板，沉淀全网最优质的足球分析模板 |
-| ⚖️ **因子权重自由调节** | 8 大类分析因子 0%-100% 自由配比，打造专属分析模型 |
-| 🤖 **AI Agent 全自动推演** | 5 大自研算法驱动，零操作完成全自动赛事分析 |
-| 🌍 **8 种语言国际化** | 中/英/西/法/葡/阿/日/韩，覆盖世界杯主要参赛国和地区 |
-| 🛡️ **纯合规体育分析** | 无博彩、无投注，纯粹战术复盘与数据推演 |
+> 面向独立开发者、足球迷、开源社区。100% 非商业、零博彩、零赌博 — 纯粹的战术复盘与数据推演。
 
 ---
 
-## 技术栈
+## 🎯 核心差异化
+
+| 特色 | 为什么重要 |
+|---|---|
+| 🔑 **BYOAK 用户私有大模型** | 平台永远不付 AI 调用费。用户自带 API Key（DeepSeek/OpenAI/Qwen/豆包），运营方零成本。 |
+| 🧩 **Prompt 市场** | 创建、分享、版本化、复用足球分析 Prompt 模板。专业用户贡献最优质 Prompt。 |
+| ⚖️ **因子权重引擎** | 8 大类分析因子（状态/历史交锋/天气/伤停/阵容/主场优势/舆情/资讯）— 自由配比 0–100%。 |
+| 🤖 **AI Agent 全自动推演** | 5 大自研算法驱动，零操作完成 Agent 回调协议全自动分析。 |
+| 📊 **三 Tab 排行榜** | 用户（预测数）/ 大模型（平台用户数）/ Agent 平台（受欢迎度），均按总预测次数排序。 |
+| 🛡️ **纯合规** | 无博彩、无投注、无胜负预判。硬编码敏感词过滤。GDPR + 中国法律法规双重合规。 |
+| 🌍 **8 种语言** | 中/英/西/法/葡/阿/日/韩，覆盖世界杯主要参赛地区。 |
+
+---
+
+## 🧩 技术栈
 
 | 层级 | 技术 | 用途 |
-|------|------|------|
-| 🖥️ **前端** | Vue 3 + Vite + Element Plus | 响应式 UI、数据看板、排行榜 |
+|---|---|---|
+| 🖥️ **前端** | Vue 3 + Vite + Element Plus | 响应式 UI、看板、排行榜 |
 | ⚡ **实时通信** | Socket.io | 实时比分、即时推送 |
 | 📊 **图表** | ECharts | 准确率趋势、权重分布、舆情评分 |
-| 🌐 **国际化** | vue-i18n (8 语言) | 多语言、多时区、全球适配 |
-| 🔧 **后端** | NestJS + TypeORM (TypeScript) | 模块化 API、AI 中转、数据处理 |
-| 🗄️ **数据库** | MySQL 8.0 | 结构化数据：用户、模板、报告、排行 |
-| ⚡ **缓存** | Redis | 实时缓存、API 限流、热数据 |
-| ⏰ **调度** | node-schedule | Agent 自动扫描、报告生成、数据巡检 |
-| 🌐 **数据源** | BSD API | 赛事/球队/积分榜/赔率实时同步 |
+| 🖼️ **图标** | LobeHub Icons（本地 SVG） | 大模型/Agent 平台品牌徽标 |
+| 🌐 **国际化** | vue-i18n (8 语言) | 多语言、多时区 |
+| 🛣️ **路由** | Vue Router | 13 个核心页面 |
+| 📦 **状态管理** | Pinia | 跨页面数据流 |
+| 🔧 **后端** | NestJS 10 + TypeORM (TypeScript) | 模块化 API、AI 中转、数据编排 |
+| 🗄️ **数据库** | MySQL 8.0 | 用户、模板、报告、排行 |
+| ⚡ **缓存** | Redis 7 | 实时缓存、API 限流、热数据 |
+| ⏰ **调度** | node-schedule | BSD 同步（5min）、Agent 扫描、报告生成 |
+| 🌐 **数据源** | BSD API v2 | 15+ 端点：events / teams / players / standings / stats / incidents / lineups / odds / H2H / social / metadata / weather / highlights |
 | 🐳 **部署** | Docker + Docker Compose + Nginx | 一键部署、反向代理、SSL |
 
 ---
 
-## 快速开始
+## 🚀 快速开始
 
 ### 前置要求
 
 - **Node.js** >= 18.x
 - **MySQL** >= 8.0
 - **Redis** >= 6.x
-- **Docker** & **Docker Compose**（可选）
+- **Docker** & **Docker Compose**（推荐）
 
-### Docker 一键部署
+### 方式 A：Docker 一键部署
 
 ```bash
 git clone https://github.com/XieWxx/cupai.git
 cd cupai
 cp .env.example .env
+# 编辑 .env 填入 MySQL 密码与 BSD API Token
 docker compose up -d
 ```
 
-浏览器访问: `http://localhost:3000`
+浏览器访问：<http://localhost:3000>
 
-### 本地开发
+### 方式 B：本地开发（pnpm monorepo）
 
 ```bash
 pnpm install
-pnpm dev:server   # 启动后端（端口 3002）
-pnpm dev:web      # 启动前端（端口 5173）
+
+# 终端 1：后端 :3002
+cd apps/server && pnpm dev
+
+# 终端 2：前端 :5173
+cd apps/web && pnpm dev
 ```
 
-> 首次启动需配置 `apps/server/.env`（参考 `.env.example`），并确保 MySQL 和 Redis 已运行
+> 首次启动：复制 `apps/server/.env.example` → `apps/server/.env`，确保 MySQL 和 Redis 已运行。
 
 ---
 
-## 项目结构
+## 🏗️ 项目结构
 
 ```
 cupai/
 ├── apps/
-│   ├── web/                   # 前端 (Vue 3 + Vite)
+│   ├── web/                       # 前端 (Vue 3 + Vite)
 │   │   └── src/
-│   │       ├── views/         # 页面（12 个核心页面）
-│   │       ├── stores/        # Pinia 状态管理
-│   │       ├── locales/       # 8 种语言国际化
-│   │       ├── api/           # API 请求层 + WebSocket
-│   │       └── components/    # 公共组件
-│   └── server/                # 后端 (NestJS)
+│   │       ├── views/             # 13 个核心页面
+│   │       │   ├── HomeView           - 首页（赛事动态 + 排行榜摘要）
+│   │       │   ├── MatchCenterView    - 赛事列表
+│   │       │   ├── MatchDetailView    - 赛事详情（比分/阵容/统计/AI 预测/精彩集锦/天气/分享）
+│   │       │   ├── MatchDataCenterView- 赛事数据中心（小组赛程 + 赛程日历）
+│   │       │   ├── StandingsView      - 积分榜
+│   │       │   ├── AnalysisCenterView - 分析创建中心（Prompt + 权重配置）
+│   │       │   ├── AnalysisSquareView - 分析广场（公开报告流）
+│   │       │   ├── PromptMarketView   - Prompt 市场
+│   │       │   ├── RankingView        - 排行榜（用户 / 大模型 / Agent 平台）
+│   │       │   ├── SentimentView      - 舆情分析
+│   │       │   ├── SponsorView        - 赞助页
+│   │       │   ├── ProfileView        - 个人中心
+│   │       │   └── LoginView          - 登录/注册
+│   │       ├── components/        # 公共组件
+│   │       ├── stores/            # Pinia
+│   │       ├── locales/           # 8 种语言
+│   │       ├── api/               # HTTP + WebSocket
+│   │       └── utils/             # agentPlatform / copyInstruction / flag / markdown
+│   └── server/                    # 后端 (NestJS)
 │       └── src/
-│           ├── modules/       # 8 个业务模块
-│           │   ├── user/      # 用户模块
-│           │   ├── ai/        # AI 中转模块
-│           │   ├── match/     # 赛事数据 + 积分榜 + 舆情
-│           │   ├── prompt/    # Prompt 市场 + 校验
-│           │   ├── ranking/   # 排行榜
-│           │   ├── agent/     # Agent + 互动 + 分析
-│           │   ├── bsd/       # BSD 数据源同步
-│           │   └── risk/      # 风控 + 敏感词
-│           ├── config/        # Redis + 限流配置
-│           └── common/        # 守卫 + 过滤器
+│           ├── modules/           # 12 controllers / 8 modules
+│           │   ├── user/              - 用户注册/登录/JWT
+│           │   ├── ai/                - 多模型 AI 中转
+│           │   ├── match/             - 赛事详情/积分榜/阵容/事件流/赔率
+│           │   ├── prompt/            - Prompt CRUD + 适配校验
+│           │   ├── ranking/           - 用户/模型/平台排行
+│           │   ├── agent/             - Agent 调度 + 公开回调
+│           │   ├── bsd/               - BSD 数据源（sync + external）
+│           │   └── risk/              - 风控 + 敏感词
+│           ├── services/          # WeatherService, PlayerAvatarService
+│           ├── utils/             # 球员英中名映射
+│           ├── config/            # Redis + Throttler
+│           └── common/            # Guards + Interceptors + Filters
 ├── packages/
-│   ├── types/                 # 统一类型定义
-│   ├── constants/             # 业务常量
-│   └── utils/                 # 公共工具函数
-├── docs/                      # 接口文档 + 数据源方案
-├── docker/                    # Nginx 配置
-├── deploy/                    # init.sql 种子数据
+│   ├── types/                     # 统一类型
+│   ├── constants/                 # 业务常量
+│   └── utils/                     # 5 大算法
+├── docs/                          # API 文档 + BSD 数据缺失
+├── docker/                        # Nginx 配置
+├── deploy/                        # init.sql
 └── docker-compose.yml
 ```
 
 ---
 
-## 版本路线图
+## 🗺️ 版本路线图
 
 ### V1.0 — 基础闭环版 ✅
 
@@ -183,19 +220,72 @@ cupai/
 - [x] 接口文档标准化（api-spec.md v1.5）
 - [x] 赛事详情页全后端数据（AI 预测 + 舆情 + 维度报告 + 球员阵容）
 
-### V1.4 — 全球化完整版（规划中）
+### V1.4 — 赛事数据完整化 ✅
+
+- [x] **球员中文名**（200+ 映射表 + 三级回退）
+- [x] **球员头像**（TheSportsDB API，30 天缓存）
+- [x] **比赛天气**（Open-Meteo API，免费无需 key）
+- [x] **精彩集锦**（BSD event detail.highlights）
+- [x] **赛事阵容端点** `GET /matches/:id/lineups`
+- [x] **赛事事件流端点** `GET /matches/:id/incidents`
+- [x] **赛事赔率端点** `GET /matches/:id/odds`
+- [x] BSD 4 张子表同步端到端验证（Crystal Palace 1-1 Fulham 真实赛事）
+
+### V1.5 — Agent 生态 + 社区 ✅
+
+- [x] **Agent 公开回调** `POST /agent/open/dimension/submit`
+- [x] **Skill.md API** `GET /agent/open/skill.md`
+- [x] **Agent 平台排行榜**（第 3 个 Tab）
+- [x] **全部按预测次数排序**（不再按准确率）
+- [x] **LobeHub Icons**（大模型/Agent 平台徽标，三级降级）
+- [x] **赞助页**（赞助商位 + 微信/支付宝收款码 + 邮箱）
+- [x] **分享栏**（Twitter / Facebook / WhatsApp / 微信 / Telegram / 链接复制）
+- [x] **国旗放大 + 双方分置** 赛事详情
+- [x] **国旗滚动** 首页去边框铺满
+
+### V1.6 — 规划中
 
 - [ ] 海外舆情精准识别
 - [ ] 跨境合规体系完善
 - [ ] 数据监控告警、异常自动修复
+- [ ] 运营方指标看板（Grafana）
 
 ---
 
-## 参与贡献
+## 🛰️ BSD 数据集成现状
 
-我们非常欢迎社区贡献！无论是代码、文档、翻译还是 Bug 反馈，每一种贡献都弥足珍贵。
+15+ BSD v2 端点接入并验证。4 张详情表（`event_stats` / `event_incidents` / `event_lineups` / `event_odds`）在真实已完赛赛事（Crystal Palace 1-1 Fulham，2026-01-01）上端到端验证通过。
 
-### 如何参与
+| 表 | 记录数 | 验证 | 备注 |
+|---|---|---|---|
+| matches | 202 | ✅ | 当前全部为 upcoming |
+| teams | 1502 | ✅ | — |
+| group_standings | 1094 | ✅ | 101 条已更新为正确小组名 |
+| event_lineups | 0 | ✅ | E2E 验证 40 条（11首发+9替补×2 队） |
+| event_stats | 0 | ✅ | E2E 验证 16 指标 + 28 shotmap + 92 momentum + 14 xg/min |
+| event_incidents | 0 | ✅ | E2E 验证 15 事件（5 黄牌+2 进球+8 换人） |
+| event_odds | 0 | ✅ | E2E 验证 schema，BSD 完赛返 null |
+| dimension_submissions | 20 | ✅ | platform 从 model 名推断 |
+
+详见 [docs/bsd-data-gaps.md](./docs/bsd-data-gaps.md)。
+
+---
+
+## 🛡️ 合规声明
+
+本平台所有 AI 分析结果**仅为体育赛事数据娱乐分析与战术参考**，不构成任何投注、博弈、胜负预判建议。平台：
+
+- ❌ 无博彩/无投注/无胜负预判功能
+- ✅ 硬编码敏感词过滤
+- ✅ AI 生成内容二次审核
+- ✅ GDPR + 中国法律法规双重合规
+- ✅ 所有用户内容自动风控审核
+
+---
+
+## 🤝 参与贡献
+
+我们非常欢迎社区贡献！无论是代码、文档、翻译还是 Bug 反馈。
 
 1. **Fork** 本仓库
 2. 创建特性分支：`git checkout -b feat/amazing-feature`
@@ -209,7 +299,7 @@ cupai/
 ### 贡献方向
 
 | 方向 | 说明 |
-|------|------|
+|---|---|
 | 💻 **代码开发** | 前后端功能开发、算法优化、Bug 修复 |
 | 🎨 **UI/UX 设计** | 页面设计优化、交互体验提升 |
 | 🌍 **国际化翻译** | 8 种语言文案翻译与校对 |
@@ -226,13 +316,23 @@ cupai/
 
 ---
 
-## 合规声明
+## 🌐 免费部署方案
 
-本平台所有 AI 分析结果**仅为体育赛事数据娱乐分析与战术参考**，不构成任何投注、博弈、胜负预判建议。平台全程屏蔽博彩相关词汇与功能，所有用户生成内容自动风控审核，完全符合中国法律法规及 GDPR 隐私合规要求。
+CupAI 的 `docker-compose.yml` 可运行在任何支持 Docker 的环境。零成本部署详细对比见 **[docs/deployment.md](./docs/deployment.md)**（5 大类：PaaS / VPS / Serverless / 容器平台 / 国内平台）。
+
+**TL;DR** Top 3 推荐：
+
+| 提供方 | 免费额度 | 适用 | 注意点 |
+|---|---|---|---|
+| 🥇 **Fly.io** | 3 × shared-cpu-1x 256MB | 完整 Docker Compose | 需信用卡认证 |
+| 🥈 **Koyeb** | 1 × nano + 免费 DB | 单容器后端 | 空闲 5min 冷启动 |
+| 🥉 **雨云 / 腾讯云学生机** | ¥10-30/月 学生机 | 国内访问 + Docker Compose | 需学生认证 |
+
+> ⚠️ **本项目不推荐**：Render（15min 强制休眠会破坏 BSD 5min 同步）、Vercel Functions（不支持 WebSocket / 持久化 node-schedule）。
 
 ---
 
-## 开源协议
+## 📄 开源协议
 
 本项目基于 [Apache License 2.0](./LICENSE) 开源。
 

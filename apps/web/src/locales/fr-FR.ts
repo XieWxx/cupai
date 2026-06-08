@@ -82,6 +82,7 @@ export default {
   bracket: {
     noData: 'Pas de tableau',
     loading: 'Chargement du tableau...',
+    r32: '32e de finale',
     r16: '8e de finale',
     qf: 'Quarts de finale',
     sf: 'Demi-finales',
@@ -120,6 +121,10 @@ export default {
     accuracy: 'Précision',
     predictions: 'Prédictions',
     upcoming: 'À venir',
+    schedule: 'Calendrier',
+    allMatches: 'Tous',
+    finished: 'Terminés',
+    noScheduleData: 'Pas de données de calendrier',
   },
   home: {
     hotMatches: 'Matches populaires',
@@ -185,10 +190,10 @@ export default {
     hostMxDesc: 'Pays hôte 3 fois de la Coupe — terre de passion latine où le football est une foi nationale.',
     // PRD 3.1.2 4 modules d'accueil
     matchDynamics: 'Dynamique des matchs',
-    todayUpcoming: 'Aujourd\'hui à venir',
+    todayUpcoming: 'À venir',
     recentFinished: 'Récemment terminés',
     noLive: 'Aucun match en direct',
-    noUpcoming: 'Aucun match à venir aujourd\'hui',
+    noUpcoming: 'Aucun match à venir',
     noFinished: 'Aucun match terminé récemment',
     aiBrief: 'Résumé des analyses IA populaires',
     noBrief: 'Aucun résumé populaire',

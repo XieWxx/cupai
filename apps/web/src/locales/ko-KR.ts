@@ -82,6 +82,7 @@ export default {
   bracket: {
     noData: '브래킷 데이터 없음',
     loading: '브래킷 불러오는 중...',
+    r32: '32강',
     r16: '16강',
     qf: '8강',
     sf: '준결승',
@@ -120,6 +121,10 @@ export default {
     accuracy: '정확도',
     predictions: '예측',
     upcoming: '예정',
+    schedule: '일정',
+    allMatches: '전체',
+    finished: '종료',
+    noScheduleData: '일정 데이터 없음',
   },
   home: {
     hotMatches: '인기 경기',
@@ -185,10 +190,10 @@ export default {
     hostMxDesc: '3차례 월드컵 개최국, 라틴의 열정의 나라 — 축구는 국가 신앙입니다.',
     // PRD 3.1.2 홈 4대 모듈
     matchDynamics: '경기 동향',
-    todayUpcoming: '오늘 예정',
+    todayUpcoming: '예정',
     recentFinished: '최근 종료',
     noLive: '현재 진행 중인 경기가 없습니다',
-    noUpcoming: '오늘 예정된 경기가 없습니다',
+    noUpcoming: '예정된 경기가 없습니다',
     noFinished: '최근 종료된 경기가 없습니다',
     aiBrief: '인기 AI 분석 브리핑',
     noBrief: '인기 브리핑이 없습니다',

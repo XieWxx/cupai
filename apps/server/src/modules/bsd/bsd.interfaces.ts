@@ -52,8 +52,18 @@ export interface BsEvent {
   away_team_obj: BsTeamObj
   home_coach_id: number | null
   away_coach_id: number | null
+  /** 裁判 ID（事件列表 API 可能不返回，需从 referee 嵌套对象获取） */
   referee_id: number | null
+  /** 场馆 ID（事件列表 API 可能不返回，需从 venue 嵌套对象获取） */
   venue_id: number | null
+  /** 裁判嵌套对象（事件详情 API 返回，包含 id/name/country 等） */
+  referee?: BsEventReferee | null
+  /** 场馆嵌套对象（事件详情 API 返回，包含 id/name/city/capacity 等） */
+  venue?: BsEventVenue | null
+  /** 主教练嵌套对象（事件详情 API 返回） */
+  home_coach?: BsEventCoach | null
+  /** 客教练嵌套对象（事件详情 API 返回） */
+  away_coach?: BsEventCoach | null
   /** 比赛开球时间（含时区偏移，例如 2026-06-08T14:00:00+04:00） */
   event_date: string
   status: string
@@ -73,6 +83,10 @@ export interface BsEvent {
   is_neutral_ground: boolean
   travel_distance_km: number | null
   weather: BsWeather | null
+  /** 顶层天气字段（部分赛事直接在顶层返回，而非嵌套在 weather 对象中） */
+  temperature_c: number | null
+  wind_speed: number | null
+  weather_code: number | null
   pitch_condition: string | null
   attendance: number | null
   live_websocket: boolean
@@ -85,6 +99,47 @@ export interface BsWeather {
   description: string | null
   wind_speed: number | null
   temperature_c: number | null
+}
+
+/** BSD 事件详情中的场馆嵌套对象 */
+export interface BsEventVenue {
+  id: number
+  name: string
+  city: string | null
+  country: string | null
+  capacity: number | null
+  latitude: number | null
+  longitude: number | null
+  pitch_x: number | null
+  pitch_y: number | null
+  built_year: number | null
+}
+
+/** BSD 事件详情中的裁判嵌套对象 */
+export interface BsEventReferee {
+  id: number
+  name: string
+  country: string | null
+  nationality_a3: string | null
+  birthdate: string | null
+  yellowCards: number | null
+  redCards: number | null
+  career_games: number | null
+  career_yellow_cards: number | null
+  career_red_cards: number | null
+}
+
+/** BSD 事件详情中的教练嵌套对象 */
+export interface BsEventCoach {
+  id: number
+  name: string
+  short_name: string | null
+  country: string | null
+  profile: string | null
+  preferred_formation: string | null
+  pressing_intensity: number | null
+  defensive_line: string | null
+  top_styles: string[] | null
 }
 
 export interface BsLeague {
@@ -276,6 +331,14 @@ export interface BsEventDetail {
   away_coach_id: number | null
   referee_id: number | null
   venue_id: number | null
+  /** 裁判嵌套对象（事件详情 API 返回） */
+  referee?: BsEventReferee | null
+  /** 场馆嵌套对象（事件详情 API 返回） */
+  venue?: BsEventVenue | null
+  /** 主教练嵌套对象（事件详情 API 返回） */
+  home_coach?: BsEventCoach | null
+  /** 客教练嵌套对象（事件详情 API 返回） */
+  away_coach?: BsEventCoach | null
   event_date: string
   status: string
   replaced_by: number | null

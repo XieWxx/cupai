@@ -83,6 +83,7 @@ export default {
   bracket: {
     noData: 'ブラケットデータなし',
     loading: 'ブラケットを読み込み中...',
+    r32: 'ベスト32',
     r16: 'ベスト16',
     qf: '準々決勝',
     sf: '準決勝',
@@ -121,6 +122,10 @@ export default {
     accuracy: '正解率',
     predictions: '予測数',
     upcoming: '開始前',
+    schedule: 'スケジュール',
+    allMatches: '全試合',
+    finished: '終了',
+    noScheduleData: 'スケジュールデータなし',
   },
   home: {
     hotMatches: '注目試合',
@@ -186,10 +191,10 @@ export default {
     hostMxDesc: '3度のワールドカップ開催国であり、ラテンサッカーの情熱の聖地 — サッカーは国民の信仰です。',
     // PRD 3.1.2 首页 4 大模块
     matchDynamics: '試合動向',
-    todayUpcoming: '本日の試合予定',
+    todayUpcoming: '試合予定',
     recentFinished: '最近の終了試合',
     noLive: '進行中の試合はありません',
-    noUpcoming: '本日の試合予定はありません',
+    noUpcoming: '試合予定はありません',
     noFinished: '最近の終了試合はありません',
     aiBrief: 'AI 注目分析ブリーフ',
     noBrief: '注目分析ブリーフはありません',

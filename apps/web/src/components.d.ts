@@ -49,6 +49,7 @@ declare module 'vue' {
     GroupStandings: typeof import('./components/bracket/GroupStandings.vue')['default']
     KnockoutBracket: typeof import('./components/bracket/KnockoutBracket.vue')['default']
     MainLayout: typeof import('./components/layout/MainLayout.vue')['default']
+    MatchSchedule: typeof import('./components/bracket/MatchSchedule.vue')['default']
     PlatformBadge: typeof import('./components/ranking/PlatformBadge.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

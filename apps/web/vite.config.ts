@@ -31,12 +31,12 @@ export default defineConfig({
     proxy: {
       // 开发环境代理后端 API（target 用 127.0.0.1 强制 IPv4，避免 localhost 在 macOS 上解析到 IPv6 ::1）
       '/api': {
-        target: 'http://127.0.0.1:3002',
+        target: 'http://127.0.0.1:3001',
         changeOrigin: true,
       },
       // WebSocket 代理
       '/socket.io': {
-        target: 'ws://127.0.0.1:3002',
+        target: 'ws://127.0.0.1:3001',
         ws: true,
       },
     },

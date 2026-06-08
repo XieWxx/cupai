@@ -67,8 +67,11 @@
               {{ $t('home.todayUpcoming') }}
             </span>
           </template>
-          <div v-loading="dynamicsLoading" class="match-card-grid">
-            <el-empty v-if="!dynamicsLoading && dynamicsMatches.upcoming.length === 0" :description="$t('home.noUpcoming')" :image-size="80" />
+          <div v-loading="dynamicsLoading">
+            <div v-if="!dynamicsLoading && dynamicsMatches.upcoming.length === 0" class="match-empty">
+              <el-empty :description="$t('home.noUpcoming')" :image-size="80" />
+            </div>
+            <div v-else class="match-card-grid">
             <el-card
               v-for="match in dynamicsMatches.upcoming"
               :key="match.id"
@@ -100,6 +103,7 @@
                 <span class="match-venue" v-if="match.venue">{{ match.venue }}</span>
               </div>
             </el-card>
+            </div>
           </div>
         </el-tab-pane>
         <!-- 进行中 tab -->
@@ -109,8 +113,11 @@
               {{ $t('home.live') }}
             </span>
           </template>
-          <div v-loading="dynamicsLoading" class="match-card-grid">
-            <el-empty v-if="!dynamicsLoading && dynamicsMatches.live.length === 0" :description="$t('home.noLive')" :image-size="80" />
+          <div v-loading="dynamicsLoading">
+            <div v-if="!dynamicsLoading && dynamicsMatches.live.length === 0" class="match-empty">
+              <el-empty :description="$t('home.noLive')" :image-size="80" />
+            </div>
+            <div v-else class="match-card-grid">
             <el-card
               v-for="match in dynamicsMatches.live"
               :key="match.id"
@@ -143,6 +150,7 @@
                 <span class="match-venue" v-if="match.venue">{{ match.venue }}</span>
               </div>
             </el-card>
+            </div>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -227,46 +235,47 @@
           {{ $t('home.usageGuide') }}
         </h2>
       </div>
-      <el-row :gutter="16">
-        <el-col :span="8">
-          <div class="guide-step">
-            <span class="guide-step-num">1</span>
-            <div class="guide-step-icon"><el-icon><CopyDocument /></el-icon></div>
-            <h3 class="guide-step-title">{{ $t('home.guideStep1') }}</h3>
-            <p class="guide-step-desc">{{ $t('home.guideStep1Desc') }}</p>
-            <el-button type="primary" text @click="$router.push('/match')">{{ $t('common.go') }}</el-button>
-          </div>
-        </el-col>
-        <el-col :span="8">
-          <div class="guide-step">
-            <span class="guide-step-num">2</span>
-            <div class="guide-step-icon"><el-icon><Cpu /></el-icon></div>
-            <h3 class="guide-step-title">{{ $t('home.guideStep2') }}</h3>
-            <p class="guide-step-desc">{{ $t('home.guideStep2Desc') }}</p>
-          </div>
-        </el-col>
-        <el-col :span="8">
-          <div class="guide-step">
-            <span class="guide-step-num">3</span>
-            <div class="guide-step-icon"><el-icon><Connection /></el-icon></div>
-            <h3 class="guide-step-title">{{ $t('home.guideStep3') }}</h3>
-            <p class="guide-step-desc">{{ $t('home.guideStep3Desc') }}</p>
-          </div>
-        </el-col>
-      </el-row>
+      <div class="guide-skill-card">
+        <div class="guide-skill-icon"><el-icon><CopyDocument /></el-icon></div>
+        <h3 class="guide-skill-title">{{ $t('home.guideSkillTitle') }}</h3>
+        <p class="guide-skill-desc">{{ $t('home.guideSkillDesc') }}</p>
+        <div class="guide-skill-url">
+          <code>{{ skillMdUrl }}</code>
+          <el-button type="primary" text size="small" @click="copySkillUrl">
+            {{ $t('common.copy') }}
+          </el-button>
+        </div>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 import { Calendar, Trophy, User, Cpu, Connection, ChatDotRound, CopyDocument, DataLine } from '@element-plus/icons-vue'
 import PlatformBadge from '@/components/ranking/PlatformBadge.vue'
 import { detectModel, detectPlatform, regionToFlagClass, type AgentPlatform } from '@/utils/agentPlatform'
 import { http } from '@/api/request'
 
 const { t, locale: i18nLocale } = useI18n()
+
+/** skill.md 接入指南地址 */
+const skillMdUrl = computed(() => {
+  const base = window.location.origin
+  return `${base}/api/v1/agent/open/skill.md`
+})
+
+/** 复制 skill.md 地址到剪贴板 */
+async function copySkillUrl() {
+  try {
+    await navigator.clipboard.writeText(skillMdUrl.value)
+    ElMessage.success(t('common.copied'))
+  } catch {
+    ElMessage.error(t('common.fail'))
+  }
+}
 
 const heroFlags = ['us', 'ca', 'mx', 'ar', 'au', 'be', 'br', 'cn', 'co', 'cr', 'cv', 'cz', 'de', 'ec', 'eg', 'es', 'fi', 'fr', 'gb', 'gh', 'gr', 'hu', 'id', 'ie', 'ir', 'il', 'it', 'jp', 'kr', 'ma', 'nl', 'ng', 'nz', 'pa', 'pe', 'ph', 'pl', 'pt', 'qa', 'ro', 'rs', 'ru', 'sa', 'se', 'sg', 'si', 'sk', 'sn', 'tr']
 
@@ -392,8 +401,8 @@ onUnmounted(() => {
   text-align: center;
   border-radius: 0;
   margin-bottom: var(--space-8);
-  /* 允许国旗溢出显示，避免上下行被裁切 */
-  overflow: visible;
+  /* 裁剪国旗行溢出，防止横向滚动条 */
+  overflow: hidden;
   background: transparent;
   /* 全屏宽度：突破 home-view 的 max-width 限制 */
   width: 100vw;
@@ -419,8 +428,6 @@ onUnmounted(() => {
   opacity: 1;
   width: 100%;
   padding: var(--space-8) 0;
-  /* 确保三行国旗完整显示，不被裁切 */
-  overflow: visible;
 }
 
 .flag-scroll-row {
@@ -589,6 +596,13 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4);
+}
+
+/* 空状态居中 */
+.match-empty {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) 0;
 }
 
 .match-card {
@@ -801,40 +815,22 @@ onUnmounted(() => {
   margin-bottom: 0;
 }
 
-.guide-step {
-  position: relative;
+.guide-skill-card {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-7) var(--space-5) var(--space-6);
+  padding: var(--space-8) var(--space-6);
   text-align: center;
-  height: 100%;
   transition: transform var(--duration-normal) var(--ease-out),
     box-shadow var(--duration-normal) var(--ease-out);
 }
 
-.guide-step:hover {
+.guide-skill-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover);
 }
 
-.guide-step-num {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-xs);
-  font-weight: var(--font-bold);
-}
-
-.guide-step-icon {
+.guide-skill-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -843,22 +839,37 @@ onUnmounted(() => {
   border-radius: var(--radius-xl);
   background: var(--color-primary-bg);
   color: var(--color-primary);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
-.guide-step-title {
-  font-size: var(--text-base);
+.guide-skill-title {
+  font-size: var(--text-lg);
   font-weight: var(--font-bold);
   color: var(--color-text-primary);
   margin: 0 0 var(--space-2);
 }
 
-.guide-step-desc {
+.guide-skill-desc {
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
   color: var(--color-text-secondary);
-  margin: 0 0 var(--space-3);
-  min-height: 60px;
+  margin: 0 0 var(--space-4);
+}
+
+.guide-skill-url {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.guide-skill-url code {
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  word-break: break-all;
 }
 
 @media (max-width: 768px) {
@@ -902,16 +913,15 @@ onUnmounted(() => {
   .match-card-grid {
     grid-template-columns: 1fr;
   }
-  .ranking-summary :deep(.el-col),
-  .guide-section :deep(.el-col) {
+  .ranking-summary :deep(.el-col) {
     max-width: 100%;
     flex: 0 0 100%;
     margin-bottom: var(--space-4);
   }
-  .guide-step {
-    padding: var(--space-5) var(--space-4) var(--space-4);
+  .guide-skill-card {
+    padding: var(--space-6) var(--space-4);
   }
-  .guide-step-icon {
+  .guide-skill-icon {
     width: 48px;
     height: 48px;
   }

@@ -653,11 +653,29 @@ export class BsdcSyncService {
           : match.penaltyShootout
         match.liveWebsocket = !!bsEvent.live_websocket
         match.lastSyncedAt = new Date()
-        // 补充基本信息：场馆、裁判（仅当缺失时）
-        if (bsEvent.venue_id && !match.venue) {
+        // 补充基本信息：场馆、裁判（从嵌套对象直接提取，或通过 ID 查询详情 API）
+        // 优先从 venue/referee 嵌套对象提取（live API 可能返回）
+        if (bsEvent.venue && !match.venue) {
+          match.venueId = bsEvent.venue.id ?? match.venueId
+          match.venue = bsEvent.venue.name || match.venue
+          match.city = bsEvent.venue.city || match.city
+          match.venueCapacity = bsEvent.venue.capacity || match.venueCapacity
+          match.venueLatitude = bsEvent.venue.latitude ?? match.venueLatitude
+          match.venueLongitude = bsEvent.venue.longitude ?? match.venueLongitude
+        } else if (!match.venue && match.venueId) {
+          // fallback：通过 venue_id 查询场馆详情 API
           try { await this.syncVenuesForMatch(match) } catch { /* ignore */ }
         }
-        if (bsEvent.referee_id && !match.refereeName) {
+        if (bsEvent.referee && !match.refereeName) {
+          match.refereeId = bsEvent.referee.id ?? match.refereeId
+          match.refereeName = bsEvent.referee.name || match.refereeName
+          match.refereeNationality = bsEvent.referee.country || match.refereeNationality
+          if (bsEvent.referee.career_yellow_cards != null && bsEvent.referee.career_games != null && bsEvent.referee.career_games > 0) {
+            const avgYellow = bsEvent.referee.career_yellow_cards / bsEvent.referee.career_games
+            match.refereeStyle = avgYellow >= 5 ? 'strict' : avgYellow >= 3 ? 'moderate' : 'lenient'
+          }
+        } else if (!match.refereeName && match.refereeId) {
+          // fallback：通过 referee_id 查询裁判详情 API
           try { await this.syncRefereeForMatch(match) } catch { /* ignore */ }
         }
         await this.matchRepo.save(match)
@@ -682,19 +700,54 @@ export class BsdcSyncService {
   /**
    * 同步 live 赛事的子数据（lineups、playerStats、incidents、stats）
    * 仅在赛事状态变化或首次出现时调用
+   * 优化：一次获取 event detail，传递给各子方法减少重复 API 调用
    */
   private async syncLiveDataForMatch(match: MatchEntity, bsEventId: number): Promise<void> {
+    // 一次性获取 event detail，供多个子方法 fallback 使用
+    let detail: any = null
+    try { detail = await this.bsdService.getEventDetail(bsEventId) } catch { /* ignore */ }
+
+    // 从 event detail 提取场馆/裁判信息（仅当缺失时补充）
     try {
-      await this.syncLineups(match, bsEventId)
+      if (!match.venue && detail?.venue) {
+        match.venueId = detail.venue.id ?? match.venueId
+        match.venue = detail.venue.name || match.venue
+        match.city = detail.venue.city || match.city
+        match.venueCapacity = detail.venue.capacity || match.venueCapacity
+        match.venueLatitude = detail.venue.latitude ?? match.venueLatitude
+        match.venueLongitude = detail.venue.longitude ?? match.venueLongitude
+      }
+      if (!match.refereeName && detail?.referee) {
+        match.refereeId = detail.referee.id ?? match.refereeId
+        match.refereeName = detail.referee.name || match.refereeName
+        match.refereeNationality = detail.referee.country || match.refereeNationality
+        if (detail.referee.career_yellow_cards != null && detail.referee.career_games != null && detail.referee.career_games > 0) {
+          const avgYellow = detail.referee.career_yellow_cards / detail.referee.career_games
+          match.refereeStyle = avgYellow >= 5 ? 'strict' : avgYellow >= 3 ? 'moderate' : 'lenient'
+        }
+      }
+      if (match.venue || match.refereeName) {
+        await this.matchRepo.save(match)
+      }
+    } catch { /* ignore */ }
+
+    try {
+      await this.syncLineups(match, bsEventId, detail)
     } catch { /* ignore */ }
     try {
-      await this.syncPlayerStats(match, bsEventId)
+      await this.syncPlayerStats(match, bsEventId, detail)
     } catch { /* ignore */ }
     try {
       await this.syncIncidents(match, bsEventId)
     } catch { /* ignore */ }
     try {
       await this.syncStats(match, bsEventId)
+    } catch { /* ignore */ }
+    try {
+      await this.syncCoachesForMatch(match, bsEventId, detail)
+    } catch { /* ignore */ }
+    try {
+      await this.syncMetadata(match, bsEventId, detail)
     } catch { /* ignore */ }
   }
 
@@ -726,16 +779,46 @@ export class BsdcSyncService {
         const bsEventId = Number(m.dataSource.replace('bsd_', ''))
         if (Number.isNaN(bsEventId)) continue
         result.matches++
-        // 补充场馆和裁判信息（仅当缺失时）
-        if (m.venueId && !m.venue) {
-          try { await this.syncVenuesForMatch(m) } catch { /* ignore */ }
+        // 一次性获取 event detail，供多个子方法 fallback 使用
+        let detail: any = null
+        try { detail = await this.bsdService.getEventDetail(bsEventId) } catch { /* ignore */ }
+        // 补充场馆和裁判信息（优先从 event detail 的嵌套对象提取，fallback 到通过 ID 查详情 API）
+        if (!m.venue) {
+          // 优先从 event detail 的 venue 嵌套对象提取
+          if (detail?.venue) {
+            m.venueId = detail.venue.id ?? m.venueId
+            m.venue = detail.venue.name || m.venue
+            m.city = detail.venue.city || m.city
+            m.venueCapacity = detail.venue.capacity || m.venueCapacity
+            m.venueLatitude = detail.venue.latitude ?? m.venueLatitude
+            m.venueLongitude = detail.venue.longitude ?? m.venueLongitude
+          } else if (m.venueId) {
+            // fallback：通过 venue_id 查询场馆详情 API
+            try { await this.syncVenuesForMatch(m) } catch { /* ignore */ }
+          }
         }
-        if (m.refereeId && !m.refereeName) {
-          try { await this.syncRefereeForMatch(m) } catch { /* ignore */ }
+        if (!m.refereeName) {
+          // 优先从 event detail 的 referee 嵌套对象提取
+          if (detail?.referee) {
+            m.refereeId = detail.referee.id ?? m.refereeId
+            m.refereeName = detail.referee.name || m.refereeName
+            m.refereeNationality = detail.referee.country || m.refereeNationality
+            if (detail.referee.career_yellow_cards != null && detail.referee.career_games != null && detail.referee.career_games > 0) {
+              const avgYellow = detail.referee.career_yellow_cards / detail.referee.career_games
+              m.refereeStyle = avgYellow >= 5 ? 'strict' : avgYellow >= 3 ? 'moderate' : 'lenient'
+            }
+          } else if (m.refereeId) {
+            // fallback：通过 referee_id 查询裁判详情 API
+            try { await this.syncRefereeForMatch(m) } catch { /* ignore */ }
+          }
         }
         // 保存场馆/裁判补充结果
         if (m.venue || m.refereeName) {
           await this.matchRepo.save(m)
+        }
+        // 同步教练信息（仅当缺失时）
+        if (!m.homeCoach || !m.awayCoach) {
+          try { await this.syncCoachesForMatch(m, bsEventId, detail) } catch { /* ignore */ }
         }
         try {
           // 事件流（已结束 24h 内 / 进行中）
@@ -745,7 +828,7 @@ export class BsdcSyncService {
           }
           // 阵容（即将开始 6h 内 / 进行中 / 已结束 24h 内）
           if (m.startTime <= lookahead) {
-            result.lineups += await this.syncLineups(m, bsEventId)
+            result.lineups += await this.syncLineups(m, bsEventId, detail)
           }
           // 赔率（即将开始 24h 内 / 进行中）
           if (m.status !== 'finished' || m.startTime >= cutoff) {
@@ -761,12 +844,12 @@ export class BsdcSyncService {
           } catch { /* ignore */ }
           // 赛事元数据（所有赛事）
           try {
-            result.metadata += (await this.syncMetadata(m, bsEventId)) ? 1 : 0
+            result.metadata += (await this.syncMetadata(m, bsEventId, detail)) ? 1 : 0
           } catch { /* ignore */ }
           // 球员统计（进行中/已结束）
           if (m.status === 'live' || m.status === 'finished') {
             try {
-              result.playerStats += (await this.syncPlayerStats(m, bsEventId)) ? 1 : 0
+              result.playerStats += (await this.syncPlayerStats(m, bsEventId, detail)) ? 1 : 0
             } catch { /* ignore */ }
           }
           // 赔率对比（非已结束）
@@ -1041,6 +1124,8 @@ export class BsdcSyncService {
       match.venue = venue.name || match.venue
       match.city = venue.city || match.city
       match.venueCapacity = venue.capacity || null
+      match.venueLatitude = venue.latitude ?? null
+      match.venueLongitude = venue.longitude ?? null
       return true
     } catch (e) {
       this.logger.warn(`syncVenuesForMatch ${match.id} venue_id=${match.venueId} failed: ${(e as Error).message}`)
@@ -1096,11 +1181,25 @@ export class BsdcSyncService {
 
   /**
    * 同步赛事元数据（球衣颜色+趣味事实+AI预览）到 metadata 字段
+   * 支持从 event detail 内嵌数据 fallback
    */
-  private async syncMetadata(match: MatchEntity, bsEventId: number): Promise<boolean> {
+  private async syncMetadata(match: MatchEntity, bsEventId: number, detailFallback?: any): Promise<boolean> {
     try {
-      const meta = await this.bsdService.getEventMetadata(bsEventId)
-      match.metadata = meta as unknown as Record<string, unknown>
+      let meta: any = null
+      // 优先尝试独立接口
+      try {
+        meta = await this.bsdService.getEventMetadata(bsEventId)
+      } catch { /* 独立接口可能 404，fallback 到 event detail */ }
+      // fallback：从 event detail 提取内嵌元数据
+      if (!meta) {
+        const detail = detailFallback ?? await this.bsdService.getEventDetail(bsEventId) as any
+        meta = {
+          jerseys: detail?.jerseys ?? null,
+          funfacts: detail?.funfacts ?? null,
+          ai_preview: detail?.ai_preview ?? null,
+        }
+      }
+      match.metadata = meta as Record<string, unknown>
       await this.matchRepo.save(match)
       return true
     } catch (e) {
@@ -1113,11 +1212,26 @@ export class BsdcSyncService {
 
   /**
    * 同步单场球员统计到 playerStatsData 字段
+   * 支持从 event detail 内嵌数据 fallback
    */
-  private async syncPlayerStats(match: MatchEntity, bsEventId: number): Promise<boolean> {
+  private async syncPlayerStats(match: MatchEntity, bsEventId: number, detailFallback?: any): Promise<boolean> {
     try {
-      const stats = await this.bsdService.getEventPlayerStats(bsEventId)
-      match.playerStatsData = stats as unknown as Record<string, unknown>
+      let stats: any = null
+      // 优先尝试独立接口
+      try {
+        stats = await this.bsdService.getEventPlayerStats(bsEventId)
+      } catch { /* 独立接口可能 404，fallback 到 event detail */ }
+      // fallback：从 event detail 提取内嵌球员统计
+      if (!stats) {
+        const detail = detailFallback ?? await this.bsdService.getEventDetail(bsEventId) as any
+        if (detail?.player_stats) {
+          stats = { event_id: bsEventId, player_stats: detail.player_stats }
+        } else if (detail?.sr_stats?.player_stats) {
+          stats = { event_id: bsEventId, player_stats: detail.sr_stats.player_stats }
+        }
+      }
+      if (!stats) return false
+      match.playerStatsData = stats as Record<string, unknown>
       await this.matchRepo.save(match)
 
       // 聚合球员赛季统计
@@ -1214,6 +1328,8 @@ export class BsdcSyncService {
               potential: bsPlayer.potential,
               injuryStatus: bsPlayer.availability,
               injuryRisk: bsPlayer.injury_risk,
+              strengths: bsPlayer.strengths || null,
+              weaknesses: bsPlayer.weaknesses || null,
               dataSource: `bsd_${bsPlayer.id}`,
             }
 
@@ -1353,36 +1469,70 @@ export class BsdcSyncService {
       penaltyShootout: bsEvent.penalty_shootout
         ? { home: Number(bsEvent.penalty_shootout), away: Number(bsEvent.penalty_shootout) }
         : null,
-      venueId: bsEvent.venue_id ?? null,
-      homeCoachId: bsEvent.home_coach_id ?? null,
-      awayCoachId: bsEvent.away_coach_id ?? null,
-      refereeId: bsEvent.referee_id ?? null,
+      // 场馆 ID：优先从 venue_id 字段获取（列表 API），fallback 到 venue 嵌套对象的 id（详情 API）
+      venueId: bsEvent.venue_id ?? bsEvent.venue?.id ?? null,
+      // 教练 ID：优先从 coach_id 字段获取，fallback 到 coach 嵌套对象的 id
+      homeCoachId: bsEvent.home_coach_id ?? bsEvent.home_coach?.id ?? null,
+      awayCoachId: bsEvent.away_coach_id ?? bsEvent.away_coach?.id ?? null,
+      // 裁判 ID：优先从 referee_id 字段获取（列表 API），fallback 到 referee 嵌套对象的 id（详情 API）
+      refereeId: bsEvent.referee_id ?? bsEvent.referee?.id ?? null,
       isLocalDerby: !!bsEvent.is_local_derby,
       isNeutralGround: !!bsEvent.is_neutral_ground,
       liveWebsocket: !!bsEvent.live_websocket,
-      // 天气/环境数据（BSD weather 对象）
-      temperature: bsEvent.weather?.temperature_c ?? null,
-      windSpeed: bsEvent.weather?.wind_speed ?? null,
+      // 天气/环境数据（优先使用顶层字段，fallback 到 weather 嵌套对象）
+      temperature: bsEvent.temperature_c ?? bsEvent.weather?.temperature_c ?? null,
+      windSpeed: bsEvent.wind_speed ?? bsEvent.weather?.wind_speed ?? null,
       weatherCondition: bsEvent.weather?.description ?? null,
       // 观众人数
       totalAttendance: bsEvent.attendance ?? null,
+      pitchCondition: bsEvent.pitch_condition ?? null,
+      travelDistanceKm: bsEvent.travel_distance_km ?? null,
       lastSyncedAt: new Date(),
       dataSource: `bsd_${bsdId}`,
       dataSourceUrl: `https://sports.bzzoiro.com/api/events/${bsdId}/`,
     }
+    // 从 venue 嵌套对象直接提取场馆信息（详情 API 返回时）
+    if (bsEvent.venue) {
+      baseFields.venue = bsEvent.venue.name || null
+      baseFields.city = bsEvent.venue.city || null
+      baseFields.venueCapacity = bsEvent.venue.capacity || null
+      baseFields.venueLatitude = bsEvent.venue.latitude ?? null
+      baseFields.venueLongitude = bsEvent.venue.longitude ?? null
+    }
+    // 从 referee 嵌套对象直接提取裁判信息（详情 API 返回时）
+    if (bsEvent.referee) {
+      baseFields.refereeName = bsEvent.referee.name || null
+      baseFields.refereeNationality = bsEvent.referee.country || null
+      // 裁判风格：根据生涯黄牌数推断
+      if (bsEvent.referee.career_yellow_cards != null && bsEvent.referee.career_games != null && bsEvent.referee.career_games > 0) {
+        const avgYellow = bsEvent.referee.career_yellow_cards / bsEvent.referee.career_games
+        if (avgYellow >= 5) {
+          baseFields.refereeStyle = 'strict'
+        } else if (avgYellow >= 3) {
+          baseFields.refereeStyle = 'moderate'
+        } else {
+          baseFields.refereeStyle = 'lenient'
+        }
+      }
+    }
+    // 从 coach 嵌套对象直接提取教练姓名（详情 API 返回时）
+    if (bsEvent.home_coach) {
+      baseFields.homeCoach = bsEvent.home_coach.name || null
+    }
+    if (bsEvent.away_coach) {
+      baseFields.awayCoach = bsEvent.away_coach.name || null
+    }
     if (match) {
       Object.assign(match, baseFields)
-      // 同步场馆信息
-      if (bsEvent.venue_id && !match.venue) {
+      // 同步场馆信息（仅当 venue 嵌套对象未提供数据时，通过 venue_id 查询场馆详情 API）
+      if (!match.venue && match.venueId) {
         try { await this.syncVenuesForMatch(match) } catch { /* ignore */ }
       }
-      // 同步裁判信息
-      if (bsEvent.referee_id && !match.refereeName) {
+      // 同步裁判信息（仅当 referee 嵌套对象未提供数据时，通过 referee_id 查询裁判详情 API）
+      if (!match.refereeName && match.refereeId) {
         try { await this.syncRefereeForMatch(match) } catch { /* ignore */ }
       }
-      // 提取教练ID和精彩集锦
-      if ((bsEvent as any).home_coach_id) match.homeCoachId = (bsEvent as any).home_coach_id
-      if ((bsEvent as any).away_coach_id) match.awayCoachId = (bsEvent as any).away_coach_id
+      // 提取精彩集锦
       if ((bsEvent as any).highlights?.length) {
         match.highlights = (bsEvent as any).highlights
       }
@@ -1390,12 +1540,12 @@ export class BsdcSyncService {
       return 'updated'
     }
     const entity = this.matchRepo.create(baseFields)
-    // 同步场馆信息
-    if (bsEvent.venue_id && !entity.venue) {
+    // 同步场馆信息（仅当 venue 嵌套对象未提供数据时）
+    if (!entity.venue && entity.venueId) {
       try { await this.syncVenuesForMatch(entity) } catch { /* ignore */ }
     }
-    // 同步裁判信息
-    if (bsEvent.referee_id && !entity.refereeName) {
+    // 同步裁判信息（仅当 referee 嵌套对象未提供数据时）
+    if (!entity.refereeName && entity.refereeId) {
       try { await this.syncRefereeForMatch(entity) } catch { /* ignore */ }
     }
     await this.matchRepo.save(entity)
@@ -1561,10 +1711,28 @@ export class BsdcSyncService {
     return n
   }
 
-  /** 同步阵容：返回写入条数 */
-  private async syncLineups(match: MatchEntity, bsEventId: number): Promise<number> {
-    const resp = (await this.bsdService.getEventLineups(bsEventId)) as BsLineups
-    if (!resp.lineups) return 0
+  /** 同步阵容：返回写入条数；支持从 event detail 内嵌数据 fallback */
+  private async syncLineups(match: MatchEntity, bsEventId: number, detailFallback?: any): Promise<number> {
+    let resp: BsLineups | null = null
+    // 优先尝试独立接口
+    try {
+      resp = (await this.bsdService.getEventLineups(bsEventId)) as BsLineups
+    } catch { /* 独立接口可能 404，fallback 到 event detail */ }
+    // fallback：从 event detail 内嵌 lineups 提取
+    if (!resp?.lineups) {
+      try {
+        const detail = detailFallback ?? await this.bsdService.getEventDetail(bsEventId) as any
+        if (detail?.lineups) {
+          resp = {
+            event_id: bsEventId,
+            lineup_status: detail.lineup_status || (detail.lineups?.confirmed ? 'confirmed' : 'predicted'),
+            beta: false,
+            lineups: detail.lineups,
+          } as BsLineups
+        }
+      } catch { /* ignore */ }
+    }
+    if (!resp?.lineups) return 0
     let n = 0
     // 每次同步前清理旧记录（同 match 内）
     await this.lineupRepo.delete({ matchId: match.id })
@@ -1783,14 +1951,19 @@ export class BsdcSyncService {
    * BSD 仅提供 home_coach_id/away_coach_id，无 coach 详情接口
    * 但比赛结束后 BSD 会在 metadata/incidents 中可能包含教练名
    */
-  private async syncCoachesForMatch(match: MatchEntity, bsEventId: number): Promise<boolean> {
+  private async syncCoachesForMatch(match: MatchEntity, bsEventId: number, detailFallback?: any): Promise<boolean> {
     try {
-      const detail = await this.bsdService.getEventDetail(bsEventId) as any
+      const detail = detailFallback ?? await this.bsdService.getEventDetail(bsEventId) as any
       const updated: Partial<MatchEntity> = {}
 
-      // 优先从 detail.weather 字段附近查找（BSD 实际字段名）
-      // home_coach_id/away_coach_id 已通过 syncEvents 同步到 homeCoachId/awayCoachId
-      // 这里仅做占位
+      // 从嵌套的 home_team_obj/away_team_obj.coach 中提取教练姓名
+      if (detail?.home_team_obj?.coach?.name && !match.homeCoach) {
+        updated.homeCoach = detail.home_team_obj.coach.name
+      }
+      if (detail?.away_team_obj?.coach?.name && !match.awayCoach) {
+        updated.awayCoach = detail.away_team_obj.coach.name
+      }
+
       if (Object.keys(updated).length > 0) {
         await this.matchRepo.update(match.id, updated)
       }

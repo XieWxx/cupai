@@ -82,6 +82,7 @@ export default {
   bracket: {
     noData: 'Sem dados de chaveamento',
     loading: 'Carregando chaveamento...',
+    r32: 'Fase de 32',
     r16: 'Oitavas de final',
     qf: 'Quartas de final',
     sf: 'Semifinais',
@@ -120,6 +121,10 @@ export default {
     accuracy: 'Precisão',
     predictions: 'Previsões',
     upcoming: 'Próximas',
+    schedule: 'Calendário',
+    allMatches: 'Todas',
+    finished: 'Encerradas',
+    noScheduleData: 'Sem dados de calendário',
   },
   home: {
     hotMatches: 'Partidas em Destaque',
@@ -185,10 +190,10 @@ export default {
     hostMxDesc: 'Sede de 3 Copas do Mundo e berço da paixão do futebol latino — o futebol é uma fé nacional.',
     // PRD 3.1.2 首页 4 大模块
     matchDynamics: 'Dinâmica de Partidas',
-    todayUpcoming: 'Próximas Hoje',
+    todayUpcoming: 'Próximas',
     recentFinished: 'Encerradas Recentemente',
     noLive: 'Nenhuma partida ao vivo agora',
-    noUpcoming: 'Nenhuma partida próxima hoje',
+    noUpcoming: 'Nenhuma partida próxima',
     noFinished: 'Nenhuma partida encerrada recentemente',
     aiBrief: 'Resumo de Análises IA em Destaque',
     noBrief: 'Sem resumos de análises em destaque',

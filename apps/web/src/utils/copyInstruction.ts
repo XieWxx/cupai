@@ -8,10 +8,8 @@
  * 4. 指令结尾附上回传指引（API Key / 提交地址）
  */
 
-import type { MatchEntity } from '@/types/match'
-
 /**
- * 单只球队数据快照
+ * 复制指令生成工具单只球队数据快照
  */
 export interface TeamSnapshot {
   name: string
@@ -436,7 +434,7 @@ function teamStats(t: TeamSnapshot | null | undefined, label: string): string {
 /**
  * 基础数据快照（每个维度都需要的通用部分）
  */
-function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, question: string, optionsText: string): string {
+function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, _question: string, _optionsText: string): string {
   const m = input.match
   if (!m) return ''
 
@@ -517,6 +515,7 @@ function buildReturnGuidance(input: CopyInstructionInput, dimKey: string): strin
   const skillMdUrl = `${base}/api/v1/agent/open/skill.md?matchId=${input.match?.id || ''}`
   const apiKey = input.userApiKey || 'cpk_<YOUR_API_KEY>'
   const realInstructionId = input.instructionId || '<instruction_id>'
+  void realInstructionId
   const matchId = input.match?.id || '<match_id>'
 
   return `
@@ -557,7 +556,7 @@ curl -X POST "${submitUrl}" \\
  * - 不同维度只替换 [QUESTION] 和 [OPTIONS] 即可
  */
 function buildDimensionPrompt(
-  dimKey: DimensionKey,
+  _dimKey: DimensionKey,
   dimTitle: string,
   question: string,
   optionsText: string,

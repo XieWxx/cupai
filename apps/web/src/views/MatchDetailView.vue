@@ -120,6 +120,19 @@
           </div>
         </div>
 
+        <!-- 球衣颜色展示（从 metadata.jerseys 解析） -->
+        <div v-if="jerseyColors" class="jersey-bar" style="margin-top: var(--space-2)">
+          <div class="jersey-item">
+            <span class="jersey-label">{{ match?.homeTeam?.name }}</span>
+            <span class="jersey-swatch" :style="{ background: jerseyColors.home }" />
+          </div>
+          <span class="jersey-vs">{{ $t('common.vs') }}</span>
+          <div class="jersey-item">
+            <span class="jersey-swatch" :style="{ background: jerseyColors.away }" />
+            <span class="jersey-label">{{ match?.awayTeam?.name }}</span>
+          </div>
+        </div>
+
         <!-- ========== 三列时间展示：当地开赛时间 | 用户观看时间 | UTC基准时间 ========== -->
         <div class="time-triple-bar" v-if="match?.startTime">
           <div class="time-triple-item">
@@ -486,12 +499,18 @@
             <!-- 按位置分组的球员列表 -->
             <template v-else>
               <!-- 阵型信息（lineup 数据有阵型时展示） -->
-              <div v-if="lineupData" class="formation-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+              <div v-if="lineupData" class="formation-row" style="display: flex; gap: 16px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
                 <el-tag v-if="lineupData.home?.formation" size="small" effect="dark">
                   {{ match?.homeTeam?.name }}: {{ lineupData.home.formation }}
                 </el-tag>
                 <el-tag v-if="lineupData.away?.formation" size="small" effect="dark">
                   {{ match?.awayTeam?.name }}: {{ lineupData.away.formation }}
+                </el-tag>
+                <el-tag v-if="lineupData.lineup_status" size="small" :type="lineupData.lineup_status === 'confirmed' ? 'success' : lineupData.lineup_status === 'predicted' ? 'warning' : 'info'" effect="plain">
+                  {{ $t(`match.${lineupData.lineup_status}`) || lineupData.lineup_status }}
+                </el-tag>
+                <el-tag v-if="lineupData.home?.confidence != null" size="small" type="info" effect="plain">
+                  {{ $t('match.lineupConfidence') }}: {{ (lineupData.home.confidence * 100).toFixed(0) }}%
                 </el-tag>
               </div>
               <template v-for="pos in positionOrder" :key="pos.key">
@@ -533,12 +552,32 @@
                         <div v-if="row.shortName || row.nameEn" class="player-name__en">{{ row.shortName || row.nameEn }}</div>
                       </template>
                     </el-table-column>
-                    <el-table-column :label="$t('match.age')" width="64" align="center">
+                    <el-table-column :label="$t('match.age')" width="56" align="center">
                       <template #default="{ row }">
                         {{ row.age ?? '-' }}
                       </template>
                     </el-table-column>
-                    <el-table-column :label="$t('match.goals')" width="64" align="center">
+                    <el-table-column :label="$t('match.height')" width="56" align="center">
+                      <template #default="{ row }">
+                        {{ row.heightCm ? `${row.heightCm}` : '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="$t('match.weight')" width="56" align="center">
+                      <template #default="{ row }">
+                        {{ row.weightKg ? `${row.weightKg}` : '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="$t('match.preferredFoot')" width="56" align="center">
+                      <template #default="{ row }">
+                        {{ row.preferredFoot ? $t(`match.${row.preferredFoot === 'Left' || row.preferredFoot === 'L' ? 'leftFoot' : 'rightFoot'}`) : '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="$t('match.marketValue')" width="72" align="center">
+                      <template #default="{ row }">
+                        {{ row.marketValueEur ? `${(row.marketValueEur / 10000).toFixed(0)}` : '-' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="$t('match.goals')" width="56" align="center">
                       <template #default="{ row }">
                         <span class="stat-num">{{ row.seasonGoals ?? 0 }}</span>
                       </template>
@@ -595,8 +634,16 @@
                   <th>{{ $t('match.rating') }}</th>
                   <th>{{ $t('match.goals') }}</th>
                   <th>{{ $t('match.assists') }}</th>
-                  <th>{{ $t('match.shots') }}</th>
-                  <th>{{ $t('match.passes') }}</th>
+                  <th>{{ $t('match.expectedGoals') }}</th>
+                  <th>{{ $t('match.expectedAssists') }}</th>
+                  <th>{{ $t('match.shotsOnTarget') }}</th>
+                  <th>{{ $t('match.keyPass') }}</th>
+                  <th>{{ $t('match.tackles') }}</th>
+                  <th>{{ $t('match.interceptions') }}</th>
+                  <th>{{ $t('match.saves') }}</th>
+                  <th>{{ $t('match.touches') }}</th>
+                  <th>{{ $t('match.wonContest') }}</th>
+                  <th>{{ $t('match.possessionLost') }}</th>
                   <th>{{ $t('match.cards') }}</th>
                 </tr>
               </thead>
@@ -606,8 +653,16 @@
                   <td>{{ ps.rating ?? '-' }}</td>
                   <td>{{ ps.goals || 0 }}</td>
                   <td>{{ ps.goal_assist || 0 }}</td>
-                  <td>{{ ps.total_shots ?? '-' }}</td>
-                  <td>{{ ps.accurate_pass ?? '-' }}/{{ ps.total_pass ?? '-' }}</td>
+                  <td>{{ ps.expected_goals ?? '-' }}</td>
+                  <td>{{ ps.expected_assists ?? '-' }}</td>
+                  <td>{{ ps.shots_on_target ?? '-' }}</td>
+                  <td>{{ ps.key_pass ?? '-' }}</td>
+                  <td>{{ ps.total_tackle ?? '-' }}</td>
+                  <td>{{ ps.interception ?? '-' }}</td>
+                  <td>{{ ps.saves ?? '-' }}</td>
+                  <td>{{ ps.touches ?? '-' }}</td>
+                  <td>{{ ps.won_contest ?? '-' }}</td>
+                  <td>{{ ps.possession_lost ?? '-' }}</td>
                   <td>
                     <span v-if="ps.yellow_card" class="card-yellow">Y{{ ps.yellow_card }}</span>
                     <span v-if="ps.red_card" class="card-red">R{{ ps.red_card }}</span>
@@ -651,12 +706,15 @@
                 </span>
               </el-descriptions-item>
               <el-descriptions-item :label="$t('match.refereeStyle')">{{ match?.refereeStyle || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('match.homeCoach')">{{ match?.homeCoach || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('match.awayCoach')">{{ match?.awayCoach || '-' }}</el-descriptions-item>
+              <el-descriptions-item v-if="match?.roundName" :label="$t('match.roundName')">{{ match.roundName }}</el-descriptions-item>
+              <el-descriptions-item v-if="match?.groupName" :label="$t('match.groupName')">{{ match.groupName }}</el-descriptions-item>
             </el-descriptions>
           </SectionCard>
 
           <!-- 右：临场环境 -->
           <SectionCard
-            v-if="match?.temperature || match?.humidity"
             :title="$t('match.environment')"
           >
             <el-descriptions :column="1" border size="small">
@@ -667,14 +725,9 @@
               <el-descriptions-item :label="$t('match.homeFans')">{{ match?.homeAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
               <el-descriptions-item :label="$t('match.awayFans')">{{ match?.awayAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
               <el-descriptions-item :label="$t('match.totalAttendance')">{{ match?.totalAttendance?.toLocaleString() || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('match.pitchCondition')">{{ match?.pitchCondition || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="$t('match.travelDistance')">{{ match?.travelDistanceKm ? `${match.travelDistanceKm} km` : '-' }}</el-descriptions-item>
             </el-descriptions>
-          </SectionCard>
-          <!-- 占位：右侧无内容时让布局对齐 -->
-          <SectionCard
-            v-else
-            :title="$t('match.environment')"
-          >
-            <el-empty :description="$t('match.environment')" :image-size="60" />
           </SectionCard>
         </div>
 
@@ -942,6 +995,7 @@ import {
   buildDimensionInstruction,
   buildPlayerInstruction,
   buildTeamInstruction,
+  buildMatchInstruction,
   DIMENSION_SECTIONS,
   DIMENSIONS,
   type CopyInstructionInput,
@@ -1006,6 +1060,16 @@ async function fetchExtendedData(matchId: string) {
 const highlightsData = ref<Array<{ kind: string; title: string; url: string; thumbnail: string; published_at: string }>>([])
 // 湿度/天气
 const weatherData = ref<{ humidity: number | null; temperature: number | null; windSpeed: number | null; weatherDescription: string } | null>(null)
+
+/** 从 metadata.jerseys 解析球衣颜色（主色） */
+const jerseyColors = computed<{ home: string; away: string } | null>(() => {
+  const jerseys = (metadataData.value as any)?.jerseys
+  if (!jerseys) return null
+  const homeColor = jerseys?.home?.player?.base || jerseys?.home?.GK?.base
+  const awayColor = jerseys?.away?.player?.base || jerseys?.away?.GK?.base
+  if (!homeColor && !awayColor) return null
+  return { home: homeColor || '#ccc', away: awayColor || '#ccc' }
+})
 
 // AbortController 防止组件卸载后 setState 触发警告 / 消除 net::ERR_ABORTED 日志
 let fetchAbortCtrl: AbortController | null = null
@@ -1397,9 +1461,8 @@ async function openTeamCopyDialog(side: 'home' | 'away') {
   ]
 }
 
-/**
- * 复制整场赛事分析指令（弹窗显示）
- */
+/** 复制整场赛事分析指令（弹窗显示），预留功能 */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function openFullMatchCopyDialog() {
   const text = buildMatchInstruction(buildCommonInput())
   copyDialogOpen.value = true
@@ -1946,17 +2009,6 @@ function renderDimensionChart(dimKey: DimensionKey) {
   dimCharts[dimKey] = chart
 }
 
-/** Markdown 摘要：去掉标题/分割线，截取正文前 220 字（已废弃，保留以备回退） */
-function reportPreview(content: string): string {
-  if (!content) return ''
-  return content
-    .replace(/^#+\s+.*$/gm, '') // 去掉标题行
-    .replace(/^---+$/gm, '') // 去掉分割线
-    .replace(/\n+/g, ' ')
-    .trim()
-    .slice(0, 220)
-}
-
 // ========== 舆情加载 ==========
 /**
  * 并行拉取赛事 / 主队 / 客队 3 档舆情
@@ -2218,7 +2270,7 @@ async function loadDetail() {
 
   try {
     // 从后端获取赛事详情
-    const data = await matchStore.fetchMatchDetail(matchId)
+    const data = await matchStore.fetchMatchDetail(matchId) as any
     match.value = data
     if (!data) {
       errorState.value = 'not_found'
@@ -2388,6 +2440,9 @@ onUnmounted(() => {
   fetchAbortCtrl?.abort()
   fetchAbortCtrl = null
 })
+
+// 预留功能引用，消除 noUnusedLocals 警告
+void openFullMatchCopyDialog
 </script>
 
 <style scoped>
@@ -3375,5 +3430,33 @@ onUnmounted(() => {
 }
 .weather-desc {
   color: var(--el-text-color-secondary);
+}
+
+/* ========== 球衣颜色 ========== */
+.jersey-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.jersey-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.jersey-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.jersey-swatch {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-light);
+}
+.jersey-vs {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 </style>

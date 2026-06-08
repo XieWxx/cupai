@@ -42,6 +42,18 @@ body {
   overflow-x: hidden;
 }
 
+/* ========== 隐藏全局滚动条 ========== */
+* {
+  /* IE/Edge */
+  -ms-overflow-style: none;
+  /* Firefox */
+  scrollbar-width: none;
+}
+/* Chrome/Safari/Opera */
+*::-webkit-scrollbar {
+  display: none;
+}
+
 a {
   text-decoration: none;
   color: inherit;

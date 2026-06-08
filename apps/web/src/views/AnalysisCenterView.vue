@@ -229,7 +229,7 @@ function editWeightModel(model: any) {
 
 async function saveAiConfig() {
   try {
-    await analysisStore.addAiConfig(aiConfigForm)
+    await analysisStore.createAiConfig(aiConfigForm)
     showAiConfigDialog.value = false
     ElMessage.success(t('analysis.apiConfigSaved'))
   } catch (err: any) {
@@ -239,7 +239,7 @@ async function saveAiConfig() {
 
 async function saveWeightModel() {
   try {
-    await analysisStore.addWeightModel(weightForm)
+    await analysisStore.createWeightModel(weightForm)
     showWeightDialog.value = false
     ElMessage.success(t('analysis.weightModelSaved'))
   } catch (err: any) {

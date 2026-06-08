@@ -144,13 +144,13 @@ export class MatchService {
     return { list, total, page, pageSize }
   }
 
-  /** 获取淘汰赛对阵图数据（按 stage 字段分组） */
+  /** 获取淘汰赛对阵图数据（按 stage 字段分组，支持 1/16 决赛起） */
   async getBracketData(leagueId?: string) {
     const query = this.matchRepo
       .createQueryBuilder('match')
       .leftJoinAndSelect('match.homeTeam', 'homeTeam')
       .leftJoinAndSelect('match.awayTeam', 'awayTeam')
-      .where('match.stage IN (:...stages)', { stages: ['round16', 'quarter', 'semi', 'final', 'playoff'] })
+      .where('match.stage IN (:...stages)', { stages: ['round32', 'round16', 'quarter', 'semi', 'final', 'playoff'] })
 
     // 按联赛过滤（默认仅展示世界杯数据）
     if (leagueId) {
@@ -167,11 +167,13 @@ export class MatchService {
 
     const matches = await query.getMany()
 
-    // 按 stage 字段分组
-    const grouped = { r16: [], qf: [], sf: [], final: [] as MatchEntity[] }
+    // 按 stage 字段分组（1/16 决赛 → 1/8 决赛 → 1/4 决赛 → 半决赛 → 决赛）
+    const grouped = { r32: [], r16: [], qf: [], sf: [], final: [] as MatchEntity[] }
     for (const match of matches) {
       const stage = match.stage?.toLowerCase()
-      if (stage === 'round16' || stage === 'r16' || stage === '16') {
+      if (stage === 'round32' || stage === 'r32' || stage === '32') {
+        grouped.r32.push(match)
+      } else if (stage === 'round16' || stage === 'r16' || stage === '16') {
         grouped.r16.push(match)
       } else if (stage === 'quarter' || stage === 'qf' || stage === '8') {
         grouped.qf.push(match)

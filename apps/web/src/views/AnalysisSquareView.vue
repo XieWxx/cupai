@@ -82,7 +82,7 @@ const filters = reactive({
   source: '',
 })
 const interactionMap = ref<Record<string, { like: boolean; collect: boolean }>>({})
-let ws: WebSocket | null = null
+let ws: (() => void) | null = null
 
 function renderMarkdown(content: string | undefined): string {
   if (!content) return ''
@@ -157,7 +157,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (ws) ws.close()
+  if (ws) ws()
 })
 </script>
 

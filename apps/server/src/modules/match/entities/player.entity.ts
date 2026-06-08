@@ -97,6 +97,14 @@ export class PlayerEntity {
   @Column({ name: 'injury_risk', length: 100, nullable: true, comment: '伤病风险' })
   injuryRisk: string
 
+  /** BSD strengths（球员优势标签列表） */
+  @Column({ type: 'json', nullable: true, comment: '球员优势标签' })
+  strengths: string[]
+
+  /** BSD weaknesses（球员弱点标签列表） */
+  @Column({ type: 'json', nullable: true, comment: '球员弱点标签' })
+  weaknesses: string[]
+
   @Column({ name: 'yellow_cards', type: 'int', default: 0, comment: '黄牌数' })
   yellowCards: number
 

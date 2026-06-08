@@ -243,7 +243,7 @@ export const MATCHES: MockMatch[] = [
   },
   {
     id: 'up-3', status: 'upcoming',
-    homeTeam: teamById('mar', {} as MockTeam), awayTeam: teamById('col'),
+    homeTeam: teamById('mar'), awayTeam: teamById('col'),
     homeScore: null, awayScore: null,
     startTime: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
     leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16',
@@ -288,7 +288,7 @@ export const MATCHES: MockMatch[] = [
   },
   {
     id: 'up-8', status: 'upcoming',
-    homeTeam: teamById('dnk', {} as MockTeam), awayTeam: teamById('sui'),
+    homeTeam: teamById('dnk'), awayTeam: teamById('sui'),
     homeScore: null, awayScore: null,
     startTime: new Date(Date.now() + 28 * 3600 * 1000).toISOString(),
     leagueName: '2026 FIFA World Cup', stage: 'Group Stage · MD3', groupName: 'H',
@@ -693,7 +693,7 @@ function genInstructions() {
 }
 
 // ============ 21 维度报告 Mock ============
-function genDimensionReports(matchId: string) {
+export function genDimensionReports(matchId: string) {
   const detail = genMatchDetail(matchId)
   if (!detail) return { list: [] }
   return {
@@ -767,36 +767,64 @@ function genGroupMatches() {
 
 // ============ 淘汰赛 Mock ============
 // 返回结构必须与后端 match.service.ts::getBracketData 完全一致：
-//   { list: MatchEntity[], bracketStage: { r16, qf, sf, final } }
+//   { list: MatchEntity[], bracketStage: { r32, r16, qf, sf, final } }
 // 否则前端 bracketRes?.bracketStage 取不到，KnockoutBracket 一直显示空态。
 function genBracket() {
   const liveMatches = MATCHES.filter(m => m.status === 'live')
-  const roundOf16: any[] = [
+  // 1/16 决赛（Round of 32）：16 场比赛
+  const roundOf32: any[] = [
+    { id: 'r32-1', status: 'finished' as const, homeTeam: teamById('usa'), awayTeam: teamById('omn'), homeScore: 3, awayScore: 0, startTime: new Date(Date.now() - 96 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-2', status: 'finished' as const, homeTeam: teamById('can'), awayTeam: teamById('uae'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 96 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-3', status: 'finished' as const, homeTeam: teamById('bra'), awayTeam: teamById('bol'), homeScore: 4, awayScore: 0, startTime: new Date(Date.now() - 90 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-4', status: 'finished' as const, homeTeam: teamById('arg'), awayTeam: teamById('par'), homeScore: 3, awayScore: 1, startTime: new Date(Date.now() - 90 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-5', status: 'finished' as const, homeTeam: teamById('fra'), awayTeam: teamById('idn'), homeScore: 5, awayScore: 0, startTime: new Date(Date.now() - 84 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-6', status: 'finished' as const, homeTeam: teamById('eng'), awayTeam: teamById('hun'), homeScore: 2, awayScore: 0, startTime: new Date(Date.now() - 84 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-7', status: 'finished' as const, homeTeam: teamById('ger'), awayTeam: teamById('grc'), homeScore: 3, awayScore: 1, startTime: new Date(Date.now() - 78 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-8', status: 'finished' as const, homeTeam: teamById('esp'), awayTeam: teamById('isr'), homeScore: 2, awayScore: 0, startTime: new Date(Date.now() - 78 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-9', status: 'finished' as const, homeTeam: teamById('por'), awayTeam: teamById('alg'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 72 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-10', status: 'finished' as const, homeTeam: teamById('ned'), awayTeam: teamById('tun'), homeScore: 3, awayScore: 0, startTime: new Date(Date.now() - 72 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-11', status: 'finished' as const, homeTeam: teamById('ita'), awayTeam: teamById('gha'), homeScore: 2, awayScore: 0, startTime: new Date(Date.now() - 66 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-12', status: 'finished' as const, homeTeam: teamById('bel'), awayTeam: teamById('cmr'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 66 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
     ...liveMatches.slice(0, 2),
-    { id: 'r16-1', status: 'finished' as const, homeTeam: teamById('kor'), awayTeam: teamById('jpn'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16', predictions: genPredictions(0) },
-    { id: 'r16-2', status: 'finished' as const, homeTeam: teamById('por'), awayTeam: teamById('ned'), homeScore: 3, awayScore: 2, startTime: new Date(Date.now() - 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16', predictions: genPredictions(0) },
-    { id: 'r16-3', status: 'finished' as const, homeTeam: teamById('mar'), awayTeam: teamById('col'), homeScore: 1, awayScore: 0, startTime: new Date(Date.now() - 36 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16', predictions: genPredictions(0) },
-    { id: 'r16-4', status: 'finished' as const, homeTeam: teamById('uru'), awayTeam: teamById('chr'), homeScore: 2, awayScore: 0, startTime: new Date(Date.now() - 36 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16', predictions: genPredictions(0) },
+    { id: 'r32-13', status: 'finished' as const, homeTeam: teamById('kor'), awayTeam: teamById('jpn'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 60 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-14', status: 'finished' as const, homeTeam: teamById('mar'), awayTeam: teamById('egp'), homeScore: 1, awayScore: 0, startTime: new Date(Date.now() - 60 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-15', status: 'finished' as const, homeTeam: teamById('col'), awayTeam: teamById('chi'), homeScore: 2, awayScore: 0, startTime: new Date(Date.now() - 54 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
+    { id: 'r32-16', status: 'finished' as const, homeTeam: teamById('uru'), awayTeam: teamById('ecu'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 54 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 32', groupName: 'R32' },
   ]
+  // 1/8 决赛（Round of 16）：8 场比赛
+  const roundOf16: any[] = [
+    { id: 'r16-1', status: 'finished' as const, homeTeam: teamById('usa'), awayTeam: teamById('can'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-2', status: 'finished' as const, homeTeam: teamById('bra'), awayTeam: teamById('arg'), homeScore: 2, awayScore: 3, startTime: new Date(Date.now() - 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-3', status: 'finished' as const, homeTeam: teamById('fra'), awayTeam: teamById('eng'), homeScore: 1, awayScore: 2, startTime: new Date(Date.now() - 36 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-4', status: 'finished' as const, homeTeam: teamById('ger'), awayTeam: teamById('esp'), homeScore: 2, awayScore: 1, startTime: new Date(Date.now() - 36 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-5', status: 'finished' as const, homeTeam: teamById('por'), awayTeam: teamById('ned'), homeScore: 3, awayScore: 2, startTime: new Date(Date.now() - 24 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-6', status: 'finished' as const, homeTeam: teamById('ita'), awayTeam: teamById('bel'), homeScore: 1, awayScore: 2, startTime: new Date(Date.now() - 24 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-7', status: 'finished' as const, homeTeam: teamById('kor'), awayTeam: teamById('mar'), homeScore: 0, awayScore: 1, startTime: new Date(Date.now() - 12 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+    { id: 'r16-8', status: 'finished' as const, homeTeam: teamById('col'), awayTeam: teamById('uru'), homeScore: 1, awayScore: 2, startTime: new Date(Date.now() - 12 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Round of 16', groupName: 'R16' },
+  ]
+  // 1/4 决赛：4 场比赛
   const quarterFinals: any[] = [
-    { id: 'qf-1', status: 'upcoming' as const, homeTeam: teamById('bra'), awayTeam: teamById('kor'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF', predictions: genPredictions(0.3) },
-    { id: 'qf-2', status: 'upcoming' as const, homeTeam: teamById('fra'), awayTeam: teamById('mar'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF', predictions: genPredictions(-0.1) },
-    { id: 'qf-3', status: 'upcoming' as const, homeTeam: teamById('arg'), awayTeam: teamById('uru'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 72 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF', predictions: genPredictions(0.2) },
-    { id: 'qf-4', status: 'upcoming' as const, homeTeam: teamById('eng'), awayTeam: teamById('por'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 72 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF', predictions: genPredictions(0) },
+    { id: 'qf-1', status: 'finished' as const, homeTeam: teamById('usa'), awayTeam: teamById('arg'), homeScore: 1, awayScore: 2, startTime: new Date(Date.now() + 24 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF' },
+    { id: 'qf-2', status: 'upcoming' as const, homeTeam: teamById('eng'), awayTeam: teamById('ger'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 48 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF' },
+    { id: 'qf-3', status: 'upcoming' as const, homeTeam: teamById('por'), awayTeam: teamById('bel'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 72 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF' },
+    { id: 'qf-4', status: 'upcoming' as const, homeTeam: teamById('mar'), awayTeam: teamById('uru'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 72 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Quarter-final', groupName: 'QF' },
   ]
+  // 半决赛：2 场比赛
   const semiFinals: any[] = [
-    { id: 'sf-1', status: 'upcoming' as const, homeTeam: teamById('bra'), awayTeam: teamById('fra'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 120 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Semi-final', groupName: 'SF', predictions: genPredictions(0.1) },
-    { id: 'sf-2', status: 'upcoming' as const, homeTeam: teamById('arg'), awayTeam: teamById('eng'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 144 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Semi-final', groupName: 'SF', predictions: genPredictions(-0.05) },
+    { id: 'sf-1', status: 'upcoming' as const, homeTeam: teamById('arg'), awayTeam: null, homeScore: null, awayScore: null, startTime: new Date(Date.now() + 120 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Semi-final', groupName: 'SF' },
+    { id: 'sf-2', status: 'upcoming' as const, homeTeam: null, awayTeam: null, homeScore: null, awayScore: null, startTime: new Date(Date.now() + 144 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Semi-final', groupName: 'SF' },
   ]
+  // 决赛：1 场比赛
   const finalArr: any[] = [
-    { id: 'final', status: 'upcoming' as const, homeTeam: teamById('bra'), awayTeam: teamById('arg'), homeScore: null, awayScore: null, startTime: new Date(Date.now() + 192 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Final', groupName: 'Final', predictions: genPredictions(0) },
+    { id: 'final', status: 'upcoming' as const, homeTeam: null, awayTeam: null, homeScore: null, awayScore: null, startTime: new Date(Date.now() + 192 * 3600 * 1000).toISOString(), leagueName: '2026 FIFA World Cup', stage: 'Final', groupName: 'Final' },
   ]
-  const list = [...roundOf16, ...quarterFinals, ...semiFinals, ...finalArr]
+  const list = [...roundOf32, ...roundOf16, ...quarterFinals, ...semiFinals, ...finalArr]
   return {
     list,
-    // 关键：键名 r16/qf/sf/final 与真实后端 getBracketData 保持一致，
-    // 同时对齐 KnockoutBracket.vue 中 r16/qf/sf/final 的取值。
+    // 关键：键名 r32/r16/qf/sf/final 与真实后端 getBracketData 保持一致，
+    // 同时对齐 KnockoutBracket.vue 中 r32/r16/qf/sf/final 的取值。
     bracketStage: {
+      r32: roundOf32,
       r16: roundOf16,
       qf: quarterFinals,
       sf: semiFinals,
@@ -921,6 +949,7 @@ export function findMock(method: string, url: string, config?: AxiosRequestConfi
   }
 
   if (m === 'POST' && p.startsWith('user/register')) {
+    const data = config?.data as Record<string, any> | undefined
     return {
       token: 'mock_token_new',
       user: {

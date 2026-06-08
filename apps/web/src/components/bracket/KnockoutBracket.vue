@@ -1,12 +1,15 @@
 <template>
   <div class="knockout-bracket">
+    <!-- 加载态 -->
     <div v-if="loading" class="bracket-loading">
       <el-icon class="is-loading"><Loading /></el-icon>
       <span>{{ $t('common.loading') }}</span>
     </div>
+    <!-- 空态 -->
     <div v-else-if="!hasData" class="bracket-empty">
       <el-empty :description="$t('bracket.noData')" />
     </div>
+    <!-- 对阵图主体 -->
     <div v-else class="bracket-tree">
       <!-- 左半区 -->
       <div class="bracket-half bracket-left">
@@ -20,16 +23,18 @@
               :class="matchStatusClass(match)"
               @click="onMatchClick(match)"
             >
-              <!-- 比赛状态标签 -->
+              <!-- 直播状态条 -->
               <div class="match-status-bar" v-if="match?.status === 'live'">
                 <span class="live-dot"></span>
                 <span class="match-minute">{{ match.currentMinute ? `${match.currentMinute}'` : 'LIVE' }}</span>
               </div>
+              <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
+              <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
                 <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
@@ -54,16 +59,18 @@
           :class="matchStatusClass(match)"
           @click="onMatchClick(match)"
         >
-          <!-- 比赛状态标签 -->
+          <!-- 直播状态条 -->
           <div class="match-status-bar" v-if="match?.status === 'live'">
             <span class="live-dot"></span>
             <span class="match-minute">{{ match.currentMinute ? `${match.currentMinute}'` : 'LIVE' }}</span>
           </div>
+          <!-- 主队 -->
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
             <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
             <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
             <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
           </div>
+          <!-- 客队 -->
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
             <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
             <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
@@ -93,16 +100,18 @@
               :class="matchStatusClass(match)"
               @click="onMatchClick(match)"
             >
-              <!-- 比赛状态标签 -->
+              <!-- 直播状态条 -->
               <div class="match-status-bar" v-if="match?.status === 'live'">
                 <span class="live-dot"></span>
                 <span class="match-minute">{{ match.currentMinute ? `${match.currentMinute}'` : 'LIVE' }}</span>
               </div>
+              <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
+              <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
                 <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
@@ -139,27 +148,36 @@ const { t, locale } = useI18n()
 /** 是否有淘汰赛数据 */
 const hasData = computed(() => {
   const stages = props.bracketData || {}
-  return (stages.r16?.length || stages.qf?.length || stages.sf?.length || stages.final?.length || 0) > 0
+  return (stages.r32?.length || stages.r16?.length || stages.qf?.length || stages.sf?.length || stages.final?.length || 0) > 0
 })
 
 /** 淘汰赛各轮数据 */
+const r32 = computed(() => props.bracketData?.r32 || [])
 const r16 = computed(() => props.bracketData?.r16 || [])
 const qf = computed(() => props.bracketData?.qf || [])
 const sf = computed(() => props.bracketData?.sf || [])
 const finalMatch = computed(() => props.bracketData?.final || [])
 
-/** 左半区轮次：R16前4场 → QF前2场 → SF第1场 */
+/**
+ * 左半区轮次（从外到内）
+ * 1/16 决赛前8场 → 1/8 决赛前4场 → 1/4 决赛前2场 → 半决赛第1场
+ */
 const leftRounds = computed(() => [
+  { key: 'r32-left', label: t('bracket.r32'), matches: r32.value.slice(0, 8) },
   { key: 'r16-left', label: t('bracket.r16'), matches: r16.value.slice(0, 4) },
   { key: 'qf-left', label: t('bracket.qf'), matches: qf.value.slice(0, 2) },
   { key: 'sf-left', label: t('bracket.sf'), matches: sf.value.slice(0, 1) },
 ].filter(r => r.matches.length > 0))
 
-/** 右半区轮次：R16后4场 → QF后2场 → SF第2场 */
+/**
+ * 右半区轮次（从内到外，视觉上与左半区对称）
+ * 半决赛第2场 → 1/4 决赛后2场 → 1/8 决赛后4场 → 1/16 决赛后8场
+ */
 const rightRounds = computed(() => [
   { key: 'sf-right', label: t('bracket.sf'), matches: sf.value.slice(1, 2) },
   { key: 'qf-right', label: t('bracket.qf'), matches: qf.value.slice(2, 4) },
   { key: 'r16-right', label: t('bracket.r16'), matches: r16.value.slice(4, 8) },
+  { key: 'r32-right', label: t('bracket.r32'), matches: r32.value.slice(8, 16) },
 ].filter(r => r.matches.length > 0))
 
 /** 格式化比赛时间 */
@@ -215,8 +233,8 @@ function onMatchClick(match: any) {
 .bracket-tree {
   display: flex;
   align-items: stretch;
-  min-width: 900px;
-  min-height: 480px;
+  min-width: 1100px;
+  min-height: 640px;
   gap: 0;
   background: var(--color-bg-muted);
   border-radius: 8px;
@@ -243,7 +261,7 @@ function onMatchClick(match: any) {
 .round-column {
   display: flex;
   flex-direction: column;
-  min-width: 180px;
+  min-width: 160px;
   position: relative;
 }
 
@@ -270,11 +288,11 @@ function onMatchClick(match: any) {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  padding: 8px;
-  gap: 10px;
+  padding: 6px;
+  gap: 6px;
 }
 
-/* 比赛卡片 ============ */
+/* ============ 比赛卡片 ============ */
 .bracket-match {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
@@ -282,7 +300,7 @@ function onMatchClick(match: any) {
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 170px;
+  min-width: 150px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
@@ -292,13 +310,26 @@ function onMatchClick(match: any) {
   transform: translateY(-2px);
 }
 
+/* 进行中比赛 - 红色脉冲边框 */
 .bracket-match.live {
   border-color: rgba(239, 68, 68, 0.5);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
 }
 
+/* 已完成比赛 - 绿色边框 + 晋级标识 */
 .bracket-match.finished {
   border-color: rgba(34, 197, 94, 0.2);
+}
+
+/* 待进行比赛 - 虚线边框 + 淡化效果 */
+.bracket-match.upcoming {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.bracket-match.upcoming:hover {
+  opacity: 1;
+  border-style: solid;
 }
 
 /* 决赛卡片特殊样式 */
@@ -340,9 +371,9 @@ function onMatchClick(match: any) {
 .match-team {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
   color: var(--color-text-primary);
   border-bottom: 1px solid var(--color-border-light);
 }
@@ -351,6 +382,7 @@ function onMatchClick(match: any) {
   border-bottom: none;
 }
 
+/* 晋级队伍高亮 */
 .match-team.is-winner .team-name {
   color: var(--color-success);
   font-weight: 700;
@@ -361,9 +393,18 @@ function onMatchClick(match: any) {
   font-weight: 800;
 }
 
+/* 晋级箭头标识 */
+.match-team.is-winner::after {
+  content: '▶';
+  font-size: 8px;
+  color: var(--color-success);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .team-flag {
-  width: 22px;
-  height: 16px;
+  width: 20px;
+  height: 14px;
   border-radius: 2px;
   flex-shrink: 0;
   box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
@@ -379,8 +420,8 @@ function onMatchClick(match: any) {
 
 .team-score {
   font-weight: 700;
-  font-size: 15px;
-  min-width: 20px;
+  font-size: 14px;
+  min-width: 18px;
   text-align: center;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
@@ -389,8 +430,8 @@ function onMatchClick(match: any) {
 /* 开赛时间 */
 .match-time {
   text-align: center;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 3px 6px;
+  font-size: 10px;
   color: var(--color-text-tertiary);
   background: var(--color-bg-muted);
   border-top: 1px solid var(--color-border-light);
@@ -432,7 +473,32 @@ function onMatchClick(match: any) {
   width: 12px;
 }
 
+/* ============ 晋级路径连接线 ============ */
+.bracket-left .round-column + .round-column .round-matches,
+.bracket-right .round-column + .round-column .round-matches {
+  position: relative;
+}
+
 /* ============ 响应式 ============ */
+@media (max-width: 1200px) {
+  .bracket-tree {
+    min-width: 960px;
+  }
+  .round-column {
+    min-width: 140px;
+  }
+  .bracket-match {
+    min-width: 130px;
+  }
+  .match-team {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  .team-score {
+    font-size: 13px;
+  }
+}
+
 @media (max-width: 768px) {
   .bracket-tree {
     min-width: auto;
@@ -454,6 +520,15 @@ function onMatchClick(match: any) {
   .bracket-center {
     min-width: auto;
     width: 100%;
+  }
+
+  .bracket-match {
+    min-width: auto;
+  }
+
+  .match-team {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }
 </style>

@@ -39,7 +39,7 @@ export class MatchEntity {
   @Column({ name: 'league_name', length: 100, comment: '联赛/赛事名称' })
   leagueName: string
 
-  /** 标准化阶段：group / round16 / quarter / semi / final / league */
+  /** 标准化阶段：group / round32 / round16 / quarter / semi / final / league */
   @Column({ length: 50, comment: '赛事阶段' })
   stage: string
 
@@ -207,6 +207,22 @@ export class MatchEntity {
   /** 场馆容量（来自 /venues/{id}/） */
   @Column({ name: 'venue_capacity', type: 'int', nullable: true, comment: '场馆容量' })
   venueCapacity: number
+
+  /** 草地状况（来自 BSD BsEvent.pitch_condition） */
+  @Column({ name: 'pitch_condition', length: 50, nullable: true, comment: '草地状况' })
+  pitchCondition: string
+
+  /** 旅行距离（来自 BSD BsEvent.travel_distance_km） */
+  @Column({ name: 'travel_distance_km', type: 'decimal', precision: 10, scale: 1, nullable: true, comment: '旅行距离(km)' })
+  travelDistanceKm: number
+
+  /** 场馆纬度（来自 BSD BsVenue.latitude） */
+  @Column({ name: 'venue_latitude', type: 'decimal', precision: 10, scale: 7, nullable: true, comment: '场馆纬度' })
+  venueLatitude: number
+
+  /** 场馆经度（来自 BSD BsVenue.longitude） */
+  @Column({ name: 'venue_longitude', type: 'decimal', precision: 10, scale: 7, nullable: true, comment: '场馆经度' })
+  venueLongitude: number
 
   // ==================== 数据来源 ====================
 

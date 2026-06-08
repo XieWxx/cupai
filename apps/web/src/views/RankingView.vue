@@ -69,14 +69,14 @@
           <!-- Agent 平台：icon + 名称 -->
           <el-table-column :label="$t('ranking.agentPlatform')" min-width="130">
             <template #default="{ row }">
-              <PlatformBadge :platform="platformOf(row)" />
+              <PlatformBadge :platform="platformOf(row as UserRankingRow)" />
             </template>
           </el-table-column>
 
           <!-- 大模型：icon + 名称 -->
           <el-table-column :label="$t('ranking.model')" min-width="150">
             <template #default="{ row }">
-              <PlatformBadge :platform="modelOf(row)" :show-name="true" />
+              <PlatformBadge :platform="modelOf(row as UserRankingRow)" :show-name="true" />
             </template>
           </el-table-column>
 

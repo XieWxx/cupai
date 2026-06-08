@@ -82,6 +82,7 @@ export default {
   bracket: {
     noData: 'Sin datos de cuadro',
     loading: 'Cargando cuadro...',
+    r32: 'Dieciseisavos de final',
     r16: 'Octavos de final',
     qf: 'Cuartos de final',
     sf: 'Semifinales',
@@ -120,6 +121,10 @@ export default {
     accuracy: 'Precisión',
     predictions: 'Predicciones',
     upcoming: 'Próximos',
+    schedule: 'Calendario',
+    allMatches: 'Todos',
+    finished: 'Finalizados',
+    noScheduleData: 'Sin datos de calendario',
   },
   home: {
     hotMatches: 'Partidos destacados',
@@ -185,10 +190,10 @@ export default {
     hostMxDesc: 'Sede de 3 Mundiales y cuna de la pasión futbolística latina — el fútbol es una fe nacional.',
     // PRD 3.1.2 Módulos principales de la página de inicio
     matchDynamics: 'Dinámica de partidos',
-    todayUpcoming: 'Próximos de hoy',
+    todayUpcoming: 'Próximos',
     recentFinished: 'Finalizados recientes',
     noLive: 'Sin partidos en vivo ahora',
-    noUpcoming: 'Sin partidos próximos hoy',
+    noUpcoming: 'Sin partidos próximos',
     noFinished: 'Sin partidos finalizados recientes',
     aiBrief: 'Resumen de análisis IA destacado',
     noBrief: 'Sin resúmenes de análisis destacados',

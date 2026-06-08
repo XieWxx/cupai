@@ -9,7 +9,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CopyInstructionDialog: typeof import('./components/common/CopyInstructionDialog.vue')['default']
-    EChartsView: typeof import('./components/common/EChartsView.vue')['default']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']

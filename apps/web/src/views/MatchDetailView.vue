@@ -31,7 +31,7 @@
             {{ match?.homeTeam?.name }} {{ $t('common.vs') }} {{ match?.awayTeam?.name }}
             <el-tag v-if="match?.status === 'live'" type="danger" size="small" effect="dark" round>
               <span class="match-card__status-dot match-card__status-dot--live" />
-              {{ $t('match.live') }}
+              {{ match?.currentMinute ? `${match.currentMinute}'` : $t('match.live') }}
             </el-tag>
             <el-tag v-else-if="match?.status === 'finished'" type="info" size="small" effect="plain" round>
               {{ $t('match.finished') }}
@@ -83,6 +83,12 @@
           <div v-if="match?.halfTimeHome !== null" class="half-time">
             {{ $t('match.halfTime') }} {{ match.halfTimeHome }} : {{ match.halfTimeAway }}
           </div>
+          <!-- 进行时间 -->
+          <div v-if="match?.status === 'live' && match?.currentMinute" class="match-progress-time">
+            <span class="live-dot"></span>
+            <span>{{ match.currentMinute }}'</span>
+            <span v-if="match?.period" class="match-period">· {{ match.period }}</span>
+          </div>
         </div>
 
         <!-- ========== 比分板（开赛前展示，标注主客队） ========== -->
@@ -111,6 +117,27 @@
               </div>
               <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
             </div>
+          </div>
+        </div>
+
+        <!-- ========== 三列时间展示：当地开赛时间 | 用户观看时间 | UTC基准时间 ========== -->
+        <div class="time-triple-bar" v-if="match?.startTime">
+          <div class="time-triple-item">
+            <div class="time-triple-label">{{ $t('match.localTime') }}</div>
+            <div class="time-triple-value">{{ formatLocalTime(match.startTime) }}</div>
+            <div class="time-triple-zone">{{ match.venue || $t('match.venueTbd') }}</div>
+          </div>
+          <div class="time-triple-divider"></div>
+          <div class="time-triple-item time-triple-item--highlight">
+            <div class="time-triple-label">{{ $t('match.yourTime') }}</div>
+            <div class="time-triple-value">{{ formatUserTime(match.startTime) }}</div>
+            <div class="time-triple-zone">{{ userTimezone }}</div>
+          </div>
+          <div class="time-triple-divider"></div>
+          <div class="time-triple-item">
+            <div class="time-triple-label">{{ $t('match.utcTime') }}</div>
+            <div class="time-triple-value">{{ formatUtcTime(match.startTime) }}</div>
+            <div class="time-triple-zone">UTC</div>
           </div>
         </div>
 
@@ -458,6 +485,15 @@
 
             <!-- 按位置分组的球员列表 -->
             <template v-else>
+              <!-- 阵型信息（lineup 数据有阵型时展示） -->
+              <div v-if="lineupData" class="formation-row" style="display: flex; gap: 16px; margin-bottom: 12px;">
+                <el-tag v-if="lineupData.home?.formation" size="small" effect="dark">
+                  {{ match?.homeTeam?.name }}: {{ lineupData.home.formation }}
+                </el-tag>
+                <el-tag v-if="lineupData.away?.formation" size="small" effect="dark">
+                  {{ match?.awayTeam?.name }}: {{ lineupData.away.formation }}
+                </el-tag>
+              </div>
               <template v-for="pos in positionOrder" :key="pos.key">
                 <div
                   v-if="activeGrouped[pos.key]?.length"
@@ -472,31 +508,36 @@
                     :data="activeGrouped[pos.key]"
                     :show-header="false"
                     size="small"
-                    :row-class-name="(args: any) => args.row.isKeyPlayer ? 'is-key-player' : ''"
+                    :row-class-name="(args: any) => (args.row.isKeyPlayer || args.row.aiScore >= 80) ? 'is-key-player' : ''"
                   >
                     <el-table-column width="48" align="center">
                       <template #default="{ row }">
                         <div class="player-avatar">
                           <el-avatar v-if="row.avatar" :size="32" :src="row.avatar" />
-                          <el-avatar v-else :size="32">{{ (row.name || '?').charAt(0) }}</el-avatar>
+                          <el-avatar v-else :size="32">{{ (row.playerName || row.name || '?').charAt(0) }}</el-avatar>
                         </div>
                       </template>
                     </el-table-column>
                     <el-table-column>
                       <template #default="{ row }">
                         <div class="player-name">
-                          <span class="player-name__cn">{{ row.name }}</span>
-                          <el-tooltip v-if="row.isKeyPlayer" :content="$t('match.keyPlayerTip')" placement="top">
+                          <span class="player-name__cn">{{ row.playerName || row.name }}</span>
+                          <span v-if="row.jerseyNumber" class="player-jersey">#{{ row.jerseyNumber }}</span>
+                          <el-tooltip v-if="row.isKeyPlayer || row.aiScore >= 80" :content="$t('match.keyPlayerTip')" placement="top">
                             <el-tag size="small" type="warning" effect="dark" class="key-badge">
                               <el-icon :size="10"><StarFilled /></el-icon>
                               <span style="margin-left: 2px">{{ $t('match.keyPlayer') }}</span>
                             </el-tag>
                           </el-tooltip>
                         </div>
-                        <div v-if="row.nameEn" class="player-name__en">{{ row.nameEn }}</div>
+                        <div v-if="row.shortName || row.nameEn" class="player-name__en">{{ row.shortName || row.nameEn }}</div>
                       </template>
                     </el-table-column>
-                    <el-table-column :label="$t('match.age')" width="64" align="center" prop="age" />
+                    <el-table-column :label="$t('match.age')" width="64" align="center">
+                      <template #default="{ row }">
+                        {{ row.age ?? '-' }}
+                      </template>
+                    </el-table-column>
                     <el-table-column :label="$t('match.goals')" width="64" align="center">
                       <template #default="{ row }">
                         <span class="stat-num">{{ row.seasonGoals ?? 0 }}</span>
@@ -561,7 +602,7 @@
               </thead>
               <tbody>
                 <tr v-for="ps in playerStatsData.player_stats" :key="ps.player_id">
-                  <td>{{ ps.player_id }}</td>
+                  <td>{{ getPlayerNameById(ps.player_id) || ps.player_id }}</td>
                   <td>{{ ps.rating ?? '-' }}</td>
                   <td>{{ ps.goals || 0 }}</td>
                   <td>{{ ps.goal_assist || 0 }}</td>
@@ -823,43 +864,43 @@
       <div class="share-sidebar__label">{{ $t('match.share') }}</div>
       <!-- X / Twitter -->
       <a class="share-btn share-btn--x" :href="shareUrlX" target="_blank" rel="noopener" title="X (Twitter)">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        <Icon icon="ri:twitter-x-fill" width="18" height="18" />
       </a>
       <!-- Facebook -->
       <a class="share-btn share-btn--facebook" :href="shareUrlFacebook" target="_blank" rel="noopener" title="Facebook">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        <Icon icon="ri:facebook-fill" width="18" height="18" />
       </a>
       <!-- WhatsApp -->
       <a class="share-btn share-btn--whatsapp" :href="shareUrlWhatsApp" target="_blank" rel="noopener" title="WhatsApp">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <Icon icon="ri:whatsapp-fill" width="18" height="18" />
       </a>
       <!-- Telegram -->
       <a class="share-btn share-btn--telegram" :href="shareUrlTelegram" target="_blank" rel="noopener" title="Telegram">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        <Icon icon="ri:telegram-fill" width="18" height="18" />
       </a>
       <!-- LinkedIn -->
       <a class="share-btn share-btn--linkedin" :href="shareUrlLinkedIn" target="_blank" rel="noopener" title="LinkedIn">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        <Icon icon="ri:linkedin-fill" width="18" height="18" />
       </a>
       <!-- Reddit -->
       <a class="share-btn share-btn--reddit" :href="shareUrlReddit" target="_blank" rel="noopener" title="Reddit">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
+        <Icon icon="ri:reddit-fill" width="18" height="18" />
       </a>
       <!-- 微博 -->
       <a class="share-btn share-btn--weibo" :href="shareUrlWeibo" target="_blank" rel="noopener" :title="$t('match.platformWeibo')">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM9.05 17.219c-.384.616-1.208.884-1.829.602-.612-.279-.793-.991-.406-1.593.379-.595 1.176-.861 1.793-.583.631.283.822.997.442 1.574zm1.27-1.627c-.141.237-.449.353-.689.253-.236-.09-.307-.363-.168-.596.141-.229.445-.35.681-.246.24.09.315.36.176.589zm.176-2.719c-1.893-.493-4.033.45-4.857 2.118-.836 1.704-.026 3.591 1.886 4.21 1.983.642 4.318-.341 5.132-2.145.8-1.752-.154-3.69-2.161-4.183zM17.616 3.68c-.998-.27-1.652-.084-1.96.244-.308.328-.26.834.124 1.165.384.33.932.328 1.28-.008.347-.336.295-.858-.444-1.401zm3.644 2.128c-.386-1.311-1.313-2.078-2.598-2.432-1.291-.355-2.426-.077-3.153.688-.727.766-.778 1.878-.074 2.738.704.86 1.924 1.084 2.933.578 1.015-.51 1.478-1.634.892-2.572z"/></svg>
+        <Icon icon="ri:weibo-fill" width="18" height="18" />
       </a>
       <!-- 微信（弹出二维码弹窗） -->
       <button class="share-btn share-btn--wechat" :title="$t('match.wechatShare')" @click="wechatQrVisible = true">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.045c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-7.062-6.122zM14.033 13.3c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/></svg>
+        <Icon icon="ri:wechat-fill" width="18" height="18" />
       </button>
       <!-- QQ -->
       <a class="share-btn share-btn--qq" :href="shareUrlQQ" target="_blank" rel="noopener" title="QQ">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.396 1.025.116 0 .263-.072.42-.216-.156.553-.216 1.086-.216 1.544 0 .876.396 1.426.96 1.426.283 0 .613-.137.95-.415.238.578.6.927 1.013.927.38 0 .765-.283 1.088-.762.324.48.708.762 1.088.762.414 0 .776-.349 1.014-.927.337.278.667.415.95.415.563 0 .96-.55.96-1.426 0-.458-.06-.991-.217-1.544.158.144.305.216.42.216.227 0 .397-.36.397-1.025 0-2.514-2.163-6.954-2.163-6.954V9.325C18.294 3.364 14.268 2 12.003 2z"/></svg>
+        <Icon icon="ri:qq-fill" width="18" height="18" />
       </a>
       <!-- 复制链接 -->
       <button class="share-btn share-btn--link" :title="$t('match.copyLink')" @click="copyShareLink">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <Icon icon="ri:link" width="18" height="18" />
       </button>
     </div>
 
@@ -881,6 +922,7 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { Icon } from '@iconify/vue'
 import {
   ArrowDown,
   ArrowUp,
@@ -1133,6 +1175,7 @@ const currentSentimentLabel = computed<string>(() => {
 // ========== 球员阵容 ==========
 const homePlayers = ref<any[]>([])
 const awayPlayers = ref<any[]>([])
+const lineupData = ref<any>(null) // 首发阵容数据（lineups 接口）
 const playersLoading = ref(false)
 const activeLineupTab = ref<'home' | 'away'>('home')
 
@@ -1369,10 +1412,10 @@ async function openFullMatchCopyDialog() {
 
 // ========== 球员分组（按位置）==========
 const POSITION_NORMALIZE: Record<string, string> = {
-  GK: 'GK', Goalkeeper: 'GK', 守门员: 'GK', 门将: 'GK',
-  DF: 'DF', Defender: 'DF', 后卫: 'DF', 防守: 'DF',
-  MF: 'MF', Midfielder: 'MF', 中场: 'MF',
-  FW: 'FW', Forward: 'FW', Striker: 'FW', 前锋: 'FW', 进攻: 'FW',
+  GK: 'GK', Goalkeeper: 'GK', 守门员: 'GK', 门将: 'GK', G: 'GK',
+  DF: 'DF', Defender: 'DF', 后卫: 'DF', 防守: 'DF', D: 'DF',
+  MF: 'MF', Midfielder: 'MF', 中场: 'MF', M: 'MF',
+  FW: 'FW', Forward: 'FW', Striker: 'FW', 前锋: 'FW', 进攻: 'FW', F: 'FW',
 }
 
 const positionOrder: Array<{ key: 'GK' | 'DF' | 'MF' | 'FW'; label: string }> = [
@@ -1418,6 +1461,18 @@ const activeTeam = computed(() =>
 )
 const activeGrouped = computed(() => groupByPosition(activePlayers.value))
 
+/**
+ * 根据 BSD 球员 ID 查找球员名称
+ * 用于球员统计面板中将 player_id 映射为可读名称
+ */
+function getPlayerNameById(bsPlayerId: number): string {
+  if (!bsPlayerId) return ''
+  // 从阵容数据中查找（lineup 接口返回的球员有 bsPlayerId + playerName）
+  const allPlayers = [...homePlayers.value, ...awayPlayers.value]
+  const found = allPlayers.find((p: any) => p.bsPlayerId === bsPlayerId || p.bsdPlayerId === bsPlayerId || p.id === bsPlayerId)
+  return found?.playerName || found?.name || found?.nameEn || ''
+}
+
 // ========== 8 因子字段映射 ==========
 const factorLabels = computed<Record<string, string>>(() => ({
   shots: t('match.shots'),
@@ -1451,6 +1506,31 @@ function formatFactorValue(value: unknown): string {
 function formatTime(dateStr: string | undefined) {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString(i18nLocale.value)
+}
+
+/** 用户时区名称（如 "Asia/Shanghai"） */
+const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+/** 格式化赛事当地开赛时间（举办国时间，世界杯为美东时间 UTC-4） */
+function formatLocalTime(dateStr: string | Date): string {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  // 2026 世界杯在美国举办，使用美东时区
+  return d.toLocaleString(i18nLocale.value, { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+/** 格式化用户本地观看时间 */
+function formatUserTime(dateStr: string | Date): string {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return d.toLocaleString(i18nLocale.value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+/** 格式化UTC基准时间 */
+function formatUtcTime(dateStr: string | Date): string {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return d.toLocaleString(i18nLocale.value, { timeZone: 'UTC', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short' })
 }
 function stageLabel(stage: string | undefined) {
   if (!stage) return '-'
@@ -2184,30 +2264,57 @@ async function loadDetail() {
 
 /**
  * 加载双方球员阵容
+ * 优先使用 lineups 接口获取比赛专用首发阵容，回退到球队球员列表
  */
 async function loadPlayers() {
+  const matchId = match.value?.id
   const homeId = match.value?.homeTeam?.id
   const awayId = match.value?.awayTeam?.id
-  if (!homeId && !awayId) return
+  if (!matchId) return
   playersLoading.value = true
   homePlayers.value = []
   awayPlayers.value = []
-  const tasks: Promise<void>[] = []
-  if (homeId) {
-    tasks.push(
-      matchStore.fetchTeamPlayers(homeId).then((list) => {
-        homePlayers.value = list
-      }).catch(() => {}),
-    )
+
+  // 优先从 lineups 接口获取首发阵容
+  let lineupsLoaded = false
+  try {
+    const lineups: any = await http.get(`/matches/${matchId}/lineups`)
+    if (lineups && ((lineups.home?.starters?.length) || (lineups.away?.starters?.length))) {
+      lineupData.value = lineups
+      // 合并首发+替补
+      homePlayers.value = [
+        ...(lineups.home?.starters || []),
+        ...(lineups.home?.substitutes || []),
+      ]
+      awayPlayers.value = [
+        ...(lineups.away?.starters || []),
+        ...(lineups.away?.substitutes || []),
+      ]
+      lineupsLoaded = true
+    }
+  } catch {
+    // lineups 接口失败，回退到球队球员列表
   }
-  if (awayId) {
-    tasks.push(
-      matchStore.fetchTeamPlayers(awayId).then((list) => {
-        awayPlayers.value = list
-      }).catch(() => {}),
-    )
+
+  // 回退：从球队详情获取球员列表
+  if (!lineupsLoaded) {
+    const tasks: Promise<void>[] = []
+    if (homeId) {
+      tasks.push(
+        matchStore.fetchTeamPlayers(homeId).then((list) => {
+          homePlayers.value = list
+        }).catch(() => {}),
+      )
+    }
+    if (awayId) {
+      tasks.push(
+        matchStore.fetchTeamPlayers(awayId).then((list) => {
+          awayPlayers.value = list
+        }).catch(() => {}),
+      )
+    }
+    await Promise.all(tasks)
   }
-  await Promise.all(tasks)
   playersLoading.value = false
 }
 
@@ -2408,6 +2515,93 @@ onUnmounted(() => {
   margin-top: var(--space-3);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
+}
+
+/* 进行时间展示 */
+.match-progress-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.match-progress-time .live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.match-period {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* ========== 三列时间展示 ========== */
+.time-triple-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: var(--space-4);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.time-triple-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  gap: 2px;
+}
+
+.time-triple-item--highlight {
+  background: var(--color-primary-bg, rgba(64, 158, 255, 0.06));
+  border-top: 2px solid var(--color-primary);
+}
+
+.time-triple-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.time-triple-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.time-triple-item--highlight .time-triple-value {
+  color: var(--color-primary);
+}
+
+.time-triple-zone {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.time-triple-divider {
+  width: 1px;
+  background: var(--color-border);
+  align-self: stretch;
 }
 
 /* ========== 关键信息紧凑卡 ========== */

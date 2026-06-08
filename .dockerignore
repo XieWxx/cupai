@@ -1,0 +1,34 @@
+# 依赖与构建产物
+**/node_modules
+**/dist
+**/build
+pnpm-lock.yaml.bak
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+.DS_Store
+._*
+
+# 文档（构建不需要）
+README*.md
+docs/
+*.md
+LICENSE
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# 日志
+*.log
+logs/

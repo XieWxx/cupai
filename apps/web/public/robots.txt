@@ -1,0 +1,32 @@
+# CupAI 站点地图
+# 最后更新: 2026-06-08
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /user
+Disallow: /login
+Disallow: /register
+
+# 搜索引擎爬虫
+User-agent: Googlebot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Sogou Spider
+Allow: /
+
+User-agent: 360Spider
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+# 站点地图位置
+Sitemap: https://cupai.asia/sitemap.xml

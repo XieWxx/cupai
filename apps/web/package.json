@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "vite build",
+    "build:check": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.ts,.tsx",
     "lint:fix": "eslint . --ext .vue,.ts,.tsx --fix",
@@ -16,6 +17,7 @@
     "@cupai/types": "workspace:*",
     "@cupai/utils": "workspace:*",
     "@element-plus/icons-vue": "^2.3.2",
+    "@iconify/vue": "^5.0.1",
     "@lobehub/icons-static-svg": "^1.91.0",
     "axios": "^1.9.0",
     "echarts": "^5.6.0",

@@ -2,9 +2,80 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CupAI - 世界杯自定义 AI 赛事分析平台</title>
+    <!-- Favicon（SVG 矢量，支持现代浏览器、Retina、PWA） -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta name="theme-color" content="#0ea5e9" />
+
+    <!-- 基础 SEO -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="description" content="CupAI - 世界杯 AI 智能分析平台。提供 2026 世界杯及全球顶级赛事的实时赛程、积分榜、AI 比分预测、数据分析、专家解读。" />
+    <meta name="keywords" content="世界杯,2026世界杯,CupAI,AI预测,足球比分,赛事分析,积分榜,赛程,世界杯赛程,Bundesliga,La Liga,Premier League,Serie A,Ligue 1,世界杯预测,AI足球" />
+    <meta name="author" content="CupAI Team" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://cupai.asia/" />
+
+    <!-- Open Graph（Facebook、LinkedIn 分享卡片） -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="CupAI - 世界杯 AI 智能分析平台" />
+    <meta property="og:description" content="AI 驱动的世界杯与全球足球赛事分析，实时赛程、积分榜、智能预测、专家解读。" />
+    <meta property="og:url" content="https://cupai.asia/" />
+    <meta property="og:site_name" content="CupAI" />
+    <meta property="og:image" content="https://cupai.asia/og-cover.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="CupAI - 世界杯 AI 智能分析平台" />
+    <meta property="og:locale" content="zh_CN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CupAI - 世界杯 AI 智能分析平台" />
+    <meta name="twitter:description" content="AI 驱动的世界杯与全球足球赛事分析" />
+    <meta name="twitter:image" content="https://cupai.asia/og-cover.svg" />
+
+    <!-- 百度 / 头条 / 搜狗等中文搜索引擎 -->
+    <meta name="baidu-site-verification" content="" />
+    <meta name="sogou_site_verification" content="" />
+    <meta name="bytedance-verification-code" content="" />
+
+    <!-- 结构化数据：组织 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "CupAI",
+      "alternateName": "CupAI 世界杯 AI 智能分析",
+      "url": "https://cupai.asia/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://cupai.asia/match?query={search_term_string}",
+        "query-input": "required name=search_term_string"
+      },
+      "inLanguage": "zh-CN"
+    }
+    </script>
+
+    <!-- 结构化数据：软件应用 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "CupAI",
+      "url": "https://cupai.asia/",
+      "applicationCategory": "SportsApplication",
+      "operatingSystem": "Web",
+      "description": "世界杯 AI 智能分析平台，实时赛程、积分榜、AI 预测",
+      "inLanguage": "zh-CN",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CNY"
+      }
+    }
+    </script>
+
+    <title>CupAI - 世界杯 AI 智能分析平台 | 实时赛程 积分榜 AI 预测</title>
   </head>
   <body>
     <div id="app"></div>

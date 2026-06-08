@@ -6,7 +6,7 @@
 
 We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
 
----
+***
 
 ## 我们的准则 / Our Standards
 
@@ -26,7 +26,7 @@ We as members, contributors, and leaders pledge to make participation in our com
 - 未经明确许可，发布他人的私人信息（如物理地址或电子邮箱）
 - 其他在专业环境中被合理认为不适当的行为
 
----
+***
 
 ## 我们的责任 / Our Responsibilities
 
@@ -34,28 +34,26 @@ We as members, contributors, and leaders pledge to make participation in our com
 
 项目维护者有权删除、编辑或拒绝不符合本行为准则的评论、提交、代码、Wiki 编辑、Issue 和其他贡献，并有权暂时或永久禁止任何贡献者参与他们认为不适当、具有威胁性、冒犯性或有害的行为。
 
----
+***
 
 ## 适用范围 / Scope
 
 本行为准则适用于所有项目空间，以及个人代表项目或其社区时的公共空间。代表项目或社区的情况包括使用官方项目邮箱地址、通过官方社交媒体账号发布内容，或在线上或线下活动中担任指定代表。
 
----
+***
 
 ## 执行 / Enforcement
 
 如发现辱骂、骚扰或其他不可接受的行为，请通过以下方式联系项目团队：
 
-- 📧 Email: cupai-team@googlegroups.com
+- 📧 Email: [15639480130@163.com](mailto:cupai-team@googlegroups.com)
 
 所有投诉都将被审查和调查，并将根据情况做出必要且适当的回应。项目团队有义务对事件报告人保密。具体执行政策的更多细节可能会单独发布。
 
----
+***
 
 ## 归属 / Attribution
 
-本行为准则改编自 [Contributor Covenant][homepage] 2.0 版本，可在 https://www.contributor-covenant.org/version/2/0/code_of_conduct.html 查看。
+本行为准则改编自 [Contributor Covenant](https://www.contributor-covenant.org) 2.0 版本，可在 <https://www.contributor-covenant.org/version/2/0/code_of_conduct.html> 查看。
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 2.0, available at https://www.contributor-covenant.org/version/2/0/code_of_conduct.html.
-
-[homepage]: https://www.contributor-covenant.org
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.0, available at <https://www.contributor-covenant.org/version/2/0/code_of_conduct.html>.

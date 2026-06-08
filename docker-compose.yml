@@ -29,11 +29,20 @@ services:
     image: redis:7-alpine
     container_name: cupai-redis
     restart: unless-stopped
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes;
+        else
+          redis-server --appendonly yes;
+        fi
+      "
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -54,10 +63,22 @@ services:
       DB_USERNAME: root
       DB_PASSWORD: ${DB_PASSWORD:-cupai2026}
       DB_DATABASE: ${DB_DATABASE:-cupai}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       SERVER_PORT: 3001
       JWT_SECRET: ${JWT_SECRET:-cupai-jwt-secret-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      AI_REQUEST_TIMEOUT: ${AI_REQUEST_TIMEOUT:-60000}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-3}
+      DATA_SYNC_INTERVAL: ${DATA_SYNC_INTERVAL:-60}
+      SENTIMENT_SYNC_INTERVAL: ${SENTIMENT_SYNC_INTERVAL:-30}
+      # BSD 体育数据 API（必需；缺 Token 时同步任务自动跳过）
+      BSD_BASE_URL: ${BSD_BASE_URL:-https://api.bzzoiro.com}
+      BSD_API_KEY: ${BSD_API_KEY:-}
+      BSD_ENABLED: ${BSD_ENABLED:-true}
     ports:
       - "3001:3001"
     depends_on:
@@ -71,10 +92,16 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # 生产环境：使用相对路径，由同源 nginx 代理到后端
+        VITE_API_BASE_URL: /api/v1
+        # WebSocket 使用当前域名（自动同源），避免硬编码
+        VITE_WS_URL: ""
     container_name: cupai-web
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - server
 

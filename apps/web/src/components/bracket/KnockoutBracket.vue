@@ -20,6 +20,11 @@
               :class="matchStatusClass(match)"
               @click="onMatchClick(match)"
             >
+              <!-- 比赛状态标签 -->
+              <div class="match-status-bar" v-if="match?.status === 'live'">
+                <span class="live-dot"></span>
+                <span class="match-minute">{{ match.currentMinute ? `${match.currentMinute}'` : 'LIVE' }}</span>
+              </div>
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
@@ -29,6 +34,10 @@
                 <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
+              </div>
+              <!-- 开赛时间 -->
+              <div class="match-time" v-if="match?.startTime && match.status === 'upcoming'">
+                {{ formatMatchTime(match.startTime) }}
               </div>
             </div>
           </div>
@@ -45,6 +54,11 @@
           :class="matchStatusClass(match)"
           @click="onMatchClick(match)"
         >
+          <!-- 比赛状态标签 -->
+          <div class="match-status-bar" v-if="match?.status === 'live'">
+            <span class="live-dot"></span>
+            <span class="match-minute">{{ match.currentMinute ? `${match.currentMinute}'` : 'LIVE' }}</span>
+          </div>
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
             <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
             <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
@@ -55,9 +69,13 @@
             <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
             <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
           </div>
+          <!-- 开赛时间 -->
+          <div class="match-time" v-if="match?.startTime && match.status === 'upcoming'">
+            {{ formatMatchTime(match.startTime) }}
+          </div>
           <!-- 冠军标识 -->
           <div v-if="match?.status === 'finished'" class="champion-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 4l4 2 6-2 6 2 4-2v14l-4 2-6-2-6 2-4-2V4z" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5"/></svg>
+            <Icon icon="ri:trophy-fill" width="14" height="14" />
             <span>{{ $t('bracket.champion') }}</span>
           </div>
         </div>
@@ -75,6 +93,11 @@
               :class="matchStatusClass(match)"
               @click="onMatchClick(match)"
             >
+              <!-- 比赛状态标签 -->
+              <div class="match-status-bar" v-if="match?.status === 'live'">
+                <span class="live-dot"></span>
+                <span class="match-minute">{{ match.currentMinute ? `${match.currentMinute}'` : 'LIVE' }}</span>
+              </div>
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
@@ -84,6 +107,10 @@
                 <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
                 <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
+              </div>
+              <!-- 开赛时间 -->
+              <div class="match-time" v-if="match?.startTime && match.status === 'upcoming'">
+                {{ formatMatchTime(match.startTime) }}
               </div>
             </div>
           </div>
@@ -96,6 +123,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
+import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getFlagClass } from '@/utils/flag'
@@ -106,7 +134,7 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 /** 是否有淘汰赛数据 */
 const hasData = computed(() => {
@@ -133,6 +161,12 @@ const rightRounds = computed(() => [
   { key: 'qf-right', label: t('bracket.qf'), matches: qf.value.slice(2, 4) },
   { key: 'r16-right', label: t('bracket.r16'), matches: r16.value.slice(4, 8) },
 ].filter(r => r.matches.length > 0))
+
+/** 格式化比赛时间 */
+function formatMatchTime(startTime: string | Date): string {
+  const d = new Date(startTime)
+  return d.toLocaleString(locale.value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 /** 判断胜方 */
 function isWinner(match: any, side: 'home' | 'away'): boolean {
@@ -185,6 +219,8 @@ function onMatchClick(match: any) {
   min-height: 480px;
   gap: 0;
   background: var(--color-bg-muted);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 /* 半区容器 */
@@ -197,35 +233,35 @@ function onMatchClick(match: any) {
 
 .bracket-left {
   flex-direction: row;
-  /* 左半区：从左到右，轮次递进 */
 }
 
 .bracket-right {
   flex-direction: row-reverse;
-  /* 右半区：从右到左，轮次递进（视觉上从外到内） */
 }
 
 /* 轮次列 */
 .round-column {
   display: flex;
   flex-direction: column;
-  min-width: 170px;
+  min-width: 180px;
   position: relative;
 }
 
 .round-label {
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-text-secondary);
   letter-spacing: 1px;
-  padding: 6px 0 12px;
+  padding: 8px 0 10px;
   text-transform: uppercase;
+  background: var(--color-bg-elevated);
+  border-bottom: 2px solid var(--color-border);
 }
 
 .final-label {
   color: var(--color-warning);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 /* 轮次内的比赛列表，垂直居中分布 */
@@ -234,49 +270,78 @@ function onMatchClick(match: any) {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  padding: 0 8px;
-  gap: 8px;
+  padding: 8px;
+  gap: 10px;
 }
 
 /* 比赛卡片 ============ */
 .bracket-match {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 160px;
+  min-width: 170px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .bracket-match:hover {
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-card-hover);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .bracket-match.live {
   border-color: rgba(239, 68, 68, 0.5);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.12);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
 }
 
 .bracket-match.finished {
-  border-color: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.2);
 }
 
 /* 决赛卡片特殊样式 */
 .final-match {
-  min-width: 190px;
+  min-width: 200px;
   border-color: var(--color-warning);
   background: linear-gradient(145deg, var(--color-warning-bg), var(--color-warning-light));
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+}
+
+/* ============ 直播状态条 ============ */
+.match-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 0;
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.15);
+  font-size: 11px;
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 /* ============ 球队行 ============ */
 .match-team {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 8px 12px;
   font-size: 13px;
   color: var(--color-text-primary);
   border-bottom: 1px solid var(--color-border-light);
@@ -293,14 +358,15 @@ function onMatchClick(match: any) {
 
 .match-team.is-winner .team-score {
   color: var(--color-success);
-  text-shadow: 0 0 6px rgba(74, 222, 128, 0.3);
+  font-weight: 800;
 }
 
 .team-flag {
-  width: 20px;
-  height: 15px;
+  width: 22px;
+  height: 16px;
   border-radius: 2px;
   flex-shrink: 0;
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .team-name {
@@ -313,11 +379,21 @@ function onMatchClick(match: any) {
 
 .team-score {
   font-weight: 700;
-  font-size: 14px;
-  min-width: 18px;
+  font-size: 15px;
+  min-width: 20px;
   text-align: center;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* 开赛时间 */
+.match-time {
+  text-align: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-muted);
+  border-top: 1px solid var(--color-border-light);
 }
 
 /* 冠军标识 */
@@ -326,8 +402,8 @@ function onMatchClick(match: any) {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 4px 0;
-  font-size: 11px;
+  padding: 5px 0;
+  font-size: 12px;
   color: var(--color-warning);
   font-weight: 700;
   background: var(--color-warning-bg);
@@ -340,8 +416,8 @@ function onMatchClick(match: any) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 200px;
-  padding: 0 12px;
+  min-width: 220px;
+  padding: 0 16px;
   position: relative;
 }
 
@@ -354,7 +430,6 @@ function onMatchClick(match: any) {
   top: 0;
   bottom: 0;
   width: 12px;
-  /* 水平连接线由间距暗示，不画复杂 SVG */
 }
 
 /* ============ 响应式 ============ */

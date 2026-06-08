@@ -55,13 +55,13 @@ export class BsdcSyncScheduler implements OnModuleInit, OnApplicationBootstrap {
     this.bsdEnabled = (this.config.get<string>('BSD_ENABLED') ?? 'true') !== 'false'
     // 从环境变量读取各任务间隔，未配置则使用默认值
     this.intervals = {
-      live: this.parseMs('BSD_SYNC_LIVE_INTERVAL_MS', 10_000),           // 实时赛事：10秒
-      events: this.parseMs('BSD_SYNC_EVENTS_INTERVAL_MS', 5 * 60_000),   // 赛事列表：5分钟
-      aux: this.parseMs('BSD_SYNC_AUX_INTERVAL_MS', 5 * 60_000),         // 辅助数据：5分钟
-      standings: this.parseMs('BSD_SYNC_STANDINGS_INTERVAL_MS', 30 * 60_000), // 积分榜：30分钟
-      teams: this.parseMs('BSD_SYNC_TEAMS_INTERVAL_MS', 6 * 60 * 60_000),     // 球队：6小时
-      leagues: this.parseMs('BSD_SYNC_LEAGUES_INTERVAL_MS', 6 * 60 * 60_000), // 联赛：6小时
-      tick: this.parseMs('BSD_SYNC_TICK_INTERVAL_MS', 30_000),           // tick 检查：30秒
+      live: this.parseMs('BSD_SYNC_LIVE_INTERVAL_MS', 5_000),            // 实时赛事：5秒
+      events: this.parseMs('BSD_SYNC_EVENTS_INTERVAL_MS', 3 * 60_000),   // 赛事列表：3分钟
+      aux: this.parseMs('BSD_SYNC_AUX_INTERVAL_MS', 3 * 60_000),         // 辅助数据：3分钟
+      standings: this.parseMs('BSD_SYNC_STANDINGS_INTERVAL_MS', 15 * 60_000), // 积分榜：15分钟
+      teams: this.parseMs('BSD_SYNC_TEAMS_INTERVAL_MS', 3 * 60 * 60_000),     // 球队：3小时
+      leagues: this.parseMs('BSD_SYNC_LEAGUES_INTERVAL_MS', 3 * 60 * 60_000), // 联赛：3小时
+      tick: this.parseMs('BSD_SYNC_TICK_INTERVAL_MS', 15_000),           // tick 检查：15秒
     }
   }
 

@@ -608,7 +608,9 @@ export class BsdcSyncService {
 
   /**
    * 同步实时赛事（BSD v2 /events/live/）
-   * 由 Scheduler 每 10s 触发
+   * 由 Scheduler 每 5s 触发
+   * 不仅更新状态/比分，还同步 lineups、playerStats、场馆、裁判等子数据
+   * 优化：仅在赛事状态变化或首次出现时同步子数据，避免每5秒重复请求BSD API
    */
   async syncLiveEvents(): Promise<{ updated: number; liveCount: number }> {
     const started = Date.now()
@@ -626,9 +628,18 @@ export class BsdcSyncService {
           // 新增实时窗口内的赛事：fallback 到标准 upsert
           const leagueNameMap = await this.buildLeagueNameMap()
           await this.upsertMatch(bsEvent, leagueNameMap)
+          // 首次出现的 live 赛事，同步子数据
+          const newMatch = await this.matchRepo.findOne({ where: { dataSource: `bsd_${bsdId}` } })
+          if (newMatch) {
+            const bsEventId = Number(bsdId)
+            await this.syncLiveDataForMatch(newMatch, bsEventId)
+          }
           updated++
           continue
         }
+        // 检测状态变化（如 upcoming → live）
+        const prevStatus = match.status
+        const prevBsStatus = match.bsStatus
         match.status = STATUS_MAP[bsEvent.status] || match.status
         match.bsStatus = bsEvent.status
         match.period = bsEvent.period || match.period
@@ -642,7 +653,22 @@ export class BsdcSyncService {
           : match.penaltyShootout
         match.liveWebsocket = !!bsEvent.live_websocket
         match.lastSyncedAt = new Date()
+        // 补充基本信息：场馆、裁判（仅当缺失时）
+        if (bsEvent.venue_id && !match.venue) {
+          try { await this.syncVenuesForMatch(match) } catch { /* ignore */ }
+        }
+        if (bsEvent.referee_id && !match.refereeName) {
+          try { await this.syncRefereeForMatch(match) } catch { /* ignore */ }
+        }
         await this.matchRepo.save(match)
+
+        // 仅在状态变化或首次进入 live 时同步子数据（避免每5秒重复请求）
+        const statusChanged = prevStatus !== match.status || prevBsStatus !== match.bsStatus
+        if (statusChanged) {
+          const bsEventId = Number(bsdId)
+          await this.syncLiveDataForMatch(match, bsEventId)
+        }
+
         updated++
       }
       this.recordRun('live', started, true, `live=${liveCount}/updated=${updated}`)
@@ -651,6 +677,25 @@ export class BsdcSyncService {
       this.logger.error(`Sync live events failed: ${error?.message}`)
     }
     return { updated, liveCount }
+  }
+
+  /**
+   * 同步 live 赛事的子数据（lineups、playerStats、incidents、stats）
+   * 仅在赛事状态变化或首次出现时调用
+   */
+  private async syncLiveDataForMatch(match: MatchEntity, bsEventId: number): Promise<void> {
+    try {
+      await this.syncLineups(match, bsEventId)
+    } catch { /* ignore */ }
+    try {
+      await this.syncPlayerStats(match, bsEventId)
+    } catch { /* ignore */ }
+    try {
+      await this.syncIncidents(match, bsEventId)
+    } catch { /* ignore */ }
+    try {
+      await this.syncStats(match, bsEventId)
+    } catch { /* ignore */ }
   }
 
   /**

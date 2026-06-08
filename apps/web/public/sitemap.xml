@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- 首页 -->
+  <url>
+    <loc>https://cupai.asia/</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 赛事相关 -->
+  <url>
+    <loc>https://cupai.asia/match</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://cupai.asia/match/dynamics</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://cupai.asia/match/bracket</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://cupai.asia/match/standings</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 排行榜与 AI -->
+  <url>
+    <loc>https://cupai.asia/ranking</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://cupai.asia/analysis/square</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 关于 / 帮助 -->
+  <url>
+    <loc>https://cupai.asia/about</loc>
+    <lastmod>2026-06-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>

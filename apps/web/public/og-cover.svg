@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c4a6e"/>
+      <stop offset="50%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 背景渐变 -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- 装饰光晕 -->
+  <circle cx="950" cy="200" r="250" fill="url(#glow)"/>
+  <circle cx="200" cy="500" r="200" fill="url(#glow)"/>
+
+  <!-- 左上角 CupAI Logo -->
+  <g transform="translate(80, 80)">
+    <circle cx="50" cy="50" r="48" fill="#ffffff" opacity="0.15"/>
+    <circle cx="50" cy="50" r="32" fill="url(#ball)"/>
+    <polygon points="50,32 60,40 56,52 44,52 40,40" fill="#0c4a6e"/>
+    <polygon points="32,50 40,46 44,52 40,58 32,55" fill="#0c4a6e"/>
+    <polygon points="68,50 60,46 56,52 60,58 68,55" fill="#0c4a6e"/>
+    <polygon points="42,62 50,58 58,62 55,68 45,68" fill="#0c4a6e"/>
+    <text x="125" y="68" font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="#ffffff">CupAI</text>
+  </g>
+
+  <!-- 中心文案 -->
+  <g transform="translate(80, 280)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="86" font-weight="900" fill="#ffffff">世界杯 AI 智能分析</text>
+    <text x="0" y="80" font-family="Arial, sans-serif" font-size="42" font-weight="500" fill="#7dd3fc">实时赛程 · 积分榜 · AI 预测</text>
+    <text x="0" y="160" font-family="Arial, sans-serif" font-size="32" font-weight="400" fill="#bae6fd" opacity="0.9">World Cup 2026 · 五大联赛 · 全网数据</text>
+  </g>
+
+  <!-- 右上角奖杯 -->
+  <g transform="translate(950, 380)">
+    <ellipse cx="100" cy="180" rx="80" ry="10" fill="#fbbf24" opacity="0.3"/>
+    <path d="M 60 30 L 140 30 L 135 110 Q 100 130 65 110 Z" fill="#fbbf24" stroke="#92400e" stroke-width="3"/>
+    <path d="M 60 50 Q 30 60 40 100 Q 50 110 65 105" fill="none" stroke="#fbbf24" stroke-width="8"/>
+    <path d="M 140 50 Q 170 60 160 100 Q 150 110 135 105" fill="none" stroke="#fbbf24" stroke-width="8"/>
+    <rect x="70" y="130" width="60" height="20" fill="#92400e"/>
+    <rect x="60" y="150" width="80" height="12" fill="#fbbf24" stroke="#92400e" stroke-width="2"/>
+    <text x="100" y="161" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e">CHAMPION</text>
+  </g>
+
+  <!-- 底部域名 -->
+  <text x="600" y="585" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#ffffff" opacity="0.9">cupai.asia</text>
+</svg>

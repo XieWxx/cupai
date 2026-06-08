@@ -351,7 +351,23 @@ export class RankingService {
         .getManyAndCount()
     }
 
-    return { list, total, page, pageSize }
+    // 聚合每个模型的使用用户数（从 user_ai_configs 按 modelName 统计去重用户）
+    const configs = await this.userAiConfigRepo.find({ select: ['id', 'userId', 'modelName'] })
+    const modelUserMap = new Map<string, Set<string>>()
+    for (const cfg of configs) {
+      const mn = cfg.modelName?.trim().toLowerCase()
+      if (!mn) continue
+      if (!modelUserMap.has(mn)) modelUserMap.set(mn, new Set())
+      modelUserMap.get(mn)!.add(cfg.userId)
+    }
+
+    // 附加 userCount 到每条记录
+    const listWithUserCount = list.map(item => ({
+      ...item,
+      userCount: modelUserMap.get(item.modelName?.trim().toLowerCase())?.size || 0,
+    }))
+
+    return { list: listWithUserCount, total, page, pageSize }
   }
 
   /**

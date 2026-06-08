@@ -25,11 +25,25 @@ async function bootstrap() {
   // 全局异常过滤器 - 统一错误响应格式
   app.useGlobalFilters(new AllExceptionsFilter())
 
-  // 跨域配置 - 适配海外用户访问
-  app.enableCors({
-    origin: true,
-    credentials: true,
-  })
+  // 跨域配置
+  // 生产环境：通过 CORS_ORIGIN 限定白名单（逗号分隔）
+  // 开发/默认：放行所有来源
+  const corsOrigin = process.env.CORS_ORIGIN
+  if (corsOrigin && corsOrigin.trim() !== '') {
+    const origins = corsOrigin
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    app.enableCors({
+      origin: origins,
+      credentials: true,
+    })
+  } else {
+    app.enableCors({
+      origin: true,
+      credentials: true,
+    })
+  }
 
   const port = process.env.SERVER_PORT || 3001
   // 显式监听 IPv4 0.0.0.0，避免 macOS 下 Node.js 默认仅监听 IPv6

@@ -23,10 +23,10 @@ export class TeamEntity {
   @Column({ name: 'bs_team_id', type: 'int', nullable: true, comment: 'BSD 球队 ID' })
   bsTeamId: number
 
-  @Column({ length: 100, comment: '球队名称（中文）' })
+  @Column({ type: 'varchar', length: 100, comment: '球队名称（中文）' })
   name: string
 
-  @Column({ name: 'name_en', length: 100, comment: '球队名称（英文）' })
+  @Column({ name: 'name_en', type: 'varchar', length: 100, comment: '球队名称（英文）' })
   nameEn: string
 
   @Column({ name: 'country_code', length: 10, comment: '国家代码' })

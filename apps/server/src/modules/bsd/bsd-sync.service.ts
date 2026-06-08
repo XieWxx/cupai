@@ -25,25 +25,339 @@ import {
 
 /** 国家名称 → ISO 3166-1 alpha-2 代码映射（覆盖 BSD API 常见值） */
 const COUNTRY_TO_ISO: Record<string, string> = {
-  // 世界杯相关国家队
-  argentina: 'ar', brazil: 'br', belgium: 'be', france: 'fr', germany: 'de',
-  spain: 'es', england: 'gb-eng', portugal: 'pt', netherlands: 'nl', italy: 'it',
-  croatia: 'hr', morocco: 'ma', japan: 'jp', 'south korea': 'kr', mexico: 'mx',
-  usa: 'us', canada: 'ca', uruguay: 'uy', colombia: 'co', chile: 'cl',
-  ecuador: 'ec', peru: 'pe', switzerland: 'ch', denmark: 'dk', sweden: 'se',
-  norway: 'no', poland: 'pl', austria: 'at', czechia: 'cz', serbia: 'rs',
-  wales: 'gb-wls', scotland: 'gb-sct', ukraine: 'ua', russia: 'ru', turkey: 'tr',
-  egypt: 'eg', nigeria: 'ng', ghana: 'gh', cameroon: 'cm', senegal: 'sn',
-  tunisia: 'tn', algeria: 'dz', 'saudi arabia': 'sa', iran: 'ir', iraq: 'iq',
-  australia: 'au', 'new zealand': 'nz', china: 'cn', 'costa rica': 'cr',
-  jamaica: 'jm', panama: 'pa', honduras: 'hn', paraguay: 'py', bolivia: 'bo',
-  venezuela: 've', romania: 'ro', hungary: 'hu', greece: 'gr', slovakia: 'sk',
-  slovenia: 'si', ireland: 'ie', 'northern ireland': 'gb-nir', iceland: 'is',
-  finland: 'fi', israel: 'il', 'south africa': 'za', mali: 'ml', ivorycoast: 'ci',
-  "côte d'ivoire": 'ci', congo: 'cg', zambia: 'zm',
-  // 联赛国家/地区
-  africa: 'af', asia: 'as', europe: 'eu', 'south america': 'sa',
-  'north america': 'na', oceania: 'oc',
+  argentina: 'ar',
+  brazil: 'br',
+  belgium: 'be',
+  france: 'fr',
+  germany: 'de',
+  spain: 'es',
+  portugal: 'pt',
+  netherlands: 'nl',
+  italy: 'it',
+  croatia: 'hr',
+  morocco: 'ma',
+  japan: 'jp',
+  'south korea': 'kr',
+  mexico: 'mx',
+  usa: 'us',
+  canada: 'ca',
+  uruguay: 'uy',
+  colombia: 'co',
+  chile: 'cl',
+  ecuador: 'ec',
+  peru: 'pe',
+  switzerland: 'ch',
+  denmark: 'dk',
+  sweden: 'se',
+  norway: 'no',
+  poland: 'pl',
+  austria: 'at',
+  czechia: 'cz',
+  czechrepublic: 'cz',
+  serbia: 'rs',
+  ukraine: 'ua',
+  russia: 'ru',
+  turkey: 'tr',
+  egypt: 'eg',
+  nigeria: 'ng',
+  ghana: 'gh',
+  cameroon: 'cm',
+  senegal: 'sn',
+  tunisia: 'tn',
+  algeria: 'dz',
+  'saudi arabia': 'sa',
+  iran: 'ir',
+  iraq: 'iq',
+  australia: 'au',
+  'new zealand': 'nz',
+  china: 'cn',
+  'costa rica': 'cr',
+  jamaica: 'jm',
+  panama: 'pa',
+  honduras: 'hn',
+  paraguay: 'py',
+  bolivia: 'bo',
+  venezuela: 've',
+  romania: 'ro',
+  hungary: 'hu',
+  greece: 'gr',
+  slovakia: 'sk',
+  slovenia: 'si',
+  ireland: 'ie',
+  iceland: 'is',
+  finland: 'fi',
+  israel: 'il',
+  'south africa': 'za',
+  mali: 'ml',
+  'ivory coast': 'ci',
+  congo: 'cg',
+  zambia: 'zm',
+  qatar: 'qa',
+  uae: 'ae',
+  'united arab emirates': 'ae',
+  uganda: 'ug',
+  madagascar: 'mg',
+  tanzania: 'tz',
+  kenya: 'ke',
+  mozambique: 'mz',
+  angola: 'ao',
+  ivorycoast: 'ci',
+  togo: 'tg',
+  benin: 'bj',
+  guinea: 'gn',
+  burkinafaso: 'bf',
+  libya: 'ly',
+  belarus: 'by',
+  albania: 'al',
+  macedonia: 'mk',
+  'north macedonia': 'mk',
+  montenegro: 'me',
+  bosnia: 'ba',
+  georgia: 'ge',
+  armenia: 'am',
+  cyprus: 'cy',
+  bulgaria: 'bg',
+  latvia: 'lv',
+  lithuania: 'lt',
+  estonia: 'ee',
+  moldova: 'md',
+  srilanka: 'lk',
+  'sri lanka': 'lk',
+  bhutan: 'bt',
+  nepal: 'np',
+  myanmar: 'mm',
+  'burma': 'mm',
+  bangladesh: 'bd',
+  pakistan: 'pk',
+  afghanistan: 'af',
+  jordan: 'jo',
+  palestine: 'ps',
+  lebanon: 'lb',
+  syria: 'sy',
+  uzbekistan: 'uz',
+  kazakhstan: 'kz',
+  kyrgyzstan: 'kg',
+  tajikistan: 'tj',
+  turkmenistan: 'tm',
+  mongolia: 'mn',
+  'hong kong': 'hk',
+  macau: 'mo',
+  taiwan: 'tw',
+  'north korea': 'kp',
+  vietnam: 'vn',
+  thailand: 'th',
+  cambodia: 'kh',
+  laos: 'la',
+  indonesia: 'id',
+  philippines: 'ph',
+  malaysia: 'my',
+  singapore: 'sg',
+  oman: 'om',
+  yemen: 'ye',
+  bahrain: 'bh',
+  kuwait: 'kw',
+  maldives: 'mv',
+  niger: 'ne',
+  chad: 'td',
+  'burkina faso': 'bf',
+  'equatorial guinea': 'gq',
+  'central african republic': 'cf',
+  drc: 'cd',
+  'dr congo': 'cd',
+  comoros: 'km',
+  seychelles: 'sc',
+  mauritius: 'mu',
+  rwanda: 'rw',
+  burundi: 'bi',
+  lesotho: 'ls',
+  eswatini: 'sz',
+  swaziland: 'sz',
+  malawi: 'mw',
+  zimbabwe: 'zw',
+  botswana: 'bw',
+  namibia: 'na',
+  'sierra leone': 'sl',
+  liberia: 'lr',
+  'guinea-bissau': 'gw',
+  gambia: 'gm',
+  mauritania: 'mr',
+  ethiopia: 'et',
+  eritrea: 'er',
+  djibouti: 'dj',
+  somalia: 'so',
+  sudan: 'sd',
+  'south sudan': 'ss',
+  guatemala: 'gt',
+  'el salvador': 'sv',
+  nicaragua: 'ni',
+  cuba: 'cu',
+  haiti: 'ht',
+  'dominican republic': 'do',
+  'trinidad and tobago': 'tt',
+  bermuda: 'bm',
+  barbados: 'bb',
+  guyana: 'gy',
+  suriname: 'sr',
+  kosovo: 'xk',
+  'san marino': 'sm',
+  liechtenstein: 'li',
+  andorra: 'ad',
+  monaco: 'mc',
+  luxembourg: 'lu',
+  malta: 'mt',
+  'bosnia and herzegovina': 'ba',
+  'bosnia & herzegovina': 'ba',
+  // ===== 缺失国家补全（基于数据库 INT 但 country 非空统计） =====
+  // 亚洲
+  india: 'in',
+  azerbaijan: 'az',
+  // 土耳其（BSD 返回带 ü 的 "Türkiye"）
+  'türkiye': 'tr',
+  // 欧洲小国
+  gibraltar: 'gi',
+  faroe: 'fo',
+  'faroe islands': 'fo',
+  guernsey: 'gg',
+  jersey: 'je',
+  'isle of man': 'im',
+  // 加勒比 / 美洲小国
+  'sint maarten': 'sx',
+  'saint kitts and nevis': 'kn',
+  'saint kitts': 'kn',
+  'cayman islands': 'ky',
+  anguilla: 'ai',
+  belize: 'bz',
+  'saint vincent and the grenadines': 'vc',
+  'antigua and barbuda': 'ag',
+  guadeloupe: 'gp',
+  martinique: 'mq',
+  bahamas: 'bs',
+  grenada: 'gd',
+  'saint lucia': 'lc',
+  montserrat: 'ms',
+  'saint martin': 'mf',
+  dominica: 'dm',
+  'british virgin islands': 'vg',
+  'us virgin islands': 'vi',
+  'virgin islands': 'vi',
+  aruba: 'aw',
+  bonaire: 'bq',
+  curacao: 'cw',
+  // 大洋洲
+  fiji: 'fj',
+  vanuatu: 'vu',
+  samoa: 'ws',
+  'american samoa': 'as',
+  'cook islands': 'ck',
+  tonga: 'to',
+  'papua new guinea': 'pg',
+  'solomon islands': 'sb',
+  tahiti: 'pf',
+  'new caledonia': 'nc',
+  guam: 'gu',
+  // 非洲
+  gabon: 'ga',
+  'cape verde': 'cv',
+  'cabo verde': 'cv',
+  'sao tome and principe': 'st',
+  'são tomé and príncipe': 'st',
+  // 亚洲更多
+  'timor-leste': 'tl',
+  easttimor: 'tl',
+  // 英伦三岛 / 海外属地
+  england: 'gb-eng',
+  scotland: 'gb-sct',
+  wales: 'gb-wls',
+  'northern ireland': 'gb-nir',
+  // 其他常被遗漏的小国/地区
+  'puerto rico': 'pr',
+  "côte d'ivoire": 'ci',
+  'congo republic': 'cg',
+  'republic of the congo': 'cg',
+  'democratic republic of the congo': 'cd',
+  'united states': 'us',
+  'united states of america': 'us',
+  阿根廷: 'ar',
+  巴西: 'br',
+  比利时: 'be',
+  法国: 'fr',
+  德国: 'de',
+  西班牙: 'es',
+  葡萄牙: 'pt',
+  荷兰: 'nl',
+  意大利: 'it',
+  克罗地亚: 'hr',
+  摩洛哥: 'ma',
+  日本: 'jp',
+  韩国: 'kr',
+  墨西哥: 'mx',
+  美国: 'us',
+  加拿大: 'ca',
+  乌拉圭: 'uy',
+  哥伦比亚: 'co',
+  智利: 'cl',
+  厄瓜多尔: 'ec',
+  秘鲁: 'pe',
+  瑞士: 'ch',
+  丹麦: 'dk',
+  瑞典: 'se',
+  波兰: 'pl',
+  乌克兰: 'ua',
+  土耳其: 'tr',
+  埃及: 'eg',
+  尼日利亚: 'ng',
+  加纳: 'gh',
+  喀麦隆: 'cm',
+  塞内加尔: 'sn',
+  突尼斯: 'tn',
+  阿尔及利亚: 'dz',
+  沙特: 'sa',
+  伊朗: 'ir',
+  澳大利亚: 'au',
+  新西兰: 'nz',
+  中国: 'cn',
+  哥斯达黎加: 'cr',
+  牙买加: 'jm',
+  巴拿马: 'pa',
+  卡塔尔: 'qa',
+  阿联酋: 'ae',
+  乌干达: 'ug',
+  马达加斯加: 'mg',
+  印度: 'in',
+  印尼: 'id',
+  泰国: 'th',
+  越南: 'vn',
+  马来西亚: 'my',
+  朝鲜: 'kp',
+  缅甸: 'mm',
+  孟加拉: 'bd',
+  巴基斯坦: 'pk',
+  斯里兰卡: 'lk',
+  不丹: 'bt',
+  尼泊尔: 'np',
+  危地马拉: 'gt',
+  洪都拉斯: 'hn',
+  萨尔瓦多: 'sv',
+  尼加拉瓜: 'ni',
+  海地: 'ht',
+  古巴: 'cu',
+  特立尼达: 'tt',
+  圭亚那: 'gy',
+  科索沃: 'xk',
+  安道尔: 'ad',
+  列支敦士登: 'li',
+  圣马力诺: 'sm',
+  摩纳哥: 'mc',
+  卢森堡: 'lu',
+  马耳他: 'mt',
+  直布罗陀: 'gi',
+  africa: 'af',
+  asia: 'as',
+  europe: 'eu',
+  'south america': 'sa',
+  'north america': 'na',
+  oceania: 'oc',
+  international: 'int',
 }
 
 /** 将 BSD 返回的国家名称转为 ISO 2 字母代码 */
@@ -70,16 +384,26 @@ const STATUS_MAP: Record<string, string> = {
 
 /** 根据 round_name 与 group_name 推断项目标准 stage */
 function inferStage(roundName: string | null | undefined, groupName: string | null | undefined): string {
-  const lower = (roundName || '').toLowerCase()
+  const lower = (roundName || '').toLowerCase().trim()
   if (groupName) return 'group'
-  if (lower.includes('group')) return 'group'
-  if (lower.includes('16') || lower.includes('round of 16')) return 'round16'
+  if (!lower) return 'league'
+  // 小组赛
+  if (lower.includes('group') || lower.includes('group stage')) return 'group'
+  // 1/8 决赛
+  if (lower.includes('16') || lower.includes('round of 16') || lower.includes('eighth')) return 'round16'
+  // 1/4 决赛
   if (lower.includes('quarter')) return 'quarter'
+  // 半决赛
   if (lower.includes('semi')) return 'semi'
+  // 决赛（含季军战）
   if (lower.includes('final')) return 'final'
+  // 季后赛
   if (lower.includes('play-off') || lower.includes('playoff') || lower.includes('play off')) return 'playoff'
-  if (lower.includes('regular') || lower.includes('matchday')) return 'league'
-  return roundName || 'league'
+  // 资格赛
+  if (lower.includes('qualif') || lower.includes('preliminary')) return 'qualification'
+  // 联赛常规轮次
+  if (lower.includes('regular') || lower.includes('matchday') || lower.includes('match day') || lower.includes('round')) return 'league'
+  return 'league'
 }
 
 @Injectable()
@@ -283,7 +607,7 @@ export class BsdcSyncService {
   }
 
   /**
-   * 同步实时赛事（BSD /events/live/）
+   * 同步实时赛事（BSD v2 /events/live/）
    * 由 Scheduler 每 10s 触发
    */
   async syncLiveEvents(): Promise<{ updated: number; liveCount: number }> {
@@ -292,7 +616,8 @@ export class BsdcSyncService {
     let liveCount = 0
     try {
       const live = await this.bsdService.getLiveEvents({})
-      for (const bsEvent of (live.results ?? [])) {
+      // v2 live 端点返回结构是 { count, events }，无分页
+      for (const bsEvent of (live.events ?? [])) {
         liveCount++
         // 实时窗口只更新状态/比分/分钟，不重建球队
         const bsdId = String(bsEvent.id)
@@ -356,6 +681,17 @@ export class BsdcSyncService {
         const bsEventId = Number(m.dataSource.replace('bsd_', ''))
         if (Number.isNaN(bsEventId)) continue
         result.matches++
+        // 补充场馆和裁判信息（仅当缺失时）
+        if (m.venueId && !m.venue) {
+          try { await this.syncVenuesForMatch(m) } catch { /* ignore */ }
+        }
+        if (m.refereeId && !m.refereeName) {
+          try { await this.syncRefereeForMatch(m) } catch { /* ignore */ }
+        }
+        // 保存场馆/裁判补充结果
+        if (m.venue || m.refereeName) {
+          await this.matchRepo.save(m)
+        }
         try {
           // 事件流（已结束 24h 内 / 进行中）
           if (m.status === 'live' || m.status === 'finished') {
@@ -494,6 +830,35 @@ export class BsdcSyncService {
     }
   }
 
+  /**
+   * 修复球队 country_code（仅根据已有 country 字段重映射）
+   * 一次性数据修复：扫描 country_code='INT' 且 country 非空的记录，重新应用 COUNTRY_TO_ISO
+   */
+  async fixTeamCountryCodes(): Promise<{ scanned: number; fixed: number; samples: Array<{ id: string; before: string; after: string; country: string }> }> {
+    const teams = await this.teamRepo
+      .createQueryBuilder('t')
+      .where('t.country_code = :cc', { cc: 'INT' })
+      .andWhere('t.country IS NOT NULL')
+      .andWhere("t.country <> ''")
+      .getMany()
+    let fixed = 0
+    const samples: Array<{ id: string; before: string; after: string; country: string }> = []
+    for (const t of teams) {
+      const newCode = countryToIso(t.country)
+      if (newCode !== 'INT') {
+        const before = t.countryCode
+        t.countryCode = newCode
+        t.lastSyncedAt = new Date()
+        await this.teamRepo.save(t)
+        fixed++
+        if (samples.length < 20) {
+          samples.push({ id: t.id, before, after: newCode, country: t.country || '' })
+        }
+      }
+    }
+    return { scanned: teams.length, fixed, samples }
+  }
+
   // ==================== 私有方法 ====================
 
   /** 构造联赛 ID → 名称映射（联赛尚未 sync 时可临时回填） */
@@ -618,11 +983,11 @@ export class BsdcSyncService {
     this.logger.log(`aggregateTeamStats: updated ${teamStats.size} teams from ${finishedMatches.length} finished matches`)
   }
 
-  // ==================== 场馆同步 ====================
+  // ==================== 场馆 & 裁判同步 ====================
 
   /**
    * 同步场馆信息到赛事
-   * 从 /venues/{id}/ 获取场馆名称、城市、容量
+   * 从 /v2/venues/{id}/ 获取场馆名称、城市、容量
    */
   private async syncVenuesForMatch(match: MatchEntity): Promise<boolean> {
     if (!match.venueId) return false
@@ -631,10 +996,36 @@ export class BsdcSyncService {
       match.venue = venue.name || match.venue
       match.city = venue.city || match.city
       match.venueCapacity = venue.capacity || null
-      await this.matchRepo.save(match)
       return true
     } catch (e) {
       this.logger.warn(`syncVenuesForMatch ${match.id} venue_id=${match.venueId} failed: ${(e as Error).message}`)
+      return false
+    }
+  }
+
+  /**
+   * 同步裁判信息到赛事
+   * 从 /v2/referees/{id}/ 获取裁判姓名、国籍、风格统计
+   */
+  private async syncRefereeForMatch(match: MatchEntity): Promise<boolean> {
+    if (!match.refereeId) return false
+    try {
+      const ref = await this.bsdService.getRefereeDetail(match.refereeId)
+      match.refereeName = ref.name || match.refereeName
+      match.refereeNationality = ref.country || match.refereeNationality
+      // 裁判风格：根据场均黄牌数推断
+      if (ref.avg_yellow_per_match != null) {
+        if (ref.avg_yellow_per_match >= 5) {
+          match.refereeStyle = 'strict'
+        } else if (ref.avg_yellow_per_match >= 3) {
+          match.refereeStyle = 'moderate'
+        } else {
+          match.refereeStyle = 'lenient'
+        }
+      }
+      return true
+    } catch (e) {
+      this.logger.warn(`syncRefereeForMatch ${match.id} referee_id=${match.refereeId} failed: ${(e as Error).message}`)
       return false
     }
   }
@@ -873,17 +1264,29 @@ export class BsdcSyncService {
     teamCache?: Map<number, TeamEntity>,
   ): Promise<'created' | 'updated'> {
     const bsdId = String(bsEvent.id)
-    const leagueName = leagueNameMap.get(bsEvent.league_id) || `联赛${bsEvent.league_id}`
-    const homeTeam = await this.getOrCreateTeam(bsEvent.home_team_id, bsEvent.home_team, teamCache)
-    const awayTeam = await this.getOrCreateTeam(bsEvent.away_team_id, bsEvent.away_team, teamCache)
+
+    // 防御：BSD 返回的事件必须包含完整的 home/away 球队对象
+    if (!bsEvent.home_team_obj?.id || !bsEvent.away_team_obj?.id) {
+      this.logger.warn(
+        `跳过事件 ${bsdId}：缺少 home/away 球队对象 (home=${bsEvent.home_team}, away=${bsEvent.away_team}, ` +
+        `has_home_obj=${!!bsEvent.home_team_obj}, has_away_obj=${!!bsEvent.away_team_obj})`,
+      )
+      throw new Error('invalid event: missing team objects')
+    }
+
+    // 联赛：直接用 BSD 嵌套对象；map 仅作兜底（极少用到）
+    const leagueName = bsEvent.league?.name || leagueNameMap.get(bsEvent.league?.id) || `联赛${bsEvent.league?.id ?? '?'}`
+
+    const homeTeam = await this.getOrCreateTeam(bsEvent.home_team_obj.id, bsEvent.home_team_obj.name || bsEvent.home_team, teamCache)
+    const awayTeam = await this.getOrCreateTeam(bsEvent.away_team_obj.id, bsEvent.away_team_obj.name || bsEvent.away_team, teamCache)
     const status = STATUS_MAP[bsEvent.status] || 'upcoming'
     const stage = inferStage(bsEvent.round_name, bsEvent.group_name)
     const startTime = new Date(bsEvent.event_date)
 
     let match = await this.matchRepo.findOne({ where: { dataSource: `bsd_${bsdId}` } })
     const baseFields: Partial<MatchEntity> = {
-      leagueId: bsEvent.league_id,
-      seasonId: bsEvent.season_id ?? null,
+      leagueId: bsEvent.league?.id ?? null,
+      seasonId: bsEvent.season?.id ?? null,
       leagueName,
       stage,
       groupName: bsEvent.group_name || null,
@@ -891,8 +1294,8 @@ export class BsdcSyncService {
       roundNumber: bsEvent.round_number ?? null,
       homeTeamId: homeTeam.id,
       awayTeamId: awayTeam.id,
-      homeTeamBsdId: bsEvent.home_team_id,
-      awayTeamBsdId: bsEvent.away_team_id,
+      homeTeamBsdId: bsEvent.home_team_obj.id,
+      awayTeamBsdId: bsEvent.away_team_obj.id,
       startTime,
       status,
       bsStatus: bsEvent.status,
@@ -920,15 +1323,17 @@ export class BsdcSyncService {
       totalAttendance: bsEvent.attendance ?? null,
       lastSyncedAt: new Date(),
       dataSource: `bsd_${bsdId}`,
-      dataSourceUrl: `https://sports.bzzoiro.com/api/v2/events/${bsdId}/`,
+      dataSourceUrl: `https://sports.bzzoiro.com/api/events/${bsdId}/`,
     }
     if (match) {
       Object.assign(match, baseFields)
       // 同步场馆信息
       if (bsEvent.venue_id && !match.venue) {
-        try {
-          await this.syncVenuesForMatch(match)
-        } catch { /* ignore */ }
+        try { await this.syncVenuesForMatch(match) } catch { /* ignore */ }
+      }
+      // 同步裁判信息
+      if (bsEvent.referee_id && !match.refereeName) {
+        try { await this.syncRefereeForMatch(match) } catch { /* ignore */ }
       }
       // 提取教练ID和精彩集锦
       if ((bsEvent as any).home_coach_id) match.homeCoachId = (bsEvent as any).home_coach_id
@@ -942,9 +1347,11 @@ export class BsdcSyncService {
     const entity = this.matchRepo.create(baseFields)
     // 同步场馆信息
     if (bsEvent.venue_id && !entity.venue) {
-      try {
-        await this.syncVenuesForMatch(entity)
-      } catch { /* ignore */ }
+      try { await this.syncVenuesForMatch(entity) } catch { /* ignore */ }
+    }
+    // 同步裁判信息
+    if (bsEvent.referee_id && !entity.refereeName) {
+      try { await this.syncRefereeForMatch(entity) } catch { /* ignore */ }
     }
     await this.matchRepo.save(entity)
     return 'created'
@@ -955,6 +1362,8 @@ export class BsdcSyncService {
     const cacheHit = cache?.get(bsdId)
     if (cacheHit) return cacheHit
     const key = `bsd_${bsdId}`
+    // 兜底：确保 name 不为空（NOT NULL 字段）
+    const safeName = (name || `Team-${bsdId}`).toString().trim() || `Team-${bsdId}`
     let team = await this.teamRepo.findOne({ where: { dataSource: key } })
     if (!team) {
       let isoCode = 'INT'
@@ -980,21 +1389,21 @@ export class BsdcSyncService {
       } catch {
         /* 兜底用默认值 */
       }
-      team = this.teamRepo.create({
-        bsTeamId: bsdId,
-        name,
-        nameEn: name,
-        countryCode: isoCode,
-        country,
-        logo,
-        isNational,
-        venueName,
-        founded,
-        dataSource: key,
-        dataSourceUrl: `https://sports.bzzoiro.com/api/v2/teams/${bsdId}/`,
-        lastSyncedAt: new Date(),
-      })
-      await this.teamRepo.save(team)
+      // 显式构造，避免 TypeORM 对 'name' 字段的意外处理
+      const newTeam = new TeamEntity()
+      newTeam.bsTeamId = bsdId
+      newTeam.name = safeName
+      newTeam.nameEn = safeName
+      newTeam.countryCode = isoCode
+      newTeam.country = country
+      newTeam.logo = logo
+      newTeam.isNational = isNational
+      newTeam.venueName = venueName
+      newTeam.founded = founded
+      newTeam.dataSource = key
+      newTeam.dataSourceUrl = `https://sports.bzzoiro.com/api/v2/teams/${bsdId}/`
+      newTeam.lastSyncedAt = new Date()
+      team = await this.teamRepo.save(newTeam)
     } else if (team.countryCode === 'INT') {
       // 已有但 country 为默认值，尝试补充
       try {

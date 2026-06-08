@@ -100,13 +100,13 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('common.model')" min-width="180">
+          <el-table-column :label="$t('common.model')" min-width="260" :show-overflow-tooltip="true">
             <template #default="{ row }">
               <PlatformBadge :platform="detectModel(row.modelName || '')" :show-name="true" />
             </template>
           </el-table-column>
-          <el-table-column :label="$t('ranking.userCount')" prop="userCount" width="100" align="center" />
-          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="110" align="center" />
+          <el-table-column :label="$t('ranking.userCount')" prop="userCount" width="110" align="center" />
+          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="120" align="center" />
           <!-- 空数据提示 -->
           <template #empty>
             <el-empty :description="$t('common.noData')" :image-size="80" />
@@ -124,13 +124,13 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('ranking.platformLabel')" min-width="200">
+          <el-table-column :label="$t('ranking.platformLabel')" min-width="240" :show-overflow-tooltip="true">
             <template #default="{ row }">
               <PlatformBadge :platform="detectPlatform(row.platformKey || row.platform)" :show-name="true" />
             </template>
           </el-table-column>
-          <el-table-column :label="$t('ranking.userCount')" prop="userCount" width="100" align="center" />
-          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="110" align="center" />
+          <el-table-column :label="$t('ranking.userCount')" prop="userCount" width="110" align="center" />
+          <el-table-column :label="$t('ranking.totalPredictions')" prop="totalPredictions" width="120" align="center" />
           <!-- 空数据提示 -->
           <template #empty>
             <el-empty :description="$t('common.noData')" :image-size="80" />

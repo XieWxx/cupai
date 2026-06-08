@@ -1,15 +1,60 @@
+/**
+ * BSD 赛事列表中的球队对象
+ * 字段路径：`bsEvent.home_team_obj` / `bsEvent.away_team_obj`
+ */
+export interface BsTeamObj {
+  id: number
+  name: string
+  short_name?: string
+  country?: string
+  /** 主教练信息 */
+  coach?: { name: string; shortName?: string } | null
+  /** 主场馆信息 */
+  venue?: { id: number; name: string; city?: string; country?: string; capacity?: number } | null
+}
+
+/** BSD 联赛在赛事列表中嵌套的对象 */
+export interface BsLeagueObj {
+  id: number
+  name: string
+  country?: string
+  is_women?: boolean
+  current_season?: {
+    id: number
+    name: string
+    year: number
+    start_date?: string
+    end_date?: string
+    is_current?: boolean
+  } | null
+}
+
+/** BSD 赛季对象 */
+export interface BsSeasonObj {
+  id: number
+  name: string
+  year: number
+}
+
 export interface BsEvent {
   id: number
-  league_id: number
-  season_id: number
-  home_team_id: number
+  /** 联赛（嵌套对象） */
+  league: BsLeagueObj
+  /** 赛季（嵌套对象） */
+  season: BsSeasonObj
+  /** 主队名称（仅字符串） */
   home_team: string
-  away_team_id: number
+  /** 客队名称（仅字符串） */
   away_team: string
+  /** 主队完整对象（含 id/venue/coach） */
+  home_team_obj: BsTeamObj
+  /** 客队完整对象 */
+  away_team_obj: BsTeamObj
   home_coach_id: number | null
   away_coach_id: number | null
   referee_id: number | null
   venue_id: number | null
+  /** 比赛开球时间（含时区偏移，例如 2026-06-08T14:00:00+04:00） */
   event_date: string
   status: string
   replaced_by: number | null
@@ -219,12 +264,14 @@ export interface BsStandingRow {
 
 export interface BsEventDetail {
   id: number
-  league_id: number
-  season_id: number
-  home_team_id: number
+  /** 联赛（嵌套对象） */
+  league: BsLeagueObj
+  /** 赛季（嵌套对象） */
+  season: BsSeasonObj
   home_team: string
-  away_team_id: number
   away_team: string
+  home_team_obj: BsTeamObj
+  away_team_obj: BsTeamObj
   home_coach_id: number | null
   away_coach_id: number | null
   referee_id: number | null
@@ -406,6 +453,16 @@ export interface BsPaginated<T> {
   results: T[]
 }
 
+/**
+ * BSD 实时赛事接口的响应结构（注意字段名为 `events` 而非 `results`）
+ * 端点：`/api/v2/events/live/`
+ * 该端点无分页，仅返回当前进行中的赛事列表
+ */
+export interface BsLiveEventsResponse {
+  count: number
+  events: BsEvent[]
+}
+
 // ==================== 场馆相关 ====================
 
 /** BSD 场馆列表项 */
@@ -427,6 +484,25 @@ export interface BsVenue {
 /** BSD 场馆详情（含赛事分配） */
 export interface BsVenueDetail extends BsVenue {
   competition_assignments: unknown[]
+}
+
+/** BSD 裁判详情（/api/v2/referees/{id}/） */
+export interface BsRefereeDetail {
+  id: number
+  name: string
+  country: string
+  nationality_a3: string
+  birthdate: string | null
+  matches: number
+  total_yellow_cards: number
+  total_red_cards: number
+  avg_yellow_per_match: number
+  avg_red_per_match: number
+  avg_goals_per_match: number
+  avg_fouls_per_match: number
+  career_games: number
+  career_yellow_cards: number
+  career_red_cards: number
 }
 
 // ==================== 球员相关 ====================

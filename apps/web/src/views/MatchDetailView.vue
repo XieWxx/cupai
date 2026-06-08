@@ -1273,6 +1273,11 @@ function resolvePlayerName(
  * 新版（按产品要求）：每条复制指令末尾都附带 agent 回传地址、Header、Body 字段、curl 模板
  */
 async function copyDimension(dimKey: DimensionKey) {
+  // 未登录跳转登录页
+  if (!userStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
   const def = DIMENSIONS[dimKey]
   if (!def) return
   const input = buildCommonInput(dimKey)
@@ -1299,6 +1304,11 @@ async function copyDimension(dimKey: DimensionKey) {
  * 复制球员分析指令（弹窗显示）
  */
 async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
+  // 未登录跳转登录页
+  if (!userStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
   const teamName = side === 'home' ? match.value?.homeTeam?.name : match.value?.awayTeam?.name
   const text = buildPlayerInstruction({
     player: { ...player, teamName },
@@ -1318,6 +1328,11 @@ async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
  * 复制球队分析指令（弹窗显示）
  */
 async function openTeamCopyDialog(side: 'home' | 'away') {
+  // 未登录跳转登录页
+  if (!userStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
   const team = side === 'home' ? match.value?.homeTeam : match.value?.awayTeam
   const players = side === 'home' ? homePlayers.value : awayPlayers.value
   if (!team) return

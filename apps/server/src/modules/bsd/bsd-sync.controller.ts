@@ -99,4 +99,13 @@ export class BsdcSyncController {
     ])
     return { teams, leagues, events, standings, live, aux, players }
   }
+
+  /**
+   * 一次性数据修复：根据 country 字段重新映射 country_code
+   * 用于补全历史数据的国旗 / 国家代码
+   */
+  @Post('fix-team-country-codes')
+  async fixTeamCountryCodes() {
+    return this.syncService.fixTeamCountryCodes()
+  }
 }

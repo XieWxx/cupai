@@ -20,10 +20,10 @@ export class MatchController {
     return this.matchService.getMatchDynamics(Number(limit) || 6)
   }
 
-  // 获取淘汰赛对阵图数据（按 bracketStage 分组）
+  // 获取淘汰赛对阵图数据（按 bracketStage 分组，默认仅世界杯）
   @Get('bracket')
-  async getBracketData() {
-    return this.matchService.getBracketData()
+  async getBracketData(@Query('leagueId') leagueId?: string) {
+    return this.matchService.getBracketData(leagueId)
   }
 
   // 获取所有球队

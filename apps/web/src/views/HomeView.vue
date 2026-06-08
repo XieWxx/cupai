@@ -210,7 +210,7 @@
                 <span :class="['panel-rank', i < 3 ? `rank-${i + 1}` : '']">{{ i + 1 }}</span>
                 <!-- 平台列：split 模式，与"高准确率用户"列布局一致 -->
                 <PlatformBadge :platform="resolvePlatformBadge(p)" :split="true" />
-                <span class="panel-value">{{ p.userCount || '-' }}</span>
+                <span class="panel-value">{{ p.totalPredictions || p.userCount || '-' }}</span>
               </div>
               <p v-if="!platformRanking.length" class="panel-empty">—</p>
             </div>
@@ -274,7 +274,7 @@ const isPaused1 = ref(false)
 const isPaused2 = ref(false)
 const isPaused3 = ref(false)
 
-const dynamicsTab = ref('active')
+const dynamicsTab = ref('upcoming')
 const dynamicsLoading = ref(false)
 /**
  * 首页"赛事动态"数据结构
@@ -392,14 +392,16 @@ onUnmounted(() => {
   text-align: center;
   border-radius: 0;
   margin-bottom: var(--space-8);
-  overflow: hidden;
+  /* 允许国旗溢出显示，避免上下行被裁切 */
+  overflow: visible;
   background: transparent;
   /* 全屏宽度：突破 home-view 的 max-width 限制 */
   width: 100vw;
-  position: relative;
   left: 50%;
   right: auto;
   margin-left: -50vw;
+  /* 最小高度确保三行国旗完整展示 */
+  min-height: 460px;
 }
 
 /* ========== 国旗滚动背景 ========== */
@@ -409,14 +411,16 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* 国旗上下间距增大 */
-  gap: var(--space-8);
+  /* 国旗上下间距增大，避免上下行被遮挡 */
+  gap: var(--space-4);
   pointer-events: none;
   z-index: 0;
   /* 无遮罩 */
   opacity: 1;
   width: 100%;
-  padding: var(--space-6) 0;
+  padding: var(--space-8) 0;
+  /* 确保三行国旗完整显示，不被裁切 */
+  overflow: visible;
 }
 
 .flag-scroll-row {
@@ -424,6 +428,8 @@ onUnmounted(() => {
   gap: var(--space-6);
   animation: flag-scroll 80s linear infinite;
   width: max-content;
+  /* 每行高度自适应，避免行间重叠 */
+  line-height: 1;
 }
 
 .flag-scroll-row.row-2 {
@@ -442,6 +448,9 @@ onUnmounted(() => {
 .hero-flag {
   font-size: 120px;
   flex-shrink: 0;
+  /* 防止行内元素溢出遮挡上下行 */
+  display: inline-block;
+  line-height: 1;
 }
 
 @keyframes flag-scroll {

@@ -77,6 +77,9 @@ export class MatchService {
   /**
    * 首页"赛事动态"接口
    * 返回 live（进行中，最多 limit 条） + upcoming（24h 内即将开始，最多 limit 条）
+   *
+   * 注意：BSD 同步的 startTime 已是 UTC（容器 +08:00 时区已统一处理），
+   * 所以这里 `new Date()` 取 UTC 时刻，与 DB 中存的 UTC 时间一致。
    */
   async getMatchDynamics(limit = 6) {
     const now = new Date()
@@ -91,17 +94,32 @@ export class MatchService {
       .take(limit)
       .getMany()
 
-    // 待开赛：status=upcoming 且 startTime 在 [now, now+7天]，按开球时间升序（最近开赛的排前面）
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    // 待开赛：status=upcoming 且 startTime 在 [now, now+30天]
+    // 时间窗拉到 30 天确保能展示近期比赛；首页按开球时间升序
+    const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
     const upcoming = await this.matchRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.homeTeam', 'homeTeam')
       .leftJoinAndSelect('m.awayTeam', 'awayTeam')
       .where('m.status = :status', { status: 'upcoming' })
-      .andWhere('m.startTime BETWEEN :now AND :nextWeek', { now, nextWeek })
+      .andWhere('m.startTime BETWEEN :now AND :nextMonth', { now, nextMonth })
       .orderBy('m.startTime', 'ASC')
       .take(limit)
       .getMany()
+
+    // 兜底：若 7 天内没有待开赛，回退展示任意 upcoming 比赛（不限时间窗）
+    // 这样可保证首页"待开赛"模块始终有内容
+    if (upcoming.length === 0) {
+      const fallback = await this.matchRepo
+        .createQueryBuilder('m')
+        .leftJoinAndSelect('m.homeTeam', 'homeTeam')
+        .leftJoinAndSelect('m.awayTeam', 'awayTeam')
+        .where('m.status = :status', { status: 'upcoming' })
+        .orderBy('m.startTime', 'ASC')
+        .take(limit)
+        .getMany()
+      return { live, upcoming: fallback }
+    }
 
     return { live, upcoming }
   }
@@ -126,27 +144,40 @@ export class MatchService {
     return { list, total, page, pageSize }
   }
 
-  /** 获取淘汰赛对阵图数据（按 bracketStage 分组） */
-  async getBracketData() {
+  /** 获取淘汰赛对阵图数据（按 stage 字段分组） */
+  async getBracketData(leagueId?: string) {
     const query = this.matchRepo
       .createQueryBuilder('match')
       .leftJoinAndSelect('match.homeTeam', 'homeTeam')
       .leftJoinAndSelect('match.awayTeam', 'awayTeam')
-      .orderBy('match.startTime', 'ASC')
+      .where('match.stage IN (:...stages)', { stages: ['round16', 'quarter', 'semi', 'final', 'playoff'] })
+
+    // 按联赛过滤（默认仅展示世界杯数据）
+    if (leagueId) {
+      query.andWhere('match.leagueId = :leagueId', { leagueId })
+    } else {
+      // 默认：筛选 leagueName 包含 "World Cup" 或 "世界杯" 的赛事
+      query.andWhere('(match.leagueName LIKE :wc OR match.leagueName LIKE :wcCn)', {
+        wc: '%World Cup%',
+        wcCn: '%世界杯%',
+      })
+    }
+
+    query.orderBy('match.startTime', 'ASC')
 
     const matches = await query.getMany()
 
-    // 按 stage 字段直接分组：r16 / qf / sf / final
+    // 按 stage 字段分组
     const grouped = { r16: [], qf: [], sf: [], final: [] as MatchEntity[] }
     for (const match of matches) {
       const stage = match.stage?.toLowerCase()
-      if (stage === 'r16' || stage === '16') {
+      if (stage === 'round16' || stage === 'r16' || stage === '16') {
         grouped.r16.push(match)
-      } else if (stage === 'qf' || stage === '8') {
+      } else if (stage === 'quarter' || stage === 'qf' || stage === '8') {
         grouped.qf.push(match)
-      } else if (stage === 'sf' || stage === '4') {
+      } else if (stage === 'semi' || stage === 'sf' || stage === '4') {
         grouped.sf.push(match)
-      } else if (stage === 'final' || stage === 'finalmatch' || stage === 'fm') {
+      } else if (stage === 'final' || stage === 'finalmatch' || stage === 'fm' || stage === 'playoff') {
         grouped.final.push(match)
       }
     }

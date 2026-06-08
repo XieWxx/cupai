@@ -155,11 +155,13 @@ onMounted(() => {
 /* 对阵图卡片（适配 1/16 赛制 5 轮晋级图） */
 .bracket-card {
   min-height: var(--space-10);
+  overflow: visible;
 }
 
 .bracket-card :deep(.el-card__body) {
   padding: var(--space-6);
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: visible;
   background: var(--color-bg-elevated);
 }
 

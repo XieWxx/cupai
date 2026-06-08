@@ -170,14 +170,15 @@ const leftRounds = computed(() => [
 ].filter(r => r.matches.length > 0))
 
 /**
- * 右半区轮次（从内到外，视觉上与左半区对称）
- * 半决赛第2场 → 1/4 决赛后2场 → 1/8 决赛后4场 → 1/16 决赛后8场
+ * 右半区轮次（从外到内，与左半区镜像对称）
+ * 1/16 决赛后8场 → 1/8 决赛后4场 → 1/4 决赛后2场 → 半决赛第2场
+ * 视觉效果：R32 在页面最右边，SF 靠近中间决赛
  */
 const rightRounds = computed(() => [
-  { key: 'sf-right', label: t('bracket.sf'), matches: sf.value.slice(1, 2) },
-  { key: 'qf-right', label: t('bracket.qf'), matches: qf.value.slice(2, 4) },
-  { key: 'r16-right', label: t('bracket.r16'), matches: r16.value.slice(4, 8) },
   { key: 'r32-right', label: t('bracket.r32'), matches: r32.value.slice(8, 16) },
+  { key: 'r16-right', label: t('bracket.r16'), matches: r16.value.slice(4, 8) },
+  { key: 'qf-right', label: t('bracket.qf'), matches: qf.value.slice(2, 4) },
+  { key: 'sf-right', label: t('bracket.sf'), matches: sf.value.slice(1, 2) },
 ].filter(r => r.matches.length > 0))
 
 /** 格式化比赛时间 */
@@ -216,7 +217,10 @@ function onMatchClick(match: any) {
 .knockout-bracket {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 8px 0;
+  background: var(--color-bg-muted);
+  border-radius: 8px;
 }
 
 .bracket-loading,
@@ -236,9 +240,6 @@ function onMatchClick(match: any) {
   min-width: 1100px;
   min-height: 640px;
   gap: 0;
-  background: var(--color-bg-muted);
-  border-radius: 8px;
-  overflow: hidden;
 }
 
 /* 半区容器 */
@@ -275,6 +276,8 @@ function onMatchClick(match: any) {
   text-transform: uppercase;
   background: var(--color-bg-elevated);
   border-bottom: 2px solid var(--color-border);
+  position: relative;
+  z-index: 1;
 }
 
 .final-label {
@@ -290,6 +293,7 @@ function onMatchClick(match: any) {
   justify-content: space-around;
   padding: 6px;
   gap: 6px;
+  position: relative;
 }
 
 /* ============ 比赛卡片 ============ */
@@ -302,6 +306,7 @@ function onMatchClick(match: any) {
   transition: all 0.2s ease;
   min-width: 150px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  position: relative;
 }
 
 .bracket-match:hover {
@@ -310,18 +315,18 @@ function onMatchClick(match: any) {
   transform: translateY(-2px);
 }
 
-/* 进行中比赛 - 红色脉冲边框 */
+/* 进行中比赛 */
 .bracket-match.live {
   border-color: rgba(239, 68, 68, 0.5);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
 }
 
-/* 已完成比赛 - 绿色边框 + 晋级标识 */
+/* 已完成比赛 */
 .bracket-match.finished {
   border-color: rgba(34, 197, 94, 0.2);
 }
 
-/* 待进行比赛 - 虚线边框 + 淡化效果 */
+/* 待进行比赛 */
 .bracket-match.upcoming {
   border-style: dashed;
   opacity: 0.85;
@@ -393,12 +398,21 @@ function onMatchClick(match: any) {
   font-weight: 800;
 }
 
-/* 晋级箭头标识 */
-.match-team.is-winner::after {
+/* 晋级箭头标识：左半区指向右侧（向决赛方向） */
+.bracket-left .match-team.is-winner::after {
   content: '▶';
   font-size: 8px;
   color: var(--color-success);
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* 晋级箭头标识：右半区指向左侧（向决赛方向） */
+.bracket-right .match-team.is-winner::before {
+  content: '◀';
+  font-size: 8px;
+  color: var(--color-success);
+  margin-right: auto;
   flex-shrink: 0;
 }
 
@@ -462,23 +476,6 @@ function onMatchClick(match: any) {
   position: relative;
 }
 
-/* ============ 连接线（用伪元素绘制） ============ */
-.bracket-left .round-column:not(:first-child) .round-matches::before,
-.bracket-right .round-column:not(:first-child) .round-matches::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-}
-
-/* ============ 晋级路径连接线 ============ */
-.bracket-left .round-column + .round-column .round-matches,
-.bracket-right .round-column + .round-column .round-matches {
-  position: relative;
-}
-
 /* ============ 响应式 ============ */
 @media (max-width: 1200px) {
   .bracket-tree {
@@ -506,10 +503,6 @@ function onMatchClick(match: any) {
   }
 
   .bracket-half {
-    flex-direction: column;
-  }
-
-  .bracket-right {
     flex-direction: column;
   }
 

@@ -26,6 +26,9 @@ import {
   BsStats,
 } from './bsd.interfaces'
 
+/** 2026 世界杯联赛 ID（BSD 固定值） */
+const WORLD_CUP_LEAGUE_ID = 27
+
 /** 国家名称 → ISO 3166-1 alpha-2 代码映射（覆盖 BSD API 常见值） */
 const COUNTRY_TO_ISO: Record<string, string> = {
   argentina: 'ar',
@@ -1525,6 +1528,12 @@ export class BsdcSyncService {
     teamCache?: Map<number, TeamEntity>,
   ): Promise<'created' | 'updated'> {
     const bsdId = String(bsEvent.id)
+
+    // 仅同步 2026 世界杯赛事（league_id=27），非世界杯赛事直接跳过
+    const bsEventLeagueId = (bsEvent.league as any)?.id
+    if (bsEventLeagueId != null && bsEventLeagueId !== WORLD_CUP_LEAGUE_ID) {
+      return 'skipped' as any
+    }
 
     // 防御：BSD 返回的事件必须包含完整的 home/away 球队对象
     if (!bsEvent.home_team_obj?.id || !bsEvent.away_team_obj?.id) {

@@ -634,9 +634,11 @@ export class BsdcSyncService {
         })
         const batch = events.results ?? []
         allEvents.push(...batch)
+        this.logger.log(`syncEvents: fetched page ${offset/pageSize + 1}, batch=${batch.length}, total_fetched=${allEvents.length}`)
         if (batch.length < pageSize) break
         offset += pageSize
       }
+      this.logger.log(`syncEvents: total events fetched=${allEvents.length}`)
 
       // 联赛 ID → 联赛名称
       const leagueNameMap = await this.buildLeagueNameMap()

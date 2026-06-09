@@ -88,6 +88,7 @@ export default {
     final: 'Final',
     champion: 'Champion',
     tbd: 'TBD',
+    pending: 'Pending',
   },
   matchCenter: {
     title: 'Match Data Center',

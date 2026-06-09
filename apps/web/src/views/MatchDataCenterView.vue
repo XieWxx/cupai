@@ -6,9 +6,14 @@
       <p class="page-subtitle">{{ $t('matchCenter.subtitle') }}</p>
     </header>
 
-    <!-- Tab 切换：赛程 / 小组赛程 / 淘汰赛对阵图 -->
+    <!-- Tab 切换：积分榜 / 赛程 / 小组赛程 / 淘汰赛对阵图 -->
     <el-tabs v-model="activeTab" class="data-tabs">
-      <!-- 小组积分榜（暂时隐藏，待数据完善后开放） -->
+      <!-- 小组积分榜 -->
+      <el-tab-pane :label="t('matchCenter.standings')" name="standings">
+        <el-card class="common-card" shadow="never">
+          <GroupStandings :groups="standingsGroups" :loading="loading.standings" />
+        </el-card>
+      </el-tab-pane>
 
       <!-- 赛程（全部比赛，按日期分组） -->
       <el-tab-pane :label="t('matchCenter.schedule')" name="schedule">
@@ -42,6 +47,7 @@ import { http } from '@/api/request'
 import KnockoutBracket from '@/components/bracket/KnockoutBracket.vue'
 import GroupMatchTable from '@/components/bracket/GroupMatchTable.vue'
 import MatchSchedule from '@/components/bracket/MatchSchedule.vue'
+import GroupStandings from '@/components/bracket/GroupStandings.vue'
 const { t } = useI18n()
 
 const matchStore = useMatchStore()
@@ -68,7 +74,7 @@ const standingsGroups = ref<Record<string, any[]>>({})
 async function loadStandings() {
   loading.standings = true
   try {
-    const res = await http.get<any>('/match/standings')
+    const res = await http.get<any>('/match/standings', { params: { leagueId: 27 } })
     if (res?.groups) {
       standingsGroups.value = res.groups
     }

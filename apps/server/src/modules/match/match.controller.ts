@@ -23,7 +23,8 @@ export class MatchController {
   // 获取淘汰赛对阵图数据（按 bracketStage 分组，默认仅世界杯）
   @Get('bracket')
   async getBracketData(@Query('leagueId') leagueId?: string) {
-    return this.matchService.getBracketData(leagueId)
+    const parsedLeagueId = leagueId ? parseInt(leagueId, 10) || undefined : undefined
+    return this.matchService.getBracketData(parsedLeagueId)
   }
 
   // 获取所有球队
@@ -34,14 +35,16 @@ export class MatchController {
 
   // 获取所有小组积分榜
   @Get('standings')
-  async getAllStandings() {
-    return this.standingService.getStandings()
+  async getAllStandings(@Query('leagueId') leagueId?: string) {
+    const parsedLeagueId = leagueId ? parseInt(leagueId, 10) || undefined : undefined
+    return this.standingService.getStandings(undefined, parsedLeagueId)
   }
 
   // 获取小组积分榜
   @Get('standings/:group')
-  async getStandings(@Param('group') group: string) {
-    return this.standingService.getStandings(group)
+  async getStandings(@Param('group') group: string, @Query('leagueId') leagueId?: string) {
+    const parsedLeagueId = leagueId ? parseInt(leagueId, 10) || undefined : undefined
+    return this.standingService.getStandings(group, parsedLeagueId)
   }
 
   // 获取出线形势分析

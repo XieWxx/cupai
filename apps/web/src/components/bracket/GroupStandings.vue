@@ -39,7 +39,7 @@
               </td>
               <td class="col-team">
                 <span v-if="getFlagClass(team.team?.countryCode)" :class="`${getFlagClass(team.team.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ team.team?.name || t('matchCenter.unknown') }}</span>
+                <span class="team-name">{{ getTeamName(team.team) || t('matchCenter.unknown') }}</span>
               </td>
               <td class="col-stat">{{ team.played || 0 }}</td>
               <td class="col-stat">{{ team.wins || 0 }}</td>
@@ -68,8 +68,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Loading } from '@element-plus/icons-vue'
 import { getFlagClass } from '@/utils/flag'
+import { useTeamName } from '@/composables/useTeamName'
 
 const { t } = useI18n()
+const { getTeamName } = useTeamName()
 const props = defineProps<{
   groups: Record<string, any[]>
   loading?: boolean

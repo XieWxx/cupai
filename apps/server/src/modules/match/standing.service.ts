@@ -24,9 +24,10 @@ export class StandingService {
   /**
    * 获取小组积分榜
    * @param groupName 小组名称（如 A），不传则返回所有小组
+   * @param leagueId 联赛ID，不传则返回所有联赛
    */
-  async getStandings(groupName?: string) {
-    const cacheKey = `standings:${groupName || 'all'}`
+  async getStandings(groupName?: string, leagueId?: number) {
+    const cacheKey = `standings:${leagueId || 'all'}:${groupName || 'all'}`
 
     const cached = await this.redisCache.get<any>(cacheKey)
     if (cached) return cached
@@ -40,6 +41,7 @@ export class StandingService {
       .addOrderBy('s.goalsFor', 'DESC')
 
     if (groupName) query.andWhere('s.groupName = :groupName', { groupName })
+    if (leagueId) query.andWhere('s.leagueId = :leagueId', { leagueId })
 
     const standings = await query.getMany()
     this.logger.log(`[getStandings] queried ${standings.length} rows, groupName=${groupName || 'all'}`)
@@ -75,6 +77,7 @@ export class StandingService {
 
     const standings = await this.standingRepo.find({
       where: { groupName },
+      relations: ['team'],
       order: { points: 'DESC', goalDifference: 'DESC', goalsFor: 'DESC' },
     })
 

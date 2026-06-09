@@ -32,7 +32,7 @@
             <div class="match-versus">
               <div class="versus-team home" :class="{ 'is-winner': isHomeWinner(match) }">
                 <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-                <span class="team-name">{{ match.homeTeam?.name || t('bracket.tbd') }}</span>
+                <span class="team-name">{{ getTeamName(match.homeTeam) || t('bracket.tbd') }}</span>
               </div>
               <div class="versus-score">
                 <span v-if="hasScore(match)" class="score-home" :class="{ 'is-winner': isHomeWinner(match) }">{{ match.homeScore }}</span>
@@ -41,7 +41,7 @@
                 <span v-else class="score-vs">{{ t('match.vs') }}</span>
               </div>
               <div class="versus-team away" :class="{ 'is-winner': isAwayWinner(match) }">
-                <span class="team-name">{{ match.awayTeam?.name || t('bracket.tbd') }}</span>
+                <span class="team-name">{{ getTeamName(match.awayTeam) || t('bracket.tbd') }}</span>
                 <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
               </div>
             </div>
@@ -66,8 +66,10 @@ import { useI18n } from 'vue-i18n'
 import { Loading } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { getFlagClass } from '@/utils/flag'
+import { useTeamName } from '@/composables/useTeamName'
 
 const { t, locale } = useI18n()
+const { getTeamName } = useTeamName()
 const props = defineProps<{
   matches: any[]
   loading?: boolean

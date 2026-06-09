@@ -29,6 +29,27 @@ export class TeamEntity {
   @Column({ name: 'name_en', type: 'varchar', length: 100, comment: '球队名称（英文）' })
   nameEn: string
 
+  @Column({ name: 'name_ja', type: 'varchar', length: 100, nullable: true, comment: '球队名称（日语）' })
+  nameJa: string
+
+  @Column({ name: 'name_ko', type: 'varchar', length: 100, nullable: true, comment: '球队名称（韩语）' })
+  nameKo: string
+
+  @Column({ name: 'name_es', type: 'varchar', length: 100, nullable: true, comment: '球队名称（西班牙语）' })
+  nameEs: string
+
+  @Column({ name: 'name_fr', type: 'varchar', length: 100, nullable: true, comment: '球队名称（法语）' })
+  nameFr: string
+
+  @Column({ name: 'name_pt', type: 'varchar', length: 100, nullable: true, comment: '球队名称（葡萄牙语）' })
+  namePt: string
+
+  @Column({ name: 'name_ar', type: 'varchar', length: 100, nullable: true, comment: '球队名称（阿拉伯语）' })
+  nameAr: string
+
+  @Column({ name: 'short_name', length: 20, nullable: true, comment: '球队缩写' })
+  shortName: string
+
   @Column({ name: 'country_code', length: 10, comment: '国家代码' })
   countryCode: string
 

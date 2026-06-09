@@ -287,9 +287,12 @@ export interface BsPredictionModel {
 
 export interface BsStanding {
   league_id: number
+  league_name?: string
   season: BsStandingSeason
   grouped: boolean
   standings: BsStandingRow[]
+  /** 分组积分榜：key 为组名（如 "Group A"），value 为该组的排名行 */
+  groups?: Record<string, BsStandingRow[]>
 }
 
 export interface BsStandingSeason {

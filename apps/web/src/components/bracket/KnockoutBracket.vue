@@ -31,17 +31,17 @@
               <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(getTeamInfo(match, 'home')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'home').countryCode)} team-flag`"></span>
-                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamInfo(match, 'home')?.name || $t('bracket.tbd') }}</span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'home')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.homeTeamPlaceholder" class="team-placeholder">{{ match.homeTeamPlaceholder }}</span>
-                <span v-if="match?.homeTeamConfirmed === false" class="team-pending">待确认</span>
+                <span v-if="match?.homeTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
               <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
                 <span v-if="getFlagClass(getTeamInfo(match, 'away')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'away').countryCode)} team-flag`"></span>
-                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamInfo(match, 'away')?.name || $t('bracket.tbd') }}</span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'away')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.awayTeamPlaceholder" class="team-placeholder">{{ match.awayTeamPlaceholder }}</span>
-                <span v-if="match?.awayTeamConfirmed === false" class="team-pending">待确认</span>
+                <span v-if="match?.awayTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
               </div>
               <!-- 开赛时间 -->
@@ -71,13 +71,15 @@
           <!-- 主队 -->
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
             <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
-            <span class="team-name">{{ match?.homeTeam?.name || $t('bracket.tbd') }}</span>
+            <span class="team-name" :class="{ 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamName(match?.homeTeam) || $t('bracket.tbd') }}</span>
+            <span v-if="match?.homeTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
             <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
           </div>
           <!-- 客队 -->
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
             <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
-            <span class="team-name">{{ match?.awayTeam?.name || $t('bracket.tbd') }}</span>
+            <span class="team-name" :class="{ 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamName(match?.awayTeam) || $t('bracket.tbd') }}</span>
+            <span v-if="match?.awayTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
             <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
           </div>
           <!-- 开赛时间 -->
@@ -112,17 +114,17 @@
               <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
                 <span v-if="getFlagClass(getTeamInfo(match, 'home')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'home').countryCode)} team-flag`"></span>
-                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamInfo(match, 'home')?.name || $t('bracket.tbd') }}</span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'home')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.homeTeamPlaceholder" class="team-placeholder">{{ match.homeTeamPlaceholder }}</span>
-                <span v-if="match?.homeTeamConfirmed === false" class="team-pending">待确认</span>
+                <span v-if="match?.homeTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.homeScore }}</span>
               </div>
               <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
                 <span v-if="getFlagClass(getTeamInfo(match, 'away')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'away').countryCode)} team-flag`"></span>
-                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamInfo(match, 'away')?.name || $t('bracket.tbd') }}</span>
+                <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'away')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.awayTeamPlaceholder" class="team-placeholder">{{ match.awayTeamPlaceholder }}</span>
-                <span v-if="match?.awayTeamConfirmed === false" class="team-pending">待确认</span>
+                <span v-if="match?.awayTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
                 <span v-if="hasScore(match)" class="team-score">{{ match.awayScore }}</span>
               </div>
               <!-- 开赛时间 -->
@@ -144,6 +146,7 @@ import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getFlagClass } from '@/utils/flag'
+import { useTeamName } from '@/composables/useTeamName'
 
 const props = defineProps<{
   bracketData?: any
@@ -152,6 +155,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const { t, locale } = useI18n()
+const { getTeamName } = useTeamName()
 
 /** 是否有淘汰赛数据 */
 const hasData = computed(() => {

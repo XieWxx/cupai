@@ -1701,7 +1701,7 @@ function stopDimensionPoll() {
   }
 }
 
-/** 启动比赛时长自动更新（每60秒校准一次） */
+/** 启动比赛时长自动更新（每30秒校准一次） */
 function startMatchMinutePoll(matchId: string) {
   stopMatchMinutePoll()
   if (match.value?.status !== 'live') return
@@ -1714,6 +1714,10 @@ function startMatchMinutePoll(matchId: string) {
         if (data.period !== undefined) match.value.period = data.period
         if (data.homeScore !== undefined) match.value.homeScore = data.homeScore
         if (data.awayScore !== undefined) match.value.awayScore = data.awayScore
+        if (data.halfTimeHome !== undefined) match.value.halfTimeHome = data.halfTimeHome
+        if (data.halfTimeAway !== undefined) match.value.halfTimeAway = data.halfTimeAway
+        if (data.penaltyShootout !== undefined) match.value.penaltyShootout = data.penaltyShootout
+        if (data.bsStatus !== undefined) match.value.bsStatus = data.bsStatus
         if (data.status !== undefined) match.value.status = data.status
         // 赛事结束则停止轮询
         if (data.status !== 'live') stopMatchMinutePoll()
@@ -1721,7 +1725,7 @@ function startMatchMinutePoll(matchId: string) {
     } catch {
       // 静默失败，下次轮询重试
     }
-  }, 60000) // 每60秒
+  }, 30000) // 每30秒
 }
 
 /** 停止比赛时长轮询 */
@@ -2321,6 +2325,10 @@ async function loadDetail() {
       if (wsData.period !== undefined) match.value.period = wsData.period
       if (wsData.homeScore !== undefined) match.value.homeScore = wsData.homeScore
       if (wsData.awayScore !== undefined) match.value.awayScore = wsData.awayScore
+      if (wsData.halfTimeHome !== undefined) match.value.halfTimeHome = wsData.halfTimeHome
+      if (wsData.halfTimeAway !== undefined) match.value.halfTimeAway = wsData.halfTimeAway
+      if (wsData.penaltyShootout !== undefined) match.value.penaltyShootout = wsData.penaltyShootout
+      if (wsData.bsStatus !== undefined) match.value.bsStatus = wsData.bsStatus
       if (wsData.status !== undefined) {
         match.value.status = wsData.status
         // 赛事状态变化时：live→finished 停止轮询；upcoming→live 启动分钟轮询

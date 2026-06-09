@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { BsdcBusinessService } from './bsd.business.service'
 import { getPlayerChineseName } from '../../utils/player-translate'
+import { translateTeamName, translateTeamNameTo } from './team-translate'
 import { MatchEntity } from '../match/entities/match.entity'
 import { TeamEntity } from '../match/entities/team.entity'
 import { GroupStandingEntity } from '../match/entities/group-standing.entity'
@@ -379,9 +380,28 @@ const STATUS_MAP: Record<string, string> = {
   extra_time: 'live',
   penalties: 'live',
   finished: 'finished',
-  postponed: 'upcoming',
+  postponed: 'postponed',
   cancelled: 'finished',
   abandoned: 'finished',
+  interrupted: 'live',
+  delayed: 'upcoming',
+  walkover: 'finished',
+  awaiting: 'upcoming',
+}
+
+/**
+ * 从 extra_time_score 字符串解析点球大战比分
+ * BSD API 的 extra_time_score 格式通常为 "3-2"（主-客）
+ * 当 penalty_shootout 有值但 extra_time_score 无法解析时返回 null
+ */
+function parsePenaltyScore(extraTimeScore: string | null): { home: number; away: number } | null {
+  if (!extraTimeScore) return null
+  // 尝试匹配 "数字-数字" 格式（如 "3-2"、"5-4"）
+  const match = extraTimeScore.match(/^(\d+)\s*[-:]\s*(\d+)$/)
+  if (match) {
+    return { home: parseInt(match[1], 10), away: parseInt(match[2], 10) }
+  }
+  return null
 }
 
 /** 根据 round_name 与 group_name 推断项目标准 stage */
@@ -427,6 +447,9 @@ export class BsdcSyncService {
     players: { at: null, durationMs: 0, ok: true },
   }
 
+  /** 重点联赛 ID 列表（从环境变量 BSD_FEATURED_LEAGUE_IDS 读取，默认 27=2026世界杯） */
+  private readonly featuredLeagueIds: number[]
+
   constructor(
     private readonly bsdService: BsdcBusinessService,
     private readonly moduleRef: ModuleRef,
@@ -440,7 +463,15 @@ export class BsdcSyncService {
     @InjectRepository(EventStatsEntity) private readonly statsRepo: Repository<EventStatsEntity>,
     @InjectRepository(EventPredictionEntity) private readonly predictionRepo: Repository<EventPredictionEntity>,
     @InjectRepository(PlayerEntity) private readonly playerRepo: Repository<PlayerEntity>,
-  ) {}
+  ) {
+    // 解析重点联赛 ID 列表
+    const rawIds = process.env.BSD_FEATURED_LEAGUE_IDS || '27'
+    this.featuredLeagueIds = rawIds
+      .split(',')
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => !Number.isNaN(n))
+    this.logger.log(`重点联赛 ID 列表：${this.featuredLeagueIds.join(', ')}`)
+  }
 
   /**
    * 获取 MatchGateway 实例（延迟获取，避免循环依赖）
@@ -494,8 +525,15 @@ export class BsdcSyncService {
         const isoCode = countryToIso(bsTeam.country)
         const existing = await this.teamRepo.findOne({ where: { dataSource: `bsd_${bsdId}` } })
         if (existing) {
-          existing.name = bsTeam.name
+          existing.name = translateTeamName(bsTeam.name) || bsTeam.name
           existing.nameEn = bsTeam.name
+          existing.nameJa = translateTeamNameTo(bsTeam.name, 'ja') || null
+          existing.nameKo = translateTeamNameTo(bsTeam.name, 'ko') || null
+          existing.nameEs = translateTeamNameTo(bsTeam.name, 'es') || null
+          existing.nameFr = translateTeamNameTo(bsTeam.name, 'fr') || null
+          existing.namePt = translateTeamNameTo(bsTeam.name, 'pt') || null
+          existing.nameAr = translateTeamNameTo(bsTeam.name, 'ar') || null
+          existing.shortName = (bsTeam as any).short_name || null
           existing.countryCode = isoCode
           existing.country = bsTeam.country || null
           existing.logo = bsTeam.logo || null
@@ -509,8 +547,15 @@ export class BsdcSyncService {
         } else {
           const team = this.teamRepo.create({
             bsTeamId: bsTeam.id,
-            name: bsTeam.name,
+            name: translateTeamName(bsTeam.name) || bsTeam.name,
             nameEn: bsTeam.name,
+            nameJa: translateTeamNameTo(bsTeam.name, 'ja') || null,
+            nameKo: translateTeamNameTo(bsTeam.name, 'ko') || null,
+            nameEs: translateTeamNameTo(bsTeam.name, 'es') || null,
+            nameFr: translateTeamNameTo(bsTeam.name, 'fr') || null,
+            namePt: translateTeamNameTo(bsTeam.name, 'pt') || null,
+            nameAr: translateTeamNameTo(bsTeam.name, 'ar') || null,
+            shortName: (bsTeam as any).short_name || null,
             countryCode: isoCode,
             country: bsTeam.country || null,
             logo: bsTeam.logo || null,
@@ -582,7 +627,8 @@ export class BsdcSyncService {
   // ==================== 赛事（列表） ====================
 
   /**
-   * 同步赛事列表：近 1 天 ~ 未来 30 天
+   * 同步赛事列表：仅拉取重点联赛（BSD_FEATURED_LEAGUE_IDS）的数据
+   * 时间窗：近 180 天 ~ 未来 365 天（覆盖整届世界杯前后）
    * 写入 MatchEntity 主体字段（基础 + 比赛阶段 + 状态）
    */
   async syncEvents(): Promise<{ created: number; updated: number }> {
@@ -590,28 +636,70 @@ export class BsdcSyncService {
     let created = 0
     let updated = 0
     try {
+      const lookbackDays = parseInt(process.env.BSD_FEATURED_LEAGUE_LOOKBACK_DAYS || '180', 10)
+      const lookaheadDays = parseInt(process.env.BSD_FEATURED_LEAGUE_LOOKAHEAD_DAYS || '365', 10)
       const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - 1)
+      fromDate.setDate(fromDate.getDate() - lookbackDays)
       const toDate = new Date()
-      toDate.setDate(toDate.getDate() + 30)
-      const events = await this.bsdService.getEvents({
-        date_from: fromDate.toISOString().split('T')[0],
-        date_to: toDate.toISOString().split('T')[0],
-        limit: 200,
-      })
+      toDate.setDate(toDate.getDate() + lookaheadDays)
 
       // 联赛 ID → 联赛名称
       const leagueNameMap = await this.buildLeagueNameMap()
       // 球队 ID → 实体
       const teamCache = new Map<number, TeamEntity>()
+      // 已处理的赛事 BSD ID 集合（去重）
+      const processedEventIds = new Set<string>()
 
-      for (const bsEvent of (events.results ?? [])) {
+      // BSD API 的 /api/events/ 端点 league_id 参数不生效，
+      // 但 team_id 参数有效。策略：先从 standings 获取各球队 ID，再按 team_id 查询赛事
+      for (const leagueId of this.featuredLeagueIds) {
         try {
-          const result = await this.upsertMatch(bsEvent, leagueNameMap, teamCache)
-          if (result === 'created') created++
-          else updated++
+          // 1. 从 standings 获取该联赛的所有球队 ID
+          const teamIds = await this.getTeamIdsFromStandings(leagueId)
+          this.logger.log(`syncEvents: league_id=${leagueId}, 从standings获取${teamIds.size}个球队ID`)
+
+          if (teamIds.size === 0) {
+            this.logger.warn(`syncEvents: league_id=${leagueId} standings中无球队，跳过`)
+            continue
+          }
+
+          // 2. 按 team_id 逐个查询赛事（每个球队查一次，后置过滤 league_id）
+          for (const teamId of teamIds) {
+            try {
+              const events = await this.bsdService.getEvents({
+                date_from: fromDate.toISOString().split('T')[0],
+                date_to: toDate.toISOString().split('T')[0],
+                team_id: teamId,
+                limit: 200,
+              })
+
+              // 后置过滤：只保留重点联赛的赛事
+              const filteredResults = (events.results ?? []).filter(e => {
+                const eventLeagueId = e.league?.id || (e as any).league_id
+                return eventLeagueId && this.featuredLeagueIds.includes(eventLeagueId)
+              })
+
+              for (const bsEvent of filteredResults) {
+                const bsdEventId = String(bsEvent.id)
+                if (processedEventIds.has(bsdEventId)) continue // 去重
+                processedEventIds.add(bsdEventId)
+
+                try {
+                  const result = await this.upsertMatch(bsEvent, leagueNameMap, teamCache)
+                  if (result === 'created') created++
+                  else updated++
+                } catch (e) {
+                  this.logger.warn(`upsert event ${bsEvent.id} failed: ${(e as Error).message}`)
+                }
+              }
+            } catch (e) {
+              this.logger.warn(`sync events for team ${teamId} in league ${leagueId} failed: ${(e as Error).message}`)
+            }
+          }
+
+          this.logger.log(`syncEvents: league_id=${leagueId} 完成, 累计 +${created}/~${updated}`)
         } catch (e) {
-          this.logger.warn(`upsert event ${bsEvent.id} failed: ${(e as Error).message}`)
+          this.logger.warn(`sync events for league ${leagueId} failed: ${(e as Error).message}`)
         }
       }
       this.recordRun('events', started, true, `+${created}/~${updated}`)
@@ -623,8 +711,36 @@ export class BsdcSyncService {
   }
 
   /**
+   * 从 standings API 获取指定联赛的所有球队 ID
+   * BSD API 的 /api/leagues/{id}/standings/ 端点可以正确返回分组数据
+   */
+  private async getTeamIdsFromStandings(leagueId: number): Promise<Set<number>> {
+    const teamIds = new Set<number>()
+    try {
+      const standings = await this.bsdService.getLeagueStandings(leagueId)
+      if (standings.groups) {
+        for (const rows of Object.values(standings.groups)) {
+          for (const row of (rows as any[])) {
+            if (row.team_id) teamIds.add(row.team_id)
+          }
+        }
+      }
+      // 也处理非分组格式（单列表）
+      if (standings.standings) {
+        for (const row of (standings.standings as any[])) {
+          if (row.team_id) teamIds.add(row.team_id)
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`getTeamIdsFromStandings: league ${leagueId} failed: ${(e as Error).message}`)
+    }
+    return teamIds
+  }
+
+  /**
    * 同步实时赛事（BSD v2 /events/live/）
    * 由 Scheduler 每 5s 触发
+   * 仅拉取重点联赛的实时赛事，过滤非重点联赛数据
    * 不仅更新状态/比分，还同步 lineups、playerStats、场馆、裁判等子数据
    * 优化：仅在赛事状态变化或首次出现时同步子数据，避免每5秒重复请求BSD API
    */
@@ -633,9 +749,14 @@ export class BsdcSyncService {
     let updated = 0
     let liveCount = 0
     try {
+      // 拉取所有实时赛事，然后过滤重点联赛
+      // BSD API 的 league_id 过滤可能不生效，所以拉取后做后置过滤
       const live = await this.bsdService.getLiveEvents({})
-      // v2 live 端点返回结构是 { count, events }，无分页
-      for (const bsEvent of (live.events ?? [])) {
+      const filteredEvents = (live.events ?? []).filter(e => {
+        const eventLeagueId = e.league?.id || (e as any).league_id
+        return eventLeagueId && this.featuredLeagueIds.includes(eventLeagueId)
+      })
+      for (const bsEvent of filteredEvents) {
         liveCount++
         // 实时窗口只更新状态/比分/分钟，不重建球队
         const bsdId = String(bsEvent.id)
@@ -653,9 +774,16 @@ export class BsdcSyncService {
           updated++
           continue
         }
+        // 已结束赛事不再更新（prevStatus 为 finished 时跳过，但首次变为 finished 的那次仍需执行）
+        if (match.status === 'finished') {
+          continue
+        }
         // 检测状态变化（如 upcoming → live）
         const prevStatus = match.status
         const prevBsStatus = match.bsStatus
+        // 保存更新前的比分，用于检测比分变化
+        const prevHomeScore = match.homeScore
+        const prevAwayScore = match.awayScore
         match.status = STATUS_MAP[bsEvent.status] || match.status
         match.bsStatus = bsEvent.status
         match.period = bsEvent.period || match.period
@@ -664,9 +792,14 @@ export class BsdcSyncService {
         match.awayScore = bsEvent.away_score ?? match.awayScore
         match.halfTimeHome = bsEvent.home_score_ht ?? match.halfTimeHome
         match.halfTimeAway = bsEvent.away_score_ht ?? match.halfTimeAway
-        match.penaltyShootout = bsEvent.penalty_shootout
-          ? { home: bsEvent.penalty_shootout, away: bsEvent.penalty_shootout }
-          : match.penaltyShootout
+        // 点球大战比分：优先从 extra_time_score 解析主客队各自比分，
+        // fallback 到 penalty_shootout（仅一个数字，无法区分主客队时设为 null）
+        if (bsEvent.penalty_shootout != null) {
+          const parsed = parsePenaltyScore(bsEvent.extra_time_score)
+          match.penaltyShootout = parsed ?? match.penaltyShootout
+        } else {
+          match.penaltyShootout = null
+        }
         match.liveWebsocket = !!bsEvent.live_websocket
         match.lastSyncedAt = new Date()
         // 补充基本信息：场馆、裁判（从嵌套对象直接提取，或通过 ID 查询详情 API）
@@ -706,6 +839,10 @@ export class BsdcSyncService {
               currentMinute: match.currentMinute,
               homeScore: match.homeScore,
               awayScore: match.awayScore,
+              halfTimeHome: match.halfTimeHome,
+              halfTimeAway: match.halfTimeAway,
+              penaltyShootout: match.penaltyShootout,
+              bsStatus: match.bsStatus,
             })
             // 状态变化时额外推送状态变更事件
             if (prevStatus !== match.status) {
@@ -716,9 +853,10 @@ export class BsdcSyncService {
           }
         }
 
-        // 仅在状态变化或首次进入 live 时同步子数据（避免每5秒重复请求）
+        // 仅在状态变化或比分变化时同步子数据（避免每5秒重复请求）
         const statusChanged = prevStatus !== match.status || prevBsStatus !== match.bsStatus
-        if (statusChanged) {
+        const scoreChanged = match.homeScore !== prevHomeScore || match.awayScore !== prevAwayScore
+        if (statusChanged || scoreChanged) {
           const bsEventId = Number(bsdId)
           await this.syncLiveDataForMatch(match, bsEventId)
         }
@@ -795,7 +933,7 @@ export class BsdcSyncService {
     const started = Date.now()
     const result = { matches: 0, incidents: 0, lineups: 0, odds: 0, stats: 0, predictions: 0, h2h: 0, metadata: 0, playerStats: 0, oddsComparison: 0, social: 0 }
     try {
-      // 候选：状态 inprogress/finished 24h 内 + 即将开始 6h 内
+      // 候选：状态 inprogress/finished 24h 内 + 即将开始 6h 内，且仅限重点联赛
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
       const lookahead = new Date(Date.now() + 6 * 60 * 60 * 1000)
       const candidates = await this.matchRepo
@@ -806,6 +944,7 @@ export class BsdcSyncService {
           now: cutoff,
           ahead: lookahead,
         })
+        .andWhere('m.leagueId IN (:...leagueIds)', { leagueIds: this.featuredLeagueIds })
         .orderBy('m.startTime', 'DESC')
         .take(limit)
         .getMany()
@@ -814,6 +953,8 @@ export class BsdcSyncService {
         if (!m.dataSource?.startsWith('bsd_')) continue
         const bsEventId = Number(m.dataSource.replace('bsd_', ''))
         if (Number.isNaN(bsEventId)) continue
+        // 已结束赛事跳过子数据同步（避免对已结束赛事重复请求 BSD API）
+        if (m.status === 'finished') continue
         result.matches++
         // 一次性获取 event detail，供多个子方法 fallback 使用
         let detail: any = null
@@ -922,32 +1063,50 @@ export class BsdcSyncService {
   // ==================== 积分榜 ====================
 
   /**
-   * 同步所有活跃联赛的积分榜
+   * 同步重点联赛的积分榜
    */
   async syncStandings(): Promise<{ leagues: number; rows: number }> {
     const started = Date.now()
     let leagues = 0
     let rows = 0
     try {
-      const leaguesList = await this.bsdService.getLeagues({ limit: 200 })
-      for (const league of (leaguesList.results ?? [])) {
-        if (!league.is_active) continue
+      // 仅同步重点联赛的积分榜
+      for (const leagueId of this.featuredLeagueIds) {
         try {
-          const standings = await this.bsdService.getLeagueStandings(league.id)
-          if (!standings?.standings) continue
+          const standings = await this.bsdService.getLeagueStandings(leagueId)
+
+          // 获取联赛名称（从本地 league 表获取）
+          const localLeague = await this.leagueRepo.findOne({ where: { bsLeagueId: leagueId } })
+          const leagueName = localLeague?.nameZh || localLeague?.name || `联赛${leagueId}`
+
+          // 支持两种格式：分组格式（groups）和平铺格式（standings）
+          let allRows: Array<{ row: BsStandingRow; groupName: string }> = []
+
+          if (standings?.groups && Object.keys(standings.groups).length > 0) {
+            // 分组格式：世界杯等赛事
+            for (const [groupName, groupRows] of Object.entries(standings.groups)) {
+              for (const row of groupRows) {
+                allRows.push({ row, groupName })
+              }
+            }
+          } else if (standings?.standings && standings.standings.length > 0) {
+            // 平铺格式：从赛事中获取小组名映射
+            const teamGroupMap = await this.buildTeamGroupMap(leagueId, standings.season?.id)
+            for (const row of standings.standings) {
+              const groupName = teamGroupMap.get(row.team_id) || 'LEAGUE'
+              allRows.push({ row, groupName })
+            }
+          }
+
+          if (allRows.length === 0) continue
           leagues++
 
-          // 从本地赛事中获取该联赛下的小组名映射（teamId -> groupName）
-          const teamGroupMap = await this.buildTeamGroupMap(league.id, standings.season?.id)
-
-          for (const row of standings.standings) {
-            // 优先从赛事中获取该球队所在的小组名
-            const groupName = teamGroupMap.get(row.team_id) || 'LEAGUE'
-            await this.upsertStanding(league, standings.season, row, groupName)
+          for (const { row, groupName } of allRows) {
+            await this.upsertStanding({ id: leagueId, name: leagueName }, standings.season, row, groupName)
             rows++
           }
         } catch (e) {
-          this.logger.warn(`sync standings for league ${league.id} failed: ${(e as Error).message}`)
+          this.logger.warn(`sync standings for league ${leagueId} failed: ${(e as Error).message}`)
         }
       }
       this.recordRun('standings', started, true, `leagues=${leagues}/rows=${rows}`)
@@ -1524,8 +1683,10 @@ export class BsdcSyncService {
       awayScore: bsEvent.away_score ?? null,
       halfTimeHome: bsEvent.home_score_ht ?? null,
       halfTimeAway: bsEvent.away_score_ht ?? null,
-      penaltyShootout: bsEvent.penalty_shootout
-        ? { home: Number(bsEvent.penalty_shootout), away: Number(bsEvent.penalty_shootout) }
+      // 点球大战比分：优先从 extra_time_score 解析主客队各自比分，
+      // fallback 到 penalty_shootout（仅一个数字，无法区分主客队时设为 null）
+      penaltyShootout: bsEvent.penalty_shootout != null
+        ? (parsePenaltyScore(bsEvent.extra_time_score) ?? null)
         : null,
       // 场馆 ID：优先从 venue_id 字段获取（列表 API），fallback 到 venue 嵌套对象的 id（详情 API）
       venueId: bsEvent.venue_id ?? bsEvent.venue?.id ?? null,
@@ -1628,6 +1789,7 @@ export class BsdcSyncService {
       let venueName: string | null = null
       let isNational = false
       let founded: number | null = null
+      let shortName: string | null = null
       try {
         const detail = (await this.bsdService.getTeamDetail(bsdId)) as {
           country?: string
@@ -1635,6 +1797,7 @@ export class BsdcSyncService {
           is_national?: boolean
           venue_name?: string
           founded?: number
+          short_name?: string
         }
         isoCode = countryToIso(detail?.country)
         country = detail?.country || null
@@ -1642,14 +1805,22 @@ export class BsdcSyncService {
         venueName = detail?.venue_name || null
         isNational = !!detail?.is_national
         founded = detail?.founded || null
+        shortName = detail?.short_name || null
       } catch {
         /* 兜底用默认值 */
       }
       // 显式构造，避免 TypeORM 对 'name' 字段的意外处理
       const newTeam = new TeamEntity()
       newTeam.bsTeamId = bsdId
-      newTeam.name = safeName
+      newTeam.name = translateTeamName(safeName) || safeName
       newTeam.nameEn = safeName
+      newTeam.nameJa = translateTeamNameTo(safeName, 'ja') || null
+      newTeam.nameKo = translateTeamNameTo(safeName, 'ko') || null
+      newTeam.nameEs = translateTeamNameTo(safeName, 'es') || null
+      newTeam.nameFr = translateTeamNameTo(safeName, 'fr') || null
+      newTeam.namePt = translateTeamNameTo(safeName, 'pt') || null
+      newTeam.nameAr = translateTeamNameTo(safeName, 'ar') || null
+      newTeam.shortName = shortName
       newTeam.countryCode = isoCode
       newTeam.country = country
       newTeam.logo = logo

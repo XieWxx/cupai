@@ -145,7 +145,7 @@ export class MatchService {
   }
 
   /** 获取淘汰赛对阵图数据（按 stage 字段分组，支持 1/16 决赛起） */
-  async getBracketData(leagueId?: string) {
+  async getBracketData(leagueId?: number) {
     const query = this.matchRepo
       .createQueryBuilder('match')
       .leftJoinAndSelect('match.homeTeam', 'homeTeam')
@@ -156,7 +156,7 @@ export class MatchService {
     if (leagueId) {
       query.andWhere('match.leagueId = :leagueId', { leagueId })
     } else {
-      // 默认：筛选 leagueName 包含 "World Cup" 或 "世界杯" 的赛事
+      // 默认：筛选 2026 世界杯（league_id=27, league_name='World Cup 2026'）
       query.andWhere('(match.leagueName LIKE :wc OR match.leagueName LIKE :wcCn)', {
         wc: '%World Cup%',
         wcCn: '%世界杯%',
@@ -167,11 +167,14 @@ export class MatchService {
 
     const matches = await query.getMany()
 
+    // 提取实际 leagueId 用于后续查询（确保小组赛和淘汰赛属于同一赛事）
+    const actualLeagueId = leagueId || (matches.length > 0 ? matches[0].leagueId : undefined)
+
     // 检查小组赛是否全部结束
-    const groupStageFinished = await this.isGroupStageFinished(leagueId)
+    const groupStageFinished = await this.isGroupStageFinished(actualLeagueId)
 
     // 构建小组→球队映射（R32 始终从小组赛解析，后续轮次仅在小组赛结束时解析）
-    const groupTeamsMap = await this.buildGroupTeamsMap(leagueId)
+    const groupTeamsMap = await this.buildGroupTeamsMap(actualLeagueId)
 
     // 解析占位球队：R32 始终解析，后续轮次仅小组赛结束后解析
     const resolvedMatches = matches.map(m => this.resolvePlaceholderTeams(m, groupTeamsMap, groupStageFinished))
@@ -200,7 +203,7 @@ export class MatchService {
    * 检查小组赛是否全部结束
    * 如果所有小组赛比赛状态都是 finished，则返回 true
    */
-  private async isGroupStageFinished(leagueId?: string): Promise<boolean> {
+  private async isGroupStageFinished(leagueId?: number): Promise<boolean> {
     const groupQuery = this.matchRepo
       .createQueryBuilder('match')
       .where('match.stage = :stage', { stage: 'group' })
@@ -230,7 +233,7 @@ export class MatchService {
    * 从小组赛比赛中提取每个小组的参赛队伍及其当前排名
    * 返回格式：{ "A": [{ rank: 1, team: TeamEntity }, ...], "B": [...] }
    */
-  private async buildGroupTeamsMap(leagueId?: string): Promise<Record<string, Array<{ rank: number; team: TeamEntity }>>> {
+  private async buildGroupTeamsMap(leagueId?: number): Promise<Record<string, Array<{ rank: number; team: TeamEntity }>>> {
     const groupQuery = this.matchRepo
       .createQueryBuilder('match')
       .leftJoinAndSelect('match.homeTeam', 'homeTeam')
@@ -307,7 +310,7 @@ export class MatchService {
    * 获取小组积分榜映射
    * 返回格式：{ "A": [{ teamId, points, goalDifference, goalsFor, played }, ...], ... }
    */
-  private async getGroupStandingsMap(leagueId?: string): Promise<Record<string, Array<{ teamId: string; points: number; goalDifference: number; goalsFor: number; played: number }>>> {
+  private async getGroupStandingsMap(leagueId?: number): Promise<Record<string, Array<{ teamId: string; points: number; goalDifference: number; goalsFor: number; played: number }>>> {
     try {
       // 从 group_standings 表查询（如果有世界杯小组积分数据）
       const standingRepo = this.matchRepo.manager.getRepository('GroupStandingEntity')

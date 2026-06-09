@@ -90,6 +90,7 @@ export default {
     final: '决赛',
     champion: '冠军',
     tbd: '待定',
+    pending: '待确认',
   },
   matchCenter: {
     title: '赛事数据中心',

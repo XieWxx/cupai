@@ -49,6 +49,9 @@ COPY --from=builder /app/packages/utils/package.json ./packages/utils/
 # 复制后端构建产物
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 
+# 复制健康检查脚本
+COPY apps/server/healthcheck.js .
+
 # 仅安装生产依赖（自动剔除 devDependencies）
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 

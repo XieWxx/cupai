@@ -91,7 +91,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"const http=require('http'); http.get({hostname:'localhost',port:3001,path:'/api/v1/bsd/sync/ready',timeout:5000},(res)=>{let d='';res.on('data',(c)=>{d+=c;});res.on('end',()=>{try{const b=JSON.parse(d);if(b.ready){process.exit(0);}else{process.exit(1);}}catch{process.exit(1);}});}).on('error',()=>process.exit(1));\""]
+      test: ["CMD", "node", "/app/apps/server/healthcheck.js"]
       interval: 15s
       timeout: 10s
       retries: 60

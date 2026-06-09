@@ -10,7 +10,7 @@
     <div v-else class="standings-grid">
       <div v-for="(teams, groupName) in groups" :key="groupName" class="group-card">
         <div class="group-title">
-          <span class="group-badge">{{ groupName }}</span>
+          <span class="group-badge">{{ extractGroupLetter(groupName) }}</span>
           <span class="group-label">{{ t('matchCenter.groupLabel') }}</span>
         </div>
         <table class="standings-table">
@@ -78,6 +78,12 @@ const props = defineProps<{
 }>()
 
 const hasData = computed(() => props.groups && Object.keys(props.groups).length > 0)
+
+/** 从 "Group A" 类格式中提取小组字母 */
+function extractGroupLetter(name: string): string {
+  const match = name.match(/^(?:Group|組|조|グループ|Groupe|Grupo|المجموعة)\s*([A-Z])/i)
+  return match ? match[1] : name
+}
 
 /** 净胜球样式 */
 function gdClass(gd: number): string {

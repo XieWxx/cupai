@@ -1857,8 +1857,28 @@ export class BsdcSyncService {
     row: BsStandingRow,
     groupName: string,
   ) {
+    // 尝试从 row.team_name 获取队名，如果为空则用 row.team_id 兜底
+    let teamName = row.team_name || null
+    // 从本地赛事数据中查找球队的正确队名（防止 standings 未携带 team_name 导致创建 Team-493 等无效队名）
+    if (!teamName) {
+      try {
+        const matchWithTeam = await this.matchRepo
+          .createQueryBuilder('match')
+          .leftJoinAndSelect('match.homeTeam', 'ht')
+          .leftJoinAndSelect('match.awayTeam', 'at')
+          .where('ht.bsTeamId = :bsId', { bsId: row.team_id })
+          .orWhere('at.bsTeamId = :bsId', { bsId: row.team_id })
+          .andWhere('match.leagueId = :leagueId', { leagueId: league.id })
+          .getOne()
+        if (matchWithTeam) {
+          teamName = matchWithTeam.homeTeam?.nameEn || matchWithTeam.awayTeam?.nameEn || null
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     // 球队：可能本地无此队（积分榜来自非同步联赛），按需创建
-    const team = await this.getOrCreateTeam(row.team_id, row.team_name)
+    const team = await this.getOrCreateTeam(row.team_id, teamName)
     const dataSource = `bsd_${league.id}_${season?.id ?? 'cur'}_${row.team_id}`
     let standing = await this.standingRepo.findOne({ where: { dataSource } })
     const payload: Partial<GroupStandingEntity> = {

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ModuleRef } from '@nestjs/core'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Not, Repository } from 'typeorm'
 import { BsdcBusinessService } from './bsd.business.service'
 import { getPlayerChineseName } from '../../utils/player-translate'
 import { translateTeamName } from './team-translate'
@@ -639,6 +639,11 @@ export class BsdcSyncService {
         } catch (e) {
           this.logger.warn(`upsert event ${bsEvent.id} failed: ${(e as Error).message}`)
         }
+      }
+      // 清理非世界杯赛事（BSD API 返回了所有联赛，upsertMatch 已过滤非世界杯赛事，但数据库中的旧数据需要清理）
+      const deletedCount = await this.matchRepo.delete({ leagueId: Not(WORLD_CUP_LEAGUE_ID) })
+      if (deletedCount.affected > 0) {
+        this.logger.log(`syncEvents: 清理 ${deletedCount.affected} 条非世界杯赛事`)
       }
       this.recordRun('events', started, true, `+${created}/~${updated}`)
     } catch (error) {

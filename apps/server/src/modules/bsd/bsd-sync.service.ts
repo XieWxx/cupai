@@ -619,19 +619,31 @@ export class BsdcSyncService {
       fromDate.setDate(fromDate.getDate() - 1)
       const toDate = new Date()
       toDate.setDate(toDate.getDate() + 30)
-      const events = await this.bsdService.getEvents({
-        date_from: fromDate.toISOString().split('T')[0],
-        date_to: toDate.toISOString().split('T')[0],
-        limit: 200,
-        league_id: 27, // 只同步 2026 世界杯
-      })
+
+      // BSD /api/events/ 不支持 league_id 过滤，需要分页获取所有赛事后在本地过滤
+      // 世界杯 48 队 6 组（新赛制 12 组），赛事约 100+ 场，需要分页拉取
+      const allEvents: BsEvent[] = []
+      let offset = 0
+      const pageSize = 200
+      while (true) {
+        const events = await this.bsdService.getEvents({
+          date_from: fromDate.toISOString().split('T')[0],
+          date_to: toDate.toISOString().split('T')[0],
+          limit: pageSize,
+          offset,
+        })
+        const batch = events.results ?? []
+        allEvents.push(...batch)
+        if (batch.length < pageSize) break
+        offset += pageSize
+      }
 
       // 联赛 ID → 联赛名称
       const leagueNameMap = await this.buildLeagueNameMap()
       // 球队 ID → 实体
       const teamCache = new Map<number, TeamEntity>()
 
-      for (const bsEvent of (events.results ?? [])) {
+      for (const bsEvent of allEvents) {
         try {
           const result = await this.upsertMatch(bsEvent, leagueNameMap, teamCache)
           if (result === 'created') created++

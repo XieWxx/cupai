@@ -1831,19 +1831,47 @@ export class BsdcSyncService {
       newTeam.dataSourceUrl = `https://sports.bzzoiro.com/api/v2/teams/${bsdId}/`
       newTeam.lastSyncedAt = new Date()
       team = await this.teamRepo.save(newTeam)
-    } else if (team.countryCode === 'INT') {
-      // 已有但 country 为默认值，尝试补充
-      try {
-        const detail = (await this.bsdService.getTeamDetail(bsdId)) as { country?: string; logo?: string }
-        if (detail?.country) {
-          team.countryCode = countryToIso(detail.country)
-          team.country = detail.country
-          if (detail.logo) team.logo = detail.logo
+    } else {
+      // 已有球队，检查并修正无效队名（Team-XXXX 格式）
+      const currentNameEn = team.nameEn || ''
+      const needsFix = currentNameEn.startsWith('Team-')
+      if (needsFix || team.countryCode === 'INT') {
+        try {
+          const detail = await this.bsdService.getTeamDetail(bsdId) as {
+            name?: string
+            country?: string
+            logo?: string
+            is_national?: boolean
+            venue_name?: string
+            founded?: number
+            short_name?: string
+          }
+          if (detail?.country && team.countryCode === 'INT') {
+            team.countryCode = countryToIso(detail.country)
+            team.country = detail.country
+          }
+          if (detail?.logo) team.logo = detail.logo
+          if (detail?.is_national != null) team.isNational = detail.is_national
+          if (detail?.venue_name) team.venueName = detail.venue_name
+          if (detail?.founded) team.founded = detail.founded
+          if (detail?.short_name) team.shortName = detail.short_name
+          // 修正无效队名
+          if (needsFix && detail?.name) {
+            const safeName = detail.name.toString().trim()
+            team.name = translateTeamName(safeName) || safeName
+            team.nameEn = safeName
+            team.nameJa = translateTeamNameTo(safeName, 'ja') || null
+            team.nameKo = translateTeamNameTo(safeName, 'ko') || null
+            team.nameEs = translateTeamNameTo(safeName, 'es') || null
+            team.nameFr = translateTeamNameTo(safeName, 'fr') || null
+            team.namePt = translateTeamNameTo(safeName, 'pt') || null
+            team.nameAr = translateTeamNameTo(safeName, 'ar') || null
+          }
           team.lastSyncedAt = new Date()
           await this.teamRepo.save(team)
+        } catch {
+          /* ignore */
         }
-      } catch {
-        /* ignore */
       }
     }
     cache?.set(bsdId, team)

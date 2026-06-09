@@ -1666,6 +1666,8 @@ async function loadDimensionReports(matchId: string) {
 
 // ========== 维度数据定时轮询（Agent 回调后前端自动刷新） ==========
 let dimensionPollTimer: ReturnType<typeof setInterval> | null = null
+/** 比赛时长自动更新定时器 */
+let matchMinuteTimer: ReturnType<typeof setInterval> | null = null
 
 /** 启动维度数据轮询（每 15 秒刷新一次） */
 function startDimensionPoll(matchId: string) {
@@ -1696,6 +1698,37 @@ function stopDimensionPoll() {
   if (dimensionPollTimer) {
     clearInterval(dimensionPollTimer)
     dimensionPollTimer = null
+  }
+}
+
+/** 启动比赛时长自动更新（每60秒校准一次） */
+function startMatchMinutePoll(matchId: string) {
+  stopMatchMinutePoll()
+  if (match.value?.status !== 'live') return
+  matchMinuteTimer = setInterval(async () => {
+    try {
+      const data = await matchStore.fetchMatchDetail(matchId) as any
+      if (data && match.value) {
+        // 仅更新实时相关字段，避免覆盖用户正在查看的其他数据
+        if (data.currentMinute !== undefined) match.value.currentMinute = data.currentMinute
+        if (data.period !== undefined) match.value.period = data.period
+        if (data.homeScore !== undefined) match.value.homeScore = data.homeScore
+        if (data.awayScore !== undefined) match.value.awayScore = data.awayScore
+        if (data.status !== undefined) match.value.status = data.status
+        // 赛事结束则停止轮询
+        if (data.status !== 'live') stopMatchMinutePoll()
+      }
+    } catch {
+      // 静默失败，下次轮询重试
+    }
+  }, 60000) // 每60秒
+}
+
+/** 停止比赛时长轮询 */
+function stopMatchMinutePoll() {
+  if (matchMinuteTimer) {
+    clearInterval(matchMinuteTimer)
+    matchMinuteTimer = null
   }
 }
 
@@ -2262,6 +2295,7 @@ async function loadDetail() {
   unsubscribe?.()
   unsubscribe = null
   stopDimensionPoll()
+  stopMatchMinutePoll()
   match.value = null
   matchSentiment.value = null
   // prediction 是 computed，不需要手动清空
@@ -2278,13 +2312,20 @@ async function loadDetail() {
     }
 
     // WebSocket 实时订阅
+    // 后端 MatchGateway 推送事件名：match:update / match:score / match:status
+    // 数据格式：{ matchId, ...变更字段, timestamp }
     unsubscribe = subscribeMatch(matchId, (wsData: any) => {
       if (!match.value) return
-      if (wsData.type === 'live_update') {
-        if (wsData.homeScore !== undefined) match.value.homeScore = wsData.homeScore
-        if (wsData.awayScore !== undefined) match.value.awayScore = wsData.awayScore
-      } else if (wsData.type === 'match:update') {
-        Object.assign(match.value, wsData)
+      // 仅更新实时相关字段，避免覆盖用户正在查看的其他数据
+      if (wsData.currentMinute !== undefined) match.value.currentMinute = wsData.currentMinute
+      if (wsData.period !== undefined) match.value.period = wsData.period
+      if (wsData.homeScore !== undefined) match.value.homeScore = wsData.homeScore
+      if (wsData.awayScore !== undefined) match.value.awayScore = wsData.awayScore
+      if (wsData.status !== undefined) {
+        match.value.status = wsData.status
+        // 赛事状态变化时：live→finished 停止轮询；upcoming→live 启动分钟轮询
+        if (wsData.status === 'finished') stopMatchMinutePoll()
+        if (wsData.status === 'live') startMatchMinutePoll(matchId)
       }
     })
 
@@ -2298,6 +2339,7 @@ async function loadDetail() {
     loadPlayers()
     loadDimensionReports(matchId)
     startDimensionPoll(matchId)
+    startMatchMinutePoll(matchId)
     loadInstructions(matchId)
     loadUserRanking()
     fetchExtendedData(matchId)
@@ -2432,6 +2474,7 @@ onUnmounted(() => {
   unsubscribe?.()
   unsubscribe = null
   stopDimensionPoll()
+  stopMatchMinutePoll()
   sentimentChart?.dispose()
   sentimentChart = null
   distributionChart?.dispose()

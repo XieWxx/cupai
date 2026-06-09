@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { ModuleRef } from '@nestjs/core'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { BsdcBusinessService } from './bsd.business.service'
@@ -13,6 +14,7 @@ import { EventOddsEntity } from '../match/entities/event-odds.entity'
 import { EventStatsEntity } from '../match/entities/event-stats.entity'
 import { EventPredictionEntity } from '../match/entities/event-prediction.entity'
 import { PlayerEntity } from '../match/entities/player.entity'
+import { MatchGateway } from '../match/match.gateway'
 import {
   BsEvent,
   BsLineupSide,
@@ -427,6 +429,7 @@ export class BsdcSyncService {
 
   constructor(
     private readonly bsdService: BsdcBusinessService,
+    private readonly moduleRef: ModuleRef,
     @InjectRepository(MatchEntity) private readonly matchRepo: Repository<MatchEntity>,
     @InjectRepository(TeamEntity) private readonly teamRepo: Repository<TeamEntity>,
     @InjectRepository(GroupStandingEntity) private readonly standingRepo: Repository<GroupStandingEntity>,
@@ -438,6 +441,19 @@ export class BsdcSyncService {
     @InjectRepository(EventPredictionEntity) private readonly predictionRepo: Repository<EventPredictionEntity>,
     @InjectRepository(PlayerEntity) private readonly playerRepo: Repository<PlayerEntity>,
   ) {}
+
+  /**
+   * 获取 MatchGateway 实例（延迟获取，避免循环依赖）
+   * 使用 ModuleRef 动态解析，因为 BsdcModule 是 @Global() 而 MatchGateway 在 MatchModule 中
+   */
+  private getMatchGateway(): MatchGateway | null {
+    try {
+      return this.moduleRef.get(MatchGateway, { strict: false })
+    } catch {
+      // MatchGateway 可能尚未初始化（极少见），静默处理
+      return null
+    }
+  }
 
   // ==================== 调度器辅助 ====================
 
@@ -679,6 +695,26 @@ export class BsdcSyncService {
           try { await this.syncRefereeForMatch(match) } catch { /* ignore */ }
         }
         await this.matchRepo.save(match)
+
+        // 通过 WebSocket 推送实时更新给前端订阅者
+        const gateway = this.getMatchGateway()
+        if (gateway) {
+          try {
+            gateway.broadcastMatchUpdate(match.id, {
+              status: match.status,
+              period: match.period,
+              currentMinute: match.currentMinute,
+              homeScore: match.homeScore,
+              awayScore: match.awayScore,
+            })
+            // 状态变化时额外推送状态变更事件
+            if (prevStatus !== match.status) {
+              gateway.broadcastMatchStatusChange(match.id, match.status)
+            }
+          } catch (e) {
+            this.logger.warn(`WebSocket push for match ${match.id} failed: ${(e as Error).message}`)
+          }
+        }
 
         // 仅在状态变化或首次进入 live 时同步子数据（避免每5秒重复请求）
         const statusChanged = prevStatus !== match.status || prevBsStatus !== match.bsStatus

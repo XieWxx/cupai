@@ -242,6 +242,54 @@ GET ${apiBase}/matches/{matchId}/prediction
 
 返回：\`{ homeWin, draw, awayWin, reasoning, source }\`（无数据时返回 null）
 
+### 获取赛事事件流
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/incidents
+\`\`\`
+
+返回：进球/红黄牌/换人/VAR等事件列表
+
+### 获取赛事统计数据
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/stats
+\`\`\`
+
+返回：射门/控球/传球/xG/shotmap/momentum等
+
+### 获取赛事赔率
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/odds
+\`\`\`
+
+返回：胜平负/大小球/双方进球等赔率
+
+### 获取赛事预测（AI）
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/predictions
+\`\`\`
+
+返回：AI预测胜率/预期进球/推荐
+
+### 获取交锋记录
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/h2h
+\`\`\`
+
+返回：历史交锋数据
+
+### 获取球员统计
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/player-stats
+\`\`\`
+
+返回：单场球员统计（评分/射门/传球/铲球等）
+
 ## 二、21 维度分析规则
 
 Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出概率分布和首选结论。
@@ -252,20 +300,20 @@ Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出�
 |--------|---------|---------|
 | \`result_wdl\` | 胜负平 | home / draw / away |
 | \`result_total_goals\` | 全场总进球档位 | 0 / 1 / 2 / 3 / 4+ |
-| \`result_half_full\` | 半全场结果 | HH / HD / HA / DH / DD / DA / AH / AD / AA |
+| \`result_half_full\` | 半全场结果 | HW / HD / HL / DW / DD / DL / LW / LD / LL |
 | \`result_exact_score\` | 精确比分 | 如 "2:1" |
 
 ### 进球细节（8 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`goal_first_half\` | 上半场进球数 | 0 / 1 / 2 / 3+ |
-| \`goal_first\` | 首球方 | home / away / none |
-| \`goal_last\` | 末球方 | home / away / none |
+| \`goal_first_half\` | 上半场有无进球 | yes / no |
+| \`goal_first\` | 首球方 | home / away / noGoal |
+| \`goal_last\` | 末球方 | home / away / noGoal |
 | \`goal_own\` | 是否有乌龙球 | yes / no |
-| \`goal_player_score\` | 进球球员 | 球员名（从阵容中选取） |
+| \`goal_player_score\` | 指定球员能否破门 | score / noScore |
 | \`goal_stoppage\` | 伤停补时进球 | yes / no |
-| \`goal_clean_sheet\` | 零封 | home / away / both / none |
+| \`goal_clean_sheet\` | 单队零封 | homeClean / awayClean / bothConcede |
 | \`goal_odd_even\` | 总进球奇偶 | odd / even |
 
 ### 判罚（3 维度）
@@ -274,23 +322,47 @@ Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出�
 |--------|---------|---------|
 | \`penalty_awarded\` | 是否有点球 | yes / no |
 | \`penalty_var_cancel\` | VAR 取消进球 | yes / no |
-| \`penalty_knockout_extra\` | 是否进入加时/点球 | regular / extra / penalties |
+| \`penalty_knockout_extra\` | 淘汰赛加时/点球 | extra / shootout / noExtra |
 
 ### 犯规（3 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
 | \`card_red\` | 是否有红牌 | yes / no |
-| \`card_yellow_total\` | 黄牌总数 | 0 / 1-2 / 3-4 / 5+ |
-| \`card_yellow_compare\` | 黄牌对比 | home_more / away_more / equal |
+| \`card_yellow_total\` | 黄牌总数 | 0 / 1-2 / 3+ |
+| \`card_yellow_compare\` | 黄牌对比 | homeMore / awayMore / equal |
 
 ### 边角趣味数据（3 维度）
 
 | dimKey | 分析维度 | 可选结论 |
 |--------|---------|---------|
-| \`corner_total\` | 角球总数 | 0-4 / 5-8 / 9-12 / 13+ |
+| \`corner_total\` | 角球总数 | 0-3 / 4-6 / 7+ |
 | \`corner_freekick_goal\` | 定位球进球 | yes / no |
-| \`corner_substitutions\` | 换人次数 | 0-3 / 4-6 / 7+ |
+| \`corner_substitutions\` | 两队换人次数 | homeMore / awayMore / equal |
+
+## 分析规则
+
+每个维度的分析需遵循以下规则：
+
+### 数据来源优先级
+1. **实时数据**（最高优先级）：通过上述 API 获取的赛事实时数据（比分/统计/事件流）
+2. **历史数据**：球队/球员的赛季统计数据
+3. **预测数据**：系统生成的启发式预测（仅作参考）
+4. **舆情数据**：社交媒体情绪分析（辅助参考）
+
+### 处理流程
+1. 调用对应 API 获取赛事基础数据（赛事详情 + 阵容）
+2. 获取补充数据（统计/赔率/预测/交锋记录，按需）
+3. 基于数据推理各维度结论，给出概率分布
+4. 概率分布必须合计 100%（或 1.0）
+5. 首选结论的置信度不得低于 30%
+
+### 验证机制
+1. **概率归一化**：所有维度 distribution 的概率之和必须等于 1.0（±0.01 容差）
+2. **选项一致性**：topOption 必须是 distribution 中概率最高的选项
+3. **置信度校验**：topProbability 必须等于 distribution[topOption] 的值
+4. **摘要完整性**：summary 字段不得为空，且字数在 50-500 之间
+5. **dimKey 校验**：dimKey 必须是上述 21 个维度之一
 
 ## 三、回调接口
 
@@ -454,6 +526,54 @@ GET ${apiBase}/matches/{matchId}/prediction
 
 Returns: \`{ homeWin, draw, awayWin, reasoning, source }\` (null if no data)
 
+### Get Match Incidents
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/incidents
+\`\`\`
+
+Returns: goals/red cards/substitutions/VAR events list
+
+### Get Match Statistics
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/stats
+\`\`\`
+
+Returns: shots/possession/passing/xG/shotmap/momentum etc.
+
+### Get Match Odds
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/odds
+\`\`\`
+
+Returns: win/draw/loss/over-under/both-teams-to-score odds
+
+### Get Match Predictions (AI)
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/predictions
+\`\`\`
+
+Returns: AI predicted win rates/expected goals/recommendations
+
+### Get Head-to-Head Records
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/h2h
+\`\`\`
+
+Returns: historical head-to-head data
+
+### Get Player Statistics
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/player-stats
+\`\`\`
+
+Returns: per-player stats (rating/shots/passing/tackles etc.)
+
 ## 2. 21-Dimension Analysis Rules
 
 Agents analyze 21 dimensions across 5 categories, outputting probability distributions and top conclusions.
@@ -464,20 +584,20 @@ Agents analyze 21 dimensions across 5 categories, outputting probability distrib
 |--------|-----------|---------|
 | \`result_wdl\` | Win/Draw/Loss | home / draw / away |
 | \`result_total_goals\` | Total goals range | 0 / 1 / 2 / 3 / 4+ |
-| \`result_half_full\` | Half-time/Full-time | HH / HD / HA / DH / DD / DA / AH / AD / AA |
+| \`result_half_full\` | Half-time/Full-time | HW / HD / HL / DW / DD / DL / LW / LD / LL |
 | \`result_exact_score\` | Exact score | e.g. "2:1" |
 
 ### Goal Details (8 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`goal_first_half\` | First half goals | 0 / 1 / 2 / 3+ |
-| \`goal_first\` | First goal team | home / away / none |
-| \`goal_last\` | Last goal team | home / away / none |
+| \`goal_first_half\` | First half goal | yes / no |
+| \`goal_first\` | First goal team | home / away / noGoal |
+| \`goal_last\` | Last goal team | home / away / noGoal |
 | \`goal_own\` | Own goal | yes / no |
-| \`goal_player_score\` | Goal scorer | Player name (from lineup) |
+| \`goal_player_score\` | Player scoring | score / noScore |
 | \`goal_stoppage\` | Stoppage time goal | yes / no |
-| \`goal_clean_sheet\` | Clean sheet | home / away / both / none |
+| \`goal_clean_sheet\` | Clean sheet | homeClean / awayClean / bothConcede |
 | \`goal_odd_even\` | Total goals odd/even | odd / even |
 
 ### Penalties & VAR (3 dimensions)
@@ -486,23 +606,47 @@ Agents analyze 21 dimensions across 5 categories, outputting probability distrib
 |--------|-----------|---------|
 | \`penalty_awarded\` | Penalty awarded | yes / no |
 | \`penalty_var_cancel\` | VAR goal cancel | yes / no |
-| \`penalty_knockout_extra\` | Extra time/penalties | regular / extra / penalties |
+| \`penalty_knockout_extra\` | Extra time/shootout | extra / shootout / noExtra |
 
 ### Cards & Fouls (3 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
 | \`card_red\` | Red card | yes / no |
-| \`card_yellow_total\` | Total yellow cards | 0 / 1-2 / 3-4 / 5+ |
-| \`card_yellow_compare\` | Yellow card compare | home_more / away_more / equal |
+| \`card_yellow_total\` | Total yellow cards | 0 / 1-2 / 3+ |
+| \`card_yellow_compare\` | Yellow card compare | homeMore / awayMore / equal |
 
 ### Fun Stats (3 dimensions)
 
 | dimKey | Dimension | Options |
 |--------|-----------|---------|
-| \`corner_total\` | Total corners | 0-4 / 5-8 / 9-12 / 13+ |
+| \`corner_total\` | Total corners | 0-3 / 4-6 / 7+ |
 | \`corner_freekick_goal\` | Set piece goal | yes / no |
-| \`corner_substitutions\` | Substitutions | 0-3 / 4-6 / 7+ |
+| \`corner_substitutions\` | Substitution compare | homeMore / awayMore / equal |
+
+## Analysis Rules
+
+Each dimension analysis must follow these rules:
+
+### Data Source Priority
+1. **Live data** (highest priority): real-time match data via the APIs above (scores/stats/incidents)
+2. **Historical data**: team/player season statistics
+3. **Prediction data**: system-generated heuristic predictions (reference only)
+4. **Sentiment data**: social media sentiment analysis (supplementary reference)
+
+### Processing Flow
+1. Call the corresponding API to get match base data (match details + lineups)
+2. Get supplementary data (stats/odds/predictions/h2h, as needed)
+3. Reason about each dimension based on data, output probability distribution
+4. Probability distribution must sum to 100% (or 1.0)
+5. Top conclusion confidence must not be lower than 30%
+
+### Validation Mechanism
+1. **Probability normalization**: sum of all distribution probabilities must equal 1.0 (±0.01 tolerance)
+2. **Option consistency**: topOption must be the option with the highest probability in distribution
+3. **Confidence check**: topProbability must equal distribution[topOption]
+4. **Summary completeness**: summary field must not be empty, and word count between 50-500
+5. **dimKey validation**: dimKey must be one of the 21 dimensions above
 
 ## 3. Callback Endpoints
 

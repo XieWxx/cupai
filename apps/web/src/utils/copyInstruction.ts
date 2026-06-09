@@ -449,13 +449,7 @@ function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, _quest
     ? [
         `- 整体情绪：${(input.sentiment.overall * 100).toFixed(0)} 分（-100 极度负面，+100 极度正面）`,
         `- 分布：正面 ${(input.sentiment.positiveRatio * 100).toFixed(0)}% / 中性 ${(input.sentiment.neutralRatio * 100).toFixed(0)}% / 负面 ${(input.sentiment.negativeRatio * 100).toFixed(0)}%`,
-        input.sentiment.positiveKeywords?.length
-          ? `- 正面关键词：${input.sentiment.positiveKeywords.slice(0, 5).map((k) => `${k.word}(${k.count})`).join('、')}`
-          : '',
-        input.sentiment.negativeKeywords?.length
-          ? `- 负面关键词：${input.sentiment.negativeKeywords.slice(0, 5).map((k) => `${k.word}(${k.count})`).join('、')}`
-          : '',
-      ].filter(Boolean).join('\n')
+      ].join('\n')
     : '_舆情数据缺失_'
 
   const predictionText = input.prediction
@@ -463,12 +457,13 @@ function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, _quest
         `- 主队胜：${(input.prediction.homeWin * 100).toFixed(1)}%`,
         `- 平局：${(input.prediction.draw * 100).toFixed(1)}%`,
         `- 客队胜：${(input.prediction.awayWin * 100).toFixed(1)}%`,
-        `- 依据：${input.prediction.reasoning}`,
       ].join('\n')
     : '_本地预测未生成_'
 
   const parts: string[] = [
     `# 单维度分析 · ${dimTitle}`,
+    '',
+    `> 详细数据可通过 skill.md API 获取，或由系统自动获取。以下为关键数据摘要。`,
     '',
     `> 本场赛事：**${m.homeTeam?.name || '主队'} VS ${m.awayTeam?.name || '客队'}**`,
     '',
@@ -524,7 +519,8 @@ function buildReturnGuidance(input: CopyInstructionInput, dimKey: string): strin
 
 ## 回传指引
 
-> 完整接入文档：${skillMdUrl}
+> **完整接入文档**：${skillMdUrl}
+> 包含所有 API 端点、维度定义、分析规则与验证机制。
 
 完成分析后，请将结果回传至 CupAI：
 
@@ -618,40 +614,42 @@ export function buildDimensionInstruction(
 // ============================================================
 
 /**
- * 28+ 维度分析规则（用户给 AI 的指令核心）
+ * 21 维度分析规则（精简版，详细规则见 skill.md）
  */
 const ANALYSIS_RULES = `## 分析维度（请逐项输出结论）
 
+> 完整的维度定义、选项说明、数据来源优先级、处理流程与验证机制，请参考 skill.md 中的"分析规则"章节。
+
 ### （一）赛果比分板块
-1. **全场胜平负**：主队胜 / 平局 / 客队胜 — 给出概率估计（如 55% / 25% / 20%）
-2. **全场总进球档位**：0 球 / 1 球 / 2 球 / 3 球 / 4 球及以上 — 给出每个档位的概率
-3. **半全场结果**：上半场赛果 + 全场赛果组合（如 胜/胜、平/胜、负/平...）
-4. **精准比分**（高难度大奖项）：列出最可能的 3 个比分及各自概率
+1. **全场胜平负**（result_wdl）：home / draw / away
+2. **全场总进球档位**（result_total_goals）：0 / 1 / 2 / 3 / 4+
+3. **半全场结果**（result_half_full）：HW / HD / HL / DW / DD / DL / LW / LD / LL
+4. **精准比分**（result_exact_score）：列出最可能的 3 个比分及各自概率
 
 ### （二）进球细节板块
-5. **上半场有无进球**：有 / 无
-6. **首球归属**：主队 / 客队 / 全场无进球
-7. **末球归属**：主队 / 客队 / 全场无进球
-8. **是否出现乌龙球**：是 / 否
-9. **指定球员能否破门**：依据球员赛季进球数和出场情况评估
-10. **补时阶段能否产生进球**：是 / 否（参考裁判风格和两队体能）
-11. **单队零封**：主队零封 / 客队零封 / 两队都有丢球
-12. **全场进球总数单数 / 双数**：单 / 双
+5. **上半场有无进球**（goal_first_half）：yes / no
+6. **首球归属**（goal_first）：home / away / noGoal
+7. **末球归属**（goal_last）：home / away / noGoal
+8. **是否出现乌龙球**（goal_own）：yes / no
+9. **指定球员能否破门**（goal_player_score）：score / noScore
+10. **补时阶段能否产生进球**（goal_stoppage）：yes / no
+11. **单队零封**（goal_clean_sheet）：homeClean / awayClean / bothConcede
+12. **全场进球总数单/双**（goal_odd_even）：odd / even
 
 ### （三）点球、VAR、判罚板块
-13. **常规比赛是否判罚点球**（不含点球大战）：是 / 否
-14. **是否出现进球被 VAR 取消**：是 / 否
-15. **淘汰赛专属**：常规时间打平进加时？加时仍平进点球大战？给出概率
+13. **常规比赛是否判罚点球**（penalty_awarded）：yes / no
+14. **是否出现进球被 VAR 取消**（penalty_var_cancel）：yes / no
+15. **淘汰赛加时/点球**（penalty_knockout_extra）：extra / shootout / noExtra
 
 ### （四）红黄牌、犯规板块
-16. **全场是否出现红牌**：是 / 否
-17. **黄牌总量**：0 张 / 1～2 张 / 3 张及以上
-18. **两队黄牌数量**：主队多 / 客队多 / 持平
+16. **全场是否出现红牌**（card_red）：yes / no
+17. **黄牌总量**（card_yellow_total）：0 / 1-2 / 3+
+18. **两队黄牌数量**（card_yellow_compare）：homeMore / awayMore / equal
 
 ### （五）边角趣味数据板块
-19. **全场角球总数档位**：0-3 / 4-6 / 7 及以上
-20. **有无任意球直接得分**：是 / 否
-21. **两队换人次数**：主队换人多 / 客队换人多 / 次数相同
+19. **全场角球总数档位**（corner_total）：0-3 / 4-6 / 7+
+20. **有无任意球直接得分**（corner_freekick_goal）：yes / no
+21. **两队换人次数**（corner_substitutions）：homeMore / awayMore / equal
 
 ## 输出格式要求
 
@@ -679,13 +677,7 @@ export function buildMatchInstruction(input: CopyInstructionInput): string {
     ? [
         `- **整体情绪**：${(input.sentiment.overall * 100).toFixed(0)} 分（-100 极度负面，+100 极度正面）`,
         `- **分布**：正面 ${(input.sentiment.positiveRatio * 100).toFixed(0)}% / 中性 ${(input.sentiment.neutralRatio * 100).toFixed(0)}% / 负面 ${(input.sentiment.negativeRatio * 100).toFixed(0)}%`,
-        input.sentiment.positiveKeywords?.length
-          ? `- **正面关键词**：${input.sentiment.positiveKeywords.slice(0, 5).map((k) => `${k.word}(${k.count})`).join('、')}`
-          : '',
-        input.sentiment.negativeKeywords?.length
-          ? `- **负面关键词**：${input.sentiment.negativeKeywords.slice(0, 5).map((k) => `${k.word}(${k.count})`).join('、')}`
-          : '',
-      ].filter(Boolean).join('\n')
+      ].join('\n')
     : '_舆情数据缺失_'
 
   const predictionText = input.prediction
@@ -693,13 +685,13 @@ export function buildMatchInstruction(input: CopyInstructionInput): string {
         `- **主队胜**：${(input.prediction.homeWin * 100).toFixed(1)}%`,
         `- **平局**：${(input.prediction.draw * 100).toFixed(1)}%`,
         `- **客队胜**：${(input.prediction.awayWin * 100).toFixed(1)}%`,
-        `- **依据**：${input.prediction.reasoning}`,
-        `- **来源**：${input.prediction.source}`,
       ].join('\n')
     : '_本地预测未生成_'
 
   const parts: string[] = [
     `# 赛事分析请求 · ${m.homeTeam?.name || '主队'} VS ${m.awayTeam?.name || '客队'}`,
+    '',
+    '> 详细数据可通过 skill.md API 获取，或由系统自动获取。以下为关键数据摘要。',
     '',
     '> 请扮演专业的足球赛事分析师，**严格按照下方 21 维度逐项分析**，并使用 Markdown 格式输出报告。',
     '',

@@ -63,7 +63,7 @@ export class BsdcBusinessService {
   // ==================== 联赛相关 ====================
 
   /** 获取所有联赛（v2：包含 is_active / is_current_season 字段） */
-  async getLeagues(params?: { limit?: number; offset?: number }): Promise<BsPaginated<BsLeague>> {
+  async getLeagues(params?: { limit?: number; offset?: number; league_id?: number }): Promise<BsPaginated<BsLeague>> {
     return this.bsdc.get<BsPaginated<BsLeague>>('/api/v2/leagues/', params)
   }
 

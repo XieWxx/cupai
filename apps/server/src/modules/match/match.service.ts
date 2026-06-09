@@ -84,17 +84,21 @@ export class MatchService {
   async getMatchDynamics(limit = 6) {
     const now = new Date()
 
-    // 进行中：status=live，按 startTime 升序
+    // 进行中：status=live，按 startTime 升序，仅返回 2026 世界杯数据
     const live = await this.matchRepo
       .createQueryBuilder('m')
       .leftJoinAndSelect('m.homeTeam', 'homeTeam')
       .leftJoinAndSelect('m.awayTeam', 'awayTeam')
       .where('m.status = :status', { status: 'live' })
+      .andWhere('(m.leagueId = :leagueId OR m.leagueName LIKE :wc)', {
+        leagueId: 27,
+        wc: '%World Cup%',
+      })
       .orderBy('m.startTime', 'ASC')
       .take(limit)
       .getMany()
 
-    // 待开赛：status=upcoming 且 startTime 在 [now, now+30天]
+    // 待开赛：status=upcoming 且 startTime 在 [now, now+30天]，仅返回 2026 世界杯数据
     // 时间窗拉到 30 天确保能展示近期比赛；首页按开球时间升序
     const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
     const upcoming = await this.matchRepo
@@ -103,11 +107,15 @@ export class MatchService {
       .leftJoinAndSelect('m.awayTeam', 'awayTeam')
       .where('m.status = :status', { status: 'upcoming' })
       .andWhere('m.startTime BETWEEN :now AND :nextMonth', { now, nextMonth })
+      .andWhere('(m.leagueId = :leagueId OR m.leagueName LIKE :wc)', {
+        leagueId: 27,
+        wc: '%World Cup%',
+      })
       .orderBy('m.startTime', 'ASC')
       .take(limit)
       .getMany()
 
-    // 兜底：若 7 天内没有待开赛，回退展示任意 upcoming 比赛（不限时间窗）
+    // 兜底：若 7 天内没有待开赛，回退展示任意 upcoming 比赛（仅 2026 世界杯）
     // 这样可保证首页"待开赛"模块始终有内容
     if (upcoming.length === 0) {
       const fallback = await this.matchRepo
@@ -115,6 +123,10 @@ export class MatchService {
         .leftJoinAndSelect('m.homeTeam', 'homeTeam')
         .leftJoinAndSelect('m.awayTeam', 'awayTeam')
         .where('m.status = :status', { status: 'upcoming' })
+        .andWhere('(m.leagueId = :leagueId OR m.leagueName LIKE :wc)', {
+          leagueId: 27,
+          wc: '%World Cup%',
+        })
         .orderBy('m.startTime', 'ASC')
         .take(limit)
         .getMany()
@@ -135,6 +147,13 @@ export class MatchService {
       .orderBy('match.startTime', 'ASC')
 
     if (mappedStatus) query.andWhere('match.status = :status', { status: mappedStatus })
+
+    // 仅返回 2026 世界杯数据
+    query.andWhere('(match.leagueId = :leagueId OR match.leagueName LIKE :wc OR match.leagueName LIKE :wcCn)', {
+      leagueId: 27,
+      wc: '%World Cup%',
+      wcCn: '%世界杯%',
+    })
 
     const [list, total] = await query
       .skip((page - 1) * pageSize)

@@ -107,7 +107,7 @@ function getProgressColor(pct: number): string {
 
 async function loadStandings() {
   try {
-    const res: any = await http.get('/match/standings')
+    const res: any = await http.get('/match/standings', { params: { leagueId: 27 } })
     if (selectedGroup.value) {
       standings.groups = { [selectedGroup.value]: res.groups?.[selectedGroup.value] || [] }
     } else {
@@ -138,7 +138,7 @@ async function loadAdvance(group: string) {
 
 onMounted(async () => {
   try {
-    const res: any = await http.get('/match/standings')
+    const res: any = await http.get('/match/standings', { params: { leagueId: 27 } })
     groups.value = Object.keys(res.groups || {})
     standings.groups = res.groups || {}
   } catch (err) {

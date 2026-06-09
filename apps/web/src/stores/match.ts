@@ -19,8 +19,9 @@ export const useMatchStore = defineStore('match', () => {
 
   /**
    * 获取赛事列表
+   * @param params 查询参数：status=状态, stage=阶段, leagueId=联赛ID, page=页码, pageSize=每页条数
    */
-  async function fetchMatches(params?: { status?: string; stage?: string; page?: number; pageSize?: number }) {
+  async function fetchMatches(params?: { status?: string; stage?: string; leagueId?: number; page?: number; pageSize?: number }) {
     loading.value = true
     try {
       const res = await http.get<{ list: any[]; total: number }>('/match', { params })

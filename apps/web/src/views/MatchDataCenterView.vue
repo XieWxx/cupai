@@ -90,7 +90,7 @@ async function loadStandings() {
 async function loadMatches() {
   loading.matches = true
   try {
-    const allRes: any = await matchStore.fetchMatches({ pageSize: 200 })
+    const allRes: any = await matchStore.fetchMatches({ pageSize: 200, leagueId: 27 })
     const allList = allRes?.list || []
 
     // 保存全部比赛（供赛程 tab 使用）

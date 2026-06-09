@@ -620,6 +620,7 @@ export class BsdcSyncService {
         date_from: fromDate.toISOString().split('T')[0],
         date_to: toDate.toISOString().split('T')[0],
         limit: 200,
+        league_id: 27, // 只同步 2026 世界杯
       })
 
       // 联赛 ID → 联赛名称
@@ -655,7 +656,7 @@ export class BsdcSyncService {
     let updated = 0
     let liveCount = 0
     try {
-      const live = await this.bsdService.getLiveEvents({})
+      const live = await this.bsdService.getLiveEvents({ league_id: 27 }) // 只同步 2026 世界杯
       // v2 live 端点返回结构是 { count, events }，无分页
       for (const bsEvent of (live.events ?? [])) {
         liveCount++
@@ -970,7 +971,7 @@ export class BsdcSyncService {
     let leagues = 0
     let rows = 0
     try {
-      const leaguesList = await this.bsdService.getLeagues({ limit: 200 })
+      const leaguesList = await this.bsdService.getLeagues({ limit: 200, league_id: 27 }) // 只同步 2026 世界杯
       for (const league of (leaguesList.results ?? [])) {
         if (!league.is_active) continue
         try {

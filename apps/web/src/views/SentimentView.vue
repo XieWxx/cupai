@@ -103,7 +103,7 @@
           <div class="team-ranking">
             <div v-for="(team, idx) in teamRanking" :key="team.id" class="team-item">
               <span class="team-rank">{{ idx + 1 }}</span>
-              <span class="team-name">{{ team.name }}</span>
+              <span class="team-name">{{ getTeamName({ name: team.name }) }}</span>
               <span class="team-score" :style="{ color: getScoreColor(team.avgScore) }">
                 {{ formatScore(team.avgScore) }}
               </span>
@@ -144,7 +144,9 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import { http } from '@/api/request'
 import { useI18n } from 'vue-i18n'
+import { useTeamName } from '@/composables/useTeamName'
 const { t, locale: i18nLocale } = useI18n()
+const { getTeamName } = useTeamName()
 
 const overview = ref<any>({})
 const timeline = ref<any[]>([])

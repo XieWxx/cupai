@@ -34,7 +34,7 @@
             </template>
           </el-table-column>
           <el-table-column :label="$t('standings.team')" min-width="120">
-            <template #default="{ row }">{{ row.team?.name || $t('standings.unknown') }}</template>
+            <template #default="{ row }">{{ getTeamName(row.team) || $t('standings.unknown') }}</template>
           </el-table-column>
           <el-table-column prop="played" :label="$t('standings.played')" width="50" align="center" />
           <el-table-column prop="wins" :label="$t('standings.won')" width="50" align="center" />
@@ -92,6 +92,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { http } from '@/api/request'
+import { useTeamName } from '@/composables/useTeamName'
+
+const { getTeamName } = useTeamName()
 
 const selectedGroup = ref('')
 const showAdvanceDialog = ref(false)

@@ -88,14 +88,14 @@
               <div class="match-teams">
                 <div class="team-info">
                   <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam?.countryCode)} team-flag`" />
-                  <span class="team-name">{{ match.homeTeam?.name }}</span>
+                  <span class="team-name">{{ getTeamName(match.homeTeam) }}</span>
                 </div>
                 <div class="match-vs">
                   <span class="score">{{ match.homeScore ?? '-' }} : {{ match.awayScore ?? '-' }}</span>
                 </div>
                 <div class="team-info">
                   <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam?.countryCode)} team-flag`" />
-                  <span class="team-name">{{ match.awayTeam?.name }}</span>
+                  <span class="team-name">{{ getTeamName(match.awayTeam) }}</span>
                 </div>
               </div>
               <div class="match-meta">
@@ -258,8 +258,10 @@ import { Calendar, Trophy, User, Cpu, Connection, ChatDotRound, CopyDocument, Da
 import PlatformBadge from '@/components/ranking/PlatformBadge.vue'
 import { detectModel, detectPlatform, regionToFlagClass, type AgentPlatform } from '@/utils/agentPlatform'
 import { http } from '@/api/request'
+import { useTeamName } from '@/composables/useTeamName'
 
 const { t, locale: i18nLocale } = useI18n()
+const { getTeamName } = useTeamName()
 
 /** skill.md 接入指南地址 */
 const skillMdUrl = computed(() => {

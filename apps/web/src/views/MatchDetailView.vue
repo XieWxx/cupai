@@ -414,10 +414,10 @@
           <template #extra>
             <el-radio-group v-model="activeLineupTab" size="small">
               <el-radio-button value="home">
-                {{ match?.homeTeam?.name }} ({{ homePlayers.length }})
+                {{ getTeamName(match?.homeTeam) }} ({{ homePlayers.length }})
               </el-radio-button>
               <el-radio-button value="away">
-                {{ match?.awayTeam?.name }} ({{ awayPlayers.length }})
+                {{ getTeamName(match?.awayTeam) }} ({{ awayPlayers.length }})
               </el-radio-button>
             </el-radio-group>
           </template>
@@ -428,7 +428,7 @@
               <div class="team-profile__header">
                 <div class="team-profile__name">
                   <span v-if="getFlagClass(activeTeam?.countryCode)" :class="`team-flag ${getFlagClass(activeTeam?.countryCode)}`" />
-                  <span>{{ activeTeam?.name }}</span>
+                  <span>{{ getTeamName(activeTeam) }}</span>
                   <el-tag v-if="activeTeam?.fifaRank" size="small" type="info" effect="plain" round>
                     FIFA #{{ activeTeam.fifaRank }}
                     <span v-if="activeTeam.fifaRankChange" :style="{ color: activeTeam.fifaRankChange > 0 ? 'var(--color-success)' : 'var(--color-danger)' }">
@@ -501,10 +501,10 @@
               <!-- 阵型信息（lineup 数据有阵型时展示） -->
               <div v-if="lineupData" class="formation-row" style="display: flex; gap: 16px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
                 <el-tag v-if="lineupData.home?.formation" size="small" effect="dark">
-                  {{ match?.homeTeam?.name }}: {{ lineupData.home.formation }}
+                  {{ getTeamName(match?.homeTeam) }}: {{ lineupData.home.formation }}
                 </el-tag>
                 <el-tag v-if="lineupData.away?.formation" size="small" effect="dark">
-                  {{ match?.awayTeam?.name }}: {{ lineupData.away.formation }}
+                  {{ getTeamName(match?.awayTeam) }}: {{ lineupData.away.formation }}
                 </el-tag>
                 <el-tag v-if="lineupData.lineup_status" size="small" :type="lineupData.lineup_status === 'confirmed' ? 'success' : lineupData.lineup_status === 'predicted' ? 'warning' : 'info'" effect="plain">
                   {{ $t(`match.${lineupData.lineup_status}`) || lineupData.lineup_status }}
@@ -801,11 +801,11 @@
           >
             <el-tab-pane :label="$t('sentiment.viewAll')" name="all" />
             <el-tab-pane
-              :label="`${match?.homeTeam?.name || $t('match.homeTeam')} · ${$t('sentiment.homeSentiment')}`"
+              :label="`${getTeamName(match?.homeTeam) || $t('match.homeTeam')} · ${$t('sentiment.homeSentiment')}`"
               name="home"
             />
             <el-tab-pane
-              :label="`${match?.awayTeam?.name || $t('match.awayTeam')} · ${$t('sentiment.awaySentiment')}`"
+              :label="`${getTeamName(match?.awayTeam) || $t('match.awayTeam')} · ${$t('sentiment.awaySentiment')}`"
               name="away"
             />
           </el-tabs>
@@ -1458,7 +1458,7 @@ async function openTeamCopyDialog(side: 'home' | 'away') {
   })
   copyDialogOpen.value = true
   copyDialogTabs.value = [
-    { key: `team-${side}`, label: team.name || t('copyIntro.tabTeam'), content: text },
+    { key: `team-${side}`, label: getTeamName(team) || t('copyIntro.tabTeam'), content: text },
   ]
 }
 

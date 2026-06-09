@@ -37,7 +37,7 @@
           <template #default="{ row }">
             <div class="team-cell">
               <span v-if="getFlagClass(row.homeTeam?.countryCode)" :class="getFlagClass(row.homeTeam?.countryCode)"></span>
-              <span>{{ row.homeTeam?.name }}</span>
+              <span>{{ getTeamName(row.homeTeam) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -51,7 +51,7 @@
           <template #default="{ row }">
             <div class="team-cell">
               <span v-if="getFlagClass(row.awayTeam?.countryCode)" :class="getFlagClass(row.awayTeam?.countryCode)"></span>
-              <span>{{ row.awayTeam?.name }}</span>
+              <span>{{ getTeamName(row.awayTeam) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -82,9 +82,11 @@ import { reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMatchStore } from '@/stores/match'
 import { getFlagClass } from '@/utils/flag'
+import { useTeamName } from '@/composables/useTeamName'
 
 const { locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
+const { getTeamName } = useTeamName()
 
 const filters = reactive({
   status: '',

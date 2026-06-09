@@ -58,7 +58,7 @@
           <el-form :model="analysisForm" label-width="100px">
             <el-form-item :label="$t('analysis.selectMatch')">
               <el-select v-model="analysisForm.matchId" :placeholder="$t('analysis.selectMatch')" filterable>
-                <el-option v-for="m in matchStore.matches" :key="m.id" :label="`${m.homeTeam?.name} VS ${m.awayTeam?.name}`" :value="m.id" />
+                <el-option v-for="m in matchStore.matches" :key="m.id" :label="`${getTeamName(m.homeTeam)} VS ${getTeamName(m.awayTeam)}`" :value="m.id" />
               </el-select>
             </el-form-item>
             <el-form-item :label="$t('analysis.selectApiConfig')">
@@ -151,6 +151,7 @@ import { useMatchStore } from '@/stores/match'
 import { usePromptStore } from '@/stores/prompt'
 import { http } from '@/api/request'
 import MarkdownIt from 'markdown-it'
+import { useTeamName } from '@/composables/useTeamName'
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
@@ -158,6 +159,7 @@ const analysisStore = useAnalysisStore()
 const matchStore = useMatchStore()
 const promptStore = usePromptStore()
 const { t } = useI18n()
+const { getTeamName } = useTeamName()
 
 const analyzing = ref(false)
 const analysisResult = ref('')

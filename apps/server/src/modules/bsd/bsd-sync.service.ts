@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { BsdcBusinessService } from './bsd.business.service'
 import { getPlayerChineseName } from '../../utils/player-translate'
-import { translateTeamName, translateTeamNameTo } from './team-translate'
+import { translateTeamName } from './team-translate'
 import { MatchEntity } from '../match/entities/match.entity'
 import { TeamEntity } from '../match/entities/team.entity'
 import { GroupStandingEntity } from '../match/entities/group-standing.entity'
@@ -447,9 +447,6 @@ export class BsdcSyncService {
     players: { at: null, durationMs: 0, ok: true },
   }
 
-  /** 重点联赛 ID 列表（从环境变量 BSD_FEATURED_LEAGUE_IDS 读取，默认 27=2026世界杯） */
-  private readonly featuredLeagueIds: number[]
-
   constructor(
     private readonly bsdService: BsdcBusinessService,
     private readonly moduleRef: ModuleRef,
@@ -463,15 +460,7 @@ export class BsdcSyncService {
     @InjectRepository(EventStatsEntity) private readonly statsRepo: Repository<EventStatsEntity>,
     @InjectRepository(EventPredictionEntity) private readonly predictionRepo: Repository<EventPredictionEntity>,
     @InjectRepository(PlayerEntity) private readonly playerRepo: Repository<PlayerEntity>,
-  ) {
-    // 解析重点联赛 ID 列表
-    const rawIds = process.env.BSD_FEATURED_LEAGUE_IDS || '27'
-    this.featuredLeagueIds = rawIds
-      .split(',')
-      .map(s => parseInt(s.trim(), 10))
-      .filter(n => !Number.isNaN(n))
-    this.logger.log(`重点联赛 ID 列表：${this.featuredLeagueIds.join(', ')}`)
-  }
+  ) {}
 
   /**
    * 获取 MatchGateway 实例（延迟获取，避免循环依赖）
@@ -527,12 +516,6 @@ export class BsdcSyncService {
         if (existing) {
           existing.name = translateTeamName(bsTeam.name) || bsTeam.name
           existing.nameEn = bsTeam.name
-          existing.nameJa = translateTeamNameTo(bsTeam.name, 'ja') || null
-          existing.nameKo = translateTeamNameTo(bsTeam.name, 'ko') || null
-          existing.nameEs = translateTeamNameTo(bsTeam.name, 'es') || null
-          existing.nameFr = translateTeamNameTo(bsTeam.name, 'fr') || null
-          existing.namePt = translateTeamNameTo(bsTeam.name, 'pt') || null
-          existing.nameAr = translateTeamNameTo(bsTeam.name, 'ar') || null
           existing.shortName = (bsTeam as any).short_name || null
           existing.countryCode = isoCode
           existing.country = bsTeam.country || null
@@ -549,12 +532,6 @@ export class BsdcSyncService {
             bsTeamId: bsTeam.id,
             name: translateTeamName(bsTeam.name) || bsTeam.name,
             nameEn: bsTeam.name,
-            nameJa: translateTeamNameTo(bsTeam.name, 'ja') || null,
-            nameKo: translateTeamNameTo(bsTeam.name, 'ko') || null,
-            nameEs: translateTeamNameTo(bsTeam.name, 'es') || null,
-            nameFr: translateTeamNameTo(bsTeam.name, 'fr') || null,
-            namePt: translateTeamNameTo(bsTeam.name, 'pt') || null,
-            nameAr: translateTeamNameTo(bsTeam.name, 'ar') || null,
             shortName: (bsTeam as any).short_name || null,
             countryCode: isoCode,
             country: bsTeam.country || null,
@@ -627,8 +604,7 @@ export class BsdcSyncService {
   // ==================== 赛事（列表） ====================
 
   /**
-   * 同步赛事列表：仅拉取重点联赛（BSD_FEATURED_LEAGUE_IDS）的数据
-   * 时间窗：近 180 天 ~ 未来 365 天（覆盖整届世界杯前后）
+   * 同步赛事列表：近 1 天 ~ 未来 30 天
    * 写入 MatchEntity 主体字段（基础 + 比赛阶段 + 状态）
    */
   async syncEvents(): Promise<{ created: number; updated: number }> {
@@ -636,70 +612,28 @@ export class BsdcSyncService {
     let created = 0
     let updated = 0
     try {
-      const lookbackDays = parseInt(process.env.BSD_FEATURED_LEAGUE_LOOKBACK_DAYS || '180', 10)
-      const lookaheadDays = parseInt(process.env.BSD_FEATURED_LEAGUE_LOOKAHEAD_DAYS || '365', 10)
       const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - lookbackDays)
+      fromDate.setDate(fromDate.getDate() - 1)
       const toDate = new Date()
-      toDate.setDate(toDate.getDate() + lookaheadDays)
+      toDate.setDate(toDate.getDate() + 30)
+      const events = await this.bsdService.getEvents({
+        date_from: fromDate.toISOString().split('T')[0],
+        date_to: toDate.toISOString().split('T')[0],
+        limit: 200,
+      })
 
       // 联赛 ID → 联赛名称
       const leagueNameMap = await this.buildLeagueNameMap()
       // 球队 ID → 实体
       const teamCache = new Map<number, TeamEntity>()
-      // 已处理的赛事 BSD ID 集合（去重）
-      const processedEventIds = new Set<string>()
 
-      // BSD API 的 /api/events/ 端点 league_id 参数不生效，
-      // 但 team_id 参数有效。策略：先从 standings 获取各球队 ID，再按 team_id 查询赛事
-      for (const leagueId of this.featuredLeagueIds) {
+      for (const bsEvent of (events.results ?? [])) {
         try {
-          // 1. 从 standings 获取该联赛的所有球队 ID
-          const teamIds = await this.getTeamIdsFromStandings(leagueId)
-          this.logger.log(`syncEvents: league_id=${leagueId}, 从standings获取${teamIds.size}个球队ID`)
-
-          if (teamIds.size === 0) {
-            this.logger.warn(`syncEvents: league_id=${leagueId} standings中无球队，跳过`)
-            continue
-          }
-
-          // 2. 按 team_id 逐个查询赛事（每个球队查一次，后置过滤 league_id）
-          for (const teamId of teamIds) {
-            try {
-              const events = await this.bsdService.getEvents({
-                date_from: fromDate.toISOString().split('T')[0],
-                date_to: toDate.toISOString().split('T')[0],
-                team_id: teamId,
-                limit: 200,
-              })
-
-              // 后置过滤：只保留重点联赛的赛事
-              const filteredResults = (events.results ?? []).filter(e => {
-                const eventLeagueId = e.league?.id || (e as any).league_id
-                return eventLeagueId && this.featuredLeagueIds.includes(eventLeagueId)
-              })
-
-              for (const bsEvent of filteredResults) {
-                const bsdEventId = String(bsEvent.id)
-                if (processedEventIds.has(bsdEventId)) continue // 去重
-                processedEventIds.add(bsdEventId)
-
-                try {
-                  const result = await this.upsertMatch(bsEvent, leagueNameMap, teamCache)
-                  if (result === 'created') created++
-                  else updated++
-                } catch (e) {
-                  this.logger.warn(`upsert event ${bsEvent.id} failed: ${(e as Error).message}`)
-                }
-              }
-            } catch (e) {
-              this.logger.warn(`sync events for team ${teamId} in league ${leagueId} failed: ${(e as Error).message}`)
-            }
-          }
-
-          this.logger.log(`syncEvents: league_id=${leagueId} 完成, 累计 +${created}/~${updated}`)
+          const result = await this.upsertMatch(bsEvent, leagueNameMap, teamCache)
+          if (result === 'created') created++
+          else updated++
         } catch (e) {
-          this.logger.warn(`sync events for league ${leagueId} failed: ${(e as Error).message}`)
+          this.logger.warn(`upsert event ${bsEvent.id} failed: ${(e as Error).message}`)
         }
       }
       this.recordRun('events', started, true, `+${created}/~${updated}`)
@@ -711,36 +645,8 @@ export class BsdcSyncService {
   }
 
   /**
-   * 从 standings API 获取指定联赛的所有球队 ID
-   * BSD API 的 /api/leagues/{id}/standings/ 端点可以正确返回分组数据
-   */
-  private async getTeamIdsFromStandings(leagueId: number): Promise<Set<number>> {
-    const teamIds = new Set<number>()
-    try {
-      const standings = await this.bsdService.getLeagueStandings(leagueId)
-      if (standings.groups) {
-        for (const rows of Object.values(standings.groups)) {
-          for (const row of (rows as any[])) {
-            if (row.team_id) teamIds.add(row.team_id)
-          }
-        }
-      }
-      // 也处理非分组格式（单列表）
-      if (standings.standings) {
-        for (const row of (standings.standings as any[])) {
-          if (row.team_id) teamIds.add(row.team_id)
-        }
-      }
-    } catch (e) {
-      this.logger.warn(`getTeamIdsFromStandings: league ${leagueId} failed: ${(e as Error).message}`)
-    }
-    return teamIds
-  }
-
-  /**
    * 同步实时赛事（BSD v2 /events/live/）
    * 由 Scheduler 每 5s 触发
-   * 仅拉取重点联赛的实时赛事，过滤非重点联赛数据
    * 不仅更新状态/比分，还同步 lineups、playerStats、场馆、裁判等子数据
    * 优化：仅在赛事状态变化或首次出现时同步子数据，避免每5秒重复请求BSD API
    */
@@ -749,14 +655,9 @@ export class BsdcSyncService {
     let updated = 0
     let liveCount = 0
     try {
-      // 拉取所有实时赛事，然后过滤重点联赛
-      // BSD API 的 league_id 过滤可能不生效，所以拉取后做后置过滤
       const live = await this.bsdService.getLiveEvents({})
-      const filteredEvents = (live.events ?? []).filter(e => {
-        const eventLeagueId = e.league?.id || (e as any).league_id
-        return eventLeagueId && this.featuredLeagueIds.includes(eventLeagueId)
-      })
-      for (const bsEvent of filteredEvents) {
+      // v2 live 端点返回结构是 { count, events }，无分页
+      for (const bsEvent of (live.events ?? [])) {
         liveCount++
         // 实时窗口只更新状态/比分/分钟，不重建球队
         const bsdId = String(bsEvent.id)
@@ -933,7 +834,7 @@ export class BsdcSyncService {
     const started = Date.now()
     const result = { matches: 0, incidents: 0, lineups: 0, odds: 0, stats: 0, predictions: 0, h2h: 0, metadata: 0, playerStats: 0, oddsComparison: 0, social: 0 }
     try {
-      // 候选：状态 inprogress/finished 24h 内 + 即将开始 6h 内，且仅限重点联赛
+      // 候选：状态 inprogress/finished 24h 内 + 即将开始 6h 内
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
       const lookahead = new Date(Date.now() + 6 * 60 * 60 * 1000)
       const candidates = await this.matchRepo
@@ -944,7 +845,6 @@ export class BsdcSyncService {
           now: cutoff,
           ahead: lookahead,
         })
-        .andWhere('m.leagueId IN (:...leagueIds)', { leagueIds: this.featuredLeagueIds })
         .orderBy('m.startTime', 'DESC')
         .take(limit)
         .getMany()
@@ -1063,50 +963,32 @@ export class BsdcSyncService {
   // ==================== 积分榜 ====================
 
   /**
-   * 同步重点联赛的积分榜
+   * 同步所有活跃联赛的积分榜
    */
   async syncStandings(): Promise<{ leagues: number; rows: number }> {
     const started = Date.now()
     let leagues = 0
     let rows = 0
     try {
-      // 仅同步重点联赛的积分榜
-      for (const leagueId of this.featuredLeagueIds) {
+      const leaguesList = await this.bsdService.getLeagues({ limit: 200 })
+      for (const league of (leaguesList.results ?? [])) {
+        if (!league.is_active) continue
         try {
-          const standings = await this.bsdService.getLeagueStandings(leagueId)
-
-          // 获取联赛名称（从本地 league 表获取）
-          const localLeague = await this.leagueRepo.findOne({ where: { bsLeagueId: leagueId } })
-          const leagueName = localLeague?.nameZh || localLeague?.name || `联赛${leagueId}`
-
-          // 支持两种格式：分组格式（groups）和平铺格式（standings）
-          let allRows: Array<{ row: BsStandingRow; groupName: string }> = []
-
-          if (standings?.groups && Object.keys(standings.groups).length > 0) {
-            // 分组格式：世界杯等赛事
-            for (const [groupName, groupRows] of Object.entries(standings.groups)) {
-              for (const row of groupRows) {
-                allRows.push({ row, groupName })
-              }
-            }
-          } else if (standings?.standings && standings.standings.length > 0) {
-            // 平铺格式：从赛事中获取小组名映射
-            const teamGroupMap = await this.buildTeamGroupMap(leagueId, standings.season?.id)
-            for (const row of standings.standings) {
-              const groupName = teamGroupMap.get(row.team_id) || 'LEAGUE'
-              allRows.push({ row, groupName })
-            }
-          }
-
-          if (allRows.length === 0) continue
+          const standings = await this.bsdService.getLeagueStandings(league.id)
+          if (!standings?.standings) continue
           leagues++
 
-          for (const { row, groupName } of allRows) {
-            await this.upsertStanding({ id: leagueId, name: leagueName }, standings.season, row, groupName)
+          // 从本地赛事中获取该联赛下的小组名映射（teamId -> groupName）
+          const teamGroupMap = await this.buildTeamGroupMap(league.id, standings.season?.id)
+
+          for (const row of standings.standings) {
+            // 优先从赛事中获取该球队所在的小组名
+            const groupName = teamGroupMap.get(row.team_id) || 'LEAGUE'
+            await this.upsertStanding(league, standings.season, row, groupName)
             rows++
           }
         } catch (e) {
-          this.logger.warn(`sync standings for league ${leagueId} failed: ${(e as Error).message}`)
+          this.logger.warn(`sync standings for league ${league.id} failed: ${(e as Error).message}`)
         }
       }
       this.recordRun('standings', started, true, `leagues=${leagues}/rows=${rows}`)
@@ -1814,12 +1696,6 @@ export class BsdcSyncService {
       newTeam.bsTeamId = bsdId
       newTeam.name = translateTeamName(safeName) || safeName
       newTeam.nameEn = safeName
-      newTeam.nameJa = translateTeamNameTo(safeName, 'ja') || null
-      newTeam.nameKo = translateTeamNameTo(safeName, 'ko') || null
-      newTeam.nameEs = translateTeamNameTo(safeName, 'es') || null
-      newTeam.nameFr = translateTeamNameTo(safeName, 'fr') || null
-      newTeam.namePt = translateTeamNameTo(safeName, 'pt') || null
-      newTeam.nameAr = translateTeamNameTo(safeName, 'ar') || null
       newTeam.shortName = shortName
       newTeam.countryCode = isoCode
       newTeam.country = country
@@ -1831,47 +1707,19 @@ export class BsdcSyncService {
       newTeam.dataSourceUrl = `https://sports.bzzoiro.com/api/v2/teams/${bsdId}/`
       newTeam.lastSyncedAt = new Date()
       team = await this.teamRepo.save(newTeam)
-    } else {
-      // 已有球队，检查并修正无效队名（Team-XXXX 格式）
-      const currentNameEn = team.nameEn || ''
-      const needsFix = currentNameEn.startsWith('Team-')
-      if (needsFix || team.countryCode === 'INT') {
-        try {
-          const detail = await this.bsdService.getTeamDetail(bsdId) as {
-            name?: string
-            country?: string
-            logo?: string
-            is_national?: boolean
-            venue_name?: string
-            founded?: number
-            short_name?: string
-          }
-          if (detail?.country && team.countryCode === 'INT') {
-            team.countryCode = countryToIso(detail.country)
-            team.country = detail.country
-          }
-          if (detail?.logo) team.logo = detail.logo
-          if (detail?.is_national != null) team.isNational = detail.is_national
-          if (detail?.venue_name) team.venueName = detail.venue_name
-          if (detail?.founded) team.founded = detail.founded
-          if (detail?.short_name) team.shortName = detail.short_name
-          // 修正无效队名
-          if (needsFix && detail?.name) {
-            const safeName = detail.name.toString().trim()
-            team.name = translateTeamName(safeName) || safeName
-            team.nameEn = safeName
-            team.nameJa = translateTeamNameTo(safeName, 'ja') || null
-            team.nameKo = translateTeamNameTo(safeName, 'ko') || null
-            team.nameEs = translateTeamNameTo(safeName, 'es') || null
-            team.nameFr = translateTeamNameTo(safeName, 'fr') || null
-            team.namePt = translateTeamNameTo(safeName, 'pt') || null
-            team.nameAr = translateTeamNameTo(safeName, 'ar') || null
-          }
+    } else if (team.countryCode === 'INT') {
+      // 已有但 country 为默认值，尝试补充
+      try {
+        const detail = (await this.bsdService.getTeamDetail(bsdId)) as { country?: string; logo?: string }
+        if (detail?.country) {
+          team.countryCode = countryToIso(detail.country)
+          team.country = detail.country
+          if (detail.logo) team.logo = detail.logo
           team.lastSyncedAt = new Date()
           await this.teamRepo.save(team)
-        } catch {
-          /* ignore */
         }
+      } catch {
+        /* ignore */
       }
     }
     cache?.set(bsdId, team)
@@ -1885,28 +1733,8 @@ export class BsdcSyncService {
     row: BsStandingRow,
     groupName: string,
   ) {
-    // 尝试从 row.team_name 获取队名，如果为空则用 row.team_id 兜底
-    let teamName = row.team_name || null
-    // 从本地赛事数据中查找球队的正确队名（防止 standings 未携带 team_name 导致创建 Team-493 等无效队名）
-    if (!teamName) {
-      try {
-        const matchWithTeam = await this.matchRepo
-          .createQueryBuilder('match')
-          .leftJoinAndSelect('match.homeTeam', 'ht')
-          .leftJoinAndSelect('match.awayTeam', 'at')
-          .where('ht.bsTeamId = :bsId', { bsId: row.team_id })
-          .orWhere('at.bsTeamId = :bsId', { bsId: row.team_id })
-          .andWhere('match.leagueId = :leagueId', { leagueId: league.id })
-          .getOne()
-        if (matchWithTeam) {
-          teamName = matchWithTeam.homeTeam?.nameEn || matchWithTeam.awayTeam?.nameEn || null
-        }
-      } catch {
-        /* ignore */
-      }
-    }
     // 球队：可能本地无此队（积分榜来自非同步联赛），按需创建
-    const team = await this.getOrCreateTeam(row.team_id, teamName)
+    const team = await this.getOrCreateTeam(row.team_id, row.team_name)
     const dataSource = `bsd_${league.id}_${season?.id ?? 'cur'}_${row.team_id}`
     let standing = await this.standingRepo.findOne({ where: { dataSource } })
     const payload: Partial<GroupStandingEntity> = {

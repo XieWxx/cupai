@@ -28,7 +28,7 @@
       <el-page-header @back="goBack" :title="$t('common.back')">
         <template #content>
           <span class="page-header-title">
-            {{ match?.homeTeam?.name }} {{ $t('common.vs') }} {{ match?.awayTeam?.name }}
+            {{ getTeamName(match?.homeTeam) }} {{ $t('common.vs') }} {{ getTeamName(match?.awayTeam) }}
             <el-tag v-if="match?.status === 'live'" type="danger" size="small" effect="dark" round>
               <span class="match-card__status-dot match-card__status-dot--live" />
               {{ match?.currentMinute ? `${match.currentMinute}'` : $t('match.live') }}
@@ -57,7 +57,7 @@
             <div class="team-info team-info--home">
               <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
               <div class="team-info__text">
-                <span class="team-name">{{ match?.homeTeam?.name }}</span>
+                <span class="team-name">{{ getTeamName(match?.homeTeam) }}</span>
                 <div class="team-meta">
                   <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
                   <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
@@ -71,7 +71,7 @@
             </div>
             <div class="team-info team-info--away">
               <div class="team-info__text">
-                <span class="team-name">{{ match?.awayTeam?.name }}</span>
+                <span class="team-name">{{ getTeamName(match?.awayTeam) }}</span>
                 <div class="team-meta">
                   <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
                   <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
@@ -123,13 +123,13 @@
         <!-- 球衣颜色展示（从 metadata.jerseys 解析） -->
         <div v-if="jerseyColors" class="jersey-bar" style="margin-top: var(--space-2)">
           <div class="jersey-item">
-            <span class="jersey-label">{{ match?.homeTeam?.name }}</span>
+            <span class="jersey-label">{{ getTeamName(match?.homeTeam) }}</span>
             <span class="jersey-swatch" :style="{ background: jerseyColors.home }" />
           </div>
           <span class="jersey-vs">{{ $t('common.vs') }}</span>
           <div class="jersey-item">
             <span class="jersey-swatch" :style="{ background: jerseyColors.away }" />
-            <span class="jersey-label">{{ match?.awayTeam?.name }}</span>
+            <span class="jersey-label">{{ getTeamName(match?.awayTeam) }}</span>
           </div>
         </div>
 
@@ -181,7 +181,7 @@
                 <div class="prediction-team">
                   <div class="prediction-team__name">
                     <el-tag size="small" effect="dark" type="primary" class="team-side-tag team-side-tag--inline">{{ $t('match.homeTeam') }}</el-tag>
-                    {{ match?.homeTeam?.name }}
+                    {{ getTeamName(match?.homeTeam) }}
                     <span class="prediction-team__rate" :style="{ color: getRateColor(prediction.homeWin) }">
                       {{ (prediction.homeWin * 100).toFixed(1) }}%
                     </span>
@@ -210,7 +210,7 @@
                 <div class="prediction-team">
                   <div class="prediction-team__name">
                     <el-tag size="small" effect="dark" type="warning" class="team-side-tag team-side-tag--inline">{{ $t('match.awayTeam') }}</el-tag>
-                    {{ match?.awayTeam?.name }}
+                    {{ getTeamName(match?.awayTeam) }}
                     <span class="prediction-team__rate" :style="{ color: getRateColor(prediction.awayWin) }">
                       {{ (prediction.awayWin * 100).toFixed(1) }}%
                     </span>
@@ -1015,13 +1015,14 @@ import SectionCard from '@/components/common/SectionCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import TimeTriple from '@/components/common/TimeTriple.vue'
 import UserPredictionRanking, { type UserRankingItem } from '@/components/common/UserPredictionRanking.vue'
-// （已删除：原 InstructionBoard 组件 import；指令中心页面已并入每张图表的「复制指令」按钮）
+import { useTeamName } from '@/composables/useTeamName'
 
 const route = useRoute()
 const router = useRouter()
 const { t, locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
 const userStore = useUserStore()
+const { getTeamName } = useTeamName()
 
 const loading = ref(false)
 const match = ref<any>(null)
@@ -1231,8 +1232,8 @@ const currentSentiment = computed<any>(() => {
 
 /** 当前 tab 对应的队伍名称（用于标题 / 空态描述） */
 const currentSentimentLabel = computed<string>(() => {
-  if (sentimentTab.value === 'home') return match.value?.homeTeam?.name || t('match.homeTeam')
-  if (sentimentTab.value === 'away') return match.value?.awayTeam?.name || t('match.awayTeam')
+  if (sentimentTab.value === 'home') return getTeamName(match.value?.homeTeam) || t('match.homeTeam')
+  if (sentimentTab.value === 'away') return getTeamName(match.value?.awayTeam) || t('match.awayTeam')
   return ''
 })
 
@@ -1416,7 +1417,7 @@ async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
     router.push('/login')
     return
   }
-  const teamName = side === 'home' ? match.value?.homeTeam?.name : match.value?.awayTeam?.name
+  const teamName = side === 'home' ? getTeamName(match.value?.homeTeam) : getTeamName(match.value?.awayTeam)
   const text = buildPlayerInstruction({
     player: { ...player, teamName },
     userApiKey: currentApiKey.value,
@@ -1467,7 +1468,7 @@ async function openFullMatchCopyDialog() {
   const text = buildMatchInstruction(buildCommonInput())
   copyDialogOpen.value = true
   copyDialogTabs.value = [
-    { key: 'match-all', label: match.value?.homeTeam?.name ? `${match.value.homeTeam.name} VS ${match.value.awayTeam?.name || ''}` : t('copyIntro.tabMatch'), content: text },
+    { key: 'match-all', label: getTeamName(match.value?.homeTeam) ? `${getTeamName(match.value?.homeTeam)} VS ${getTeamName(match.value?.awayTeam) || ''}` : t('copyIntro.tabMatch'), content: text },
   ]
 }
 
@@ -2228,8 +2229,8 @@ const sharePageUrl = computed(() => {
 /** 自动识别当前页面信息，生成分享文案 */
 const shareText = computed(() => {
   if (!match.value) return ''
-  const home = match.value.homeTeam?.name || ''
-  const away = match.value.awayTeam?.name || ''
+  const home = getTeamName(match.value.homeTeam)
+  const away = getTeamName(match.value.awayTeam)
   const tournament = match.value.tournament?.name || ''
   // 有比分时展示比分，无比分时展示 VS
   const hs = match.value.homeScore

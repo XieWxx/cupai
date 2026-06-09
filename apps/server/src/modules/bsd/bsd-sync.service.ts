@@ -973,28 +973,35 @@ export class BsdcSyncService {
 
   /**
    * 同步所有活跃联赛的积分榜
+   * BSD standings API 返回 grouped 数据（groups 对象），优先使用
    */
   async syncStandings(): Promise<{ leagues: number; rows: number }> {
     const started = Date.now()
     let leagues = 0
     let rows = 0
     try {
-      const leaguesList = await this.bsdService.getLeagues({ limit: 200, league_id: 27 }) // 只同步 2026 世界杯
-      for (const league of (leaguesList.results ?? [])) {
+      // 只同步 2026 世界杯联赛（league_id=27）
+      const leaguesList = await this.bsdService.getLeagues({ limit: 200 })
+      const targetLeague = leaguesList.results?.find((l) => l.id === WORLD_CUP_LEAGUE_ID)
+      if (!targetLeague) {
+        this.logger.warn(`syncStandings: 未找到世界杯联赛 (league_id=${WORLD_CUP_LEAGUE_ID})`)
+      }
+      const leaguesToSync = targetLeague ? [targetLeague] : []
+      for (const league of leaguesToSync) {
         if (!league.is_active) continue
         try {
           const standings = await this.bsdService.getLeagueStandings(league.id)
-          if (!standings?.standings) continue
+          if (!standings?.groups) {
+            this.logger.warn(`sync standings for league ${league.id} failed: no groups data`)
+            continue
+          }
           leagues++
 
-          // 从本地赛事中获取该联赛下的小组名映射（teamId -> groupName）
-          const teamGroupMap = await this.buildTeamGroupMap(league.id, standings.season?.id)
-
-          for (const row of standings.standings) {
-            // 优先从赛事中获取该球队所在的小组名
-            const groupName = teamGroupMap.get(row.team_id) || 'LEAGUE'
-            await this.upsertStanding(league, standings.season, row, groupName)
-            rows++
+          for (const [groupName, groupRows] of Object.entries(standings.groups)) {
+            for (const row of groupRows) {
+              await this.upsertStanding(league, standings.season, row, groupName)
+              rows++
+            }
           }
         } catch (e) {
           this.logger.warn(`sync standings for league ${league.id} failed: ${(e as Error).message}`)

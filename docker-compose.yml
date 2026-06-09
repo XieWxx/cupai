@@ -79,6 +79,10 @@ services:
       BSD_BASE_URL: ${BSD_BASE_URL:-https://api.bzzoiro.com}
       BSD_API_KEY: ${BSD_API_KEY:-}
       BSD_ENABLED: ${BSD_ENABLED:-true}
+      # Agent AI 配置（Agnes 2.0 Flash，兼容 OpenAI API 格式）
+      AGENT_AI_ENDPOINT: ${AGENT_AI_ENDPOINT:-https://apihub.agnes-ai.com/v1}
+      AGENT_AI_KEY: ${AGENT_AI_KEY:-}
+      AGENT_AI_MODEL: ${AGENT_AI_MODEL:-agnes-2.0-flash}
     ports:
       - "3001:3001"
     depends_on:
@@ -86,6 +90,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 3001, path: '/api/v1/bsd/sync/ready', timeout: 5000 }; const req = http.get(options, (res) => { let data = ''; res.on('data', (chunk) => { data += chunk; }); res.on('end', () => { try { const body = JSON.parse(data); if (body.ready) { process.exit(0); } else { process.exit(1); } } catch { process.exit(1); } }); }); req.on('error', () => process.exit(1)); req.on('timeout', () => { req.destroy(); process.exit(1); });"]
+      interval: 15s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
 
   # 前端服务
   web:
@@ -103,7 +113,8 @@ services:
       - "80:80"
       - "443:443"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
 
 volumes:
   mysql_data:

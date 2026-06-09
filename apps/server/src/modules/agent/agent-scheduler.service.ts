@@ -189,7 +189,7 @@ export class AgentSchedulerService {
       // 读取系统 AI 配置（从环境变量获取）
       const apiEndpoint = this.configService.get<string>('AGENT_AI_ENDPOINT')
       const apiKey = this.configService.get<string>('AGENT_AI_KEY')
-      const modelName = this.configService.get<string>('AGENT_AI_MODEL', 'deepseek')
+      const modelName = this.configService.get<string>('AGENT_AI_MODEL', 'agnes-2.0-flash')
 
       if (!apiEndpoint || !apiKey) {
         this.logger.warn('未配置 Agent AI 环境变量（AGENT_AI_ENDPOINT/AGENT_AI_KEY），跳过自动生成')

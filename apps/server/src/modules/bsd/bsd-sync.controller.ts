@@ -6,6 +6,7 @@ import { BsdcSyncScheduler } from './bsd-sync.scheduler'
  * BSD 数据同步控制器
  *
  * - /status    : 同步状态（计数器 + 各任务上次运行时间 + 下一轮时间）
+ * - /ready     : 冷启动是否完成（部署健康检查用）
  * - /enable/:disable : 启停整体调度
  * - POST /<task>   : 手动触发某项同步（teams/events/standings/leagues/live/aux/full）
  */
@@ -23,6 +24,20 @@ export class BsdcSyncController {
     return {
       ...status,
       nextRun: this.scheduler.getNextRuns(),
+    }
+  }
+
+  /**
+   * 冷启动就绪检查（部署健康检查用）
+   * 返回冷启动是否完成及完成时间
+   */
+  @Get('ready')
+  getReady() {
+    const ready = this.scheduler.isColdStartReady()
+    const readyAt = this.scheduler.getColdStartReadyAt()
+    return {
+      ready,
+      readyAt,
     }
   }
 

@@ -682,10 +682,10 @@ export class BsdcSyncService {
           // fallback：通过 venue_id 查询场馆详情 API
           try { await this.syncVenuesForMatch(match) } catch { /* ignore */ }
         }
-        if (bsEvent.referee && !match.refereeName) {
+        if (bsEvent.referee && typeof bsEvent.referee === 'object' && !match.refereeName) {
           match.refereeId = bsEvent.referee.id ?? match.refereeId
-          match.refereeName = bsEvent.referee.name || match.refereeName
-          match.refereeNationality = bsEvent.referee.country || match.refereeNationality
+          match.refereeName = typeof bsEvent.referee.name === 'string' ? bsEvent.referee.name : match.refereeName
+          match.refereeNationality = typeof bsEvent.referee.country === 'string' ? bsEvent.referee.country : match.refereeNationality
           if (bsEvent.referee.career_yellow_cards != null && bsEvent.referee.career_games != null && bsEvent.referee.career_games > 0) {
             const avgYellow = bsEvent.referee.career_yellow_cards / bsEvent.referee.career_games
             match.refereeStyle = avgYellow >= 5 ? 'strict' : avgYellow >= 3 ? 'moderate' : 'lenient'
@@ -753,10 +753,10 @@ export class BsdcSyncService {
         match.venueLatitude = detail.venue.latitude ?? match.venueLatitude
         match.venueLongitude = detail.venue.longitude ?? match.venueLongitude
       }
-      if (!match.refereeName && detail?.referee) {
+      if (!match.refereeName && detail?.referee && typeof detail.referee === 'object') {
         match.refereeId = detail.referee.id ?? match.refereeId
-        match.refereeName = detail.referee.name || match.refereeName
-        match.refereeNationality = detail.referee.country || match.refereeNationality
+        match.refereeName = typeof detail.referee.name === 'string' ? detail.referee.name : match.refereeName
+        match.refereeNationality = typeof detail.referee.country === 'string' ? detail.referee.country : match.refereeNationality
         if (detail.referee.career_yellow_cards != null && detail.referee.career_games != null && detail.referee.career_games > 0) {
           const avgYellow = detail.referee.career_yellow_cards / detail.referee.career_games
           match.refereeStyle = avgYellow >= 5 ? 'strict' : avgYellow >= 3 ? 'moderate' : 'lenient'
@@ -835,10 +835,10 @@ export class BsdcSyncService {
         }
         if (!m.refereeName) {
           // 优先从 event detail 的 referee 嵌套对象提取
-          if (detail?.referee) {
+          if (detail?.referee && typeof detail.referee === 'object') {
             m.refereeId = detail.referee.id ?? m.refereeId
-            m.refereeName = detail.referee.name || m.refereeName
-            m.refereeNationality = detail.referee.country || m.refereeNationality
+            m.refereeName = typeof detail.referee.name === 'string' ? detail.referee.name : m.refereeName
+            m.refereeNationality = typeof detail.referee.country === 'string' ? detail.referee.country : m.refereeNationality
             if (detail.referee.career_yellow_cards != null && detail.referee.career_games != null && detail.referee.career_games > 0) {
               const avgYellow = detail.referee.career_yellow_cards / detail.referee.career_games
               m.refereeStyle = avgYellow >= 5 ? 'strict' : avgYellow >= 3 ? 'moderate' : 'lenient'
@@ -991,6 +991,28 @@ export class BsdcSyncService {
         prediction: predictionCount,
       },
       runs: this.lastRuns,
+    }
+  }
+
+  /**
+   * 获取各表数据数量（供冷启动数据稳定检测使用）
+   * @returns 各表记录数的键值对
+   */
+  async getDataCounts(): Promise<Record<string, number>> {
+    const [matchCount, teamCount, leagueCount, standingCount, playerCount] =
+      await Promise.all([
+        this.matchRepo.count(),
+        this.teamRepo.count(),
+        this.leagueRepo.count(),
+        this.standingRepo.count(),
+        this.playerRepo.count(),
+      ])
+    return {
+      match: matchCount,
+      team: teamCount,
+      league: leagueCount,
+      standing: standingCount,
+      player: playerCount,
     }
   }
 
@@ -1177,8 +1199,8 @@ export class BsdcSyncService {
     if (!match.refereeId) return false
     try {
       const ref = await this.bsdService.getRefereeDetail(match.refereeId)
-      match.refereeName = ref.name || match.refereeName
-      match.refereeNationality = ref.country || match.refereeNationality
+      match.refereeName = typeof ref.name === 'string' ? ref.name : match.refereeName
+      match.refereeNationality = typeof ref.country === 'string' ? ref.country : match.refereeNationality
       // 裁判风格：根据场均黄牌数推断
       if (ref.avg_yellow_per_match != null) {
         if (ref.avg_yellow_per_match >= 5) {
@@ -1536,9 +1558,12 @@ export class BsdcSyncService {
       baseFields.venueLongitude = bsEvent.venue.longitude ?? null
     }
     // 从 referee 嵌套对象直接提取裁判信息（详情 API 返回时）
-    if (bsEvent.referee) {
-      baseFields.refereeName = bsEvent.referee.name || null
-      baseFields.refereeNationality = bsEvent.referee.country || null
+    // 类型守卫：确保 refereeName/refereeNationality 只接受 string，防止 [object Object]
+    if (bsEvent.referee && typeof bsEvent.referee === 'object') {
+      const refName = bsEvent.referee.name
+      baseFields.refereeName = typeof refName === 'string' ? refName : null
+      const refCountry = bsEvent.referee.country
+      baseFields.refereeNationality = typeof refCountry === 'string' ? refCountry : null
       // 裁判风格：根据生涯黄牌数推断
       if (bsEvent.referee.career_yellow_cards != null && bsEvent.referee.career_games != null && bsEvent.referee.career_games > 0) {
         const avgYellow = bsEvent.referee.career_yellow_cards / bsEvent.referee.career_games

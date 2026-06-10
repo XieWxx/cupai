@@ -115,6 +115,12 @@ export class MatchService {
       .take(limit)
       .getMany()
 
+    // 解析占位符队伍（淘汰赛阶段的 "1A"/"G1" 等占位队名替换为实际球队）
+    const groupTeamsMap = await this.buildGroupTeamsMap(27)
+    const groupStageFinished = await this.isGroupStageFinished(27)
+    const resolveMatch = (m: MatchEntity) =>
+      this.resolvePlaceholderTeams(m, groupTeamsMap, groupStageFinished)
+
     // 兜底：若 7 天内没有待开赛，回退展示任意 upcoming 比赛（仅 2026 世界杯）
     // 这样可保证首页"待开赛"模块始终有内容
     if (upcoming.length === 0) {
@@ -130,10 +136,10 @@ export class MatchService {
         .orderBy('m.startTime', 'ASC')
         .take(limit)
         .getMany()
-      return { live, upcoming: fallback }
+      return { live: live.map(resolveMatch), upcoming: fallback.map(resolveMatch) }
     }
 
-    return { live, upcoming }
+    return { live: live.map(resolveMatch), upcoming: upcoming.map(resolveMatch) }
   }
 
   async getMatches(status?: string, stage?: string, page = 1, pageSize = 20) {
@@ -160,7 +166,14 @@ export class MatchService {
       .take(pageSize)
       .getManyAndCount()
 
-    return { list, total, page, pageSize }
+    // 解析占位符队伍（淘汰赛阶段的 "1A"/"G1" 等占位队名替换为实际球队）
+    const groupTeamsMap = await this.buildGroupTeamsMap(27)
+    const groupStageFinished = await this.isGroupStageFinished(27)
+    const resolvedList = list.map(m =>
+      this.resolvePlaceholderTeams(m, groupTeamsMap, groupStageFinished)
+    )
+
+    return { list: resolvedList, total, page, pageSize }
   }
 
   /** 获取淘汰赛对阵图数据（按 stage 字段分组，支持 1/16 决赛起） */
@@ -370,10 +383,12 @@ export class MatchService {
   private resolvePlaceholderTeams(match: MatchEntity, groupTeamsMap: Record<string, Array<{ rank: number; team: TeamEntity }>>, groupStageFinished: boolean): any {
     const result: any = { ...match }
     const stage = match.stage?.toLowerCase()
-    const isR32 = ['round32', 'r32', '32'].includes(stage)
+    // R32/league 阶段始终解析；后续轮次仅在小组赛全部结束后解析
+    // BSD API 将1/16决赛标记为 league，需一并支持
+    const isEarlyRound = ['round32', 'r32', '32', 'league'].includes(stage)
 
-    // R32 始终解析；后续轮次仅小组赛结束后解析
-    if (!isR32 && !groupStageFinished) return result
+    // 早期轮次始终解析；后续轮次仅小组赛结束后解析
+    if (!isEarlyRound && !groupStageFinished) return result
 
     // 解析主队占位
     if (match.homeTeam?.countryCode === 'INT' && this.isPlaceholderTeam(match.homeTeam.name)) {
@@ -399,24 +414,41 @@ export class MatchService {
     return result
   }
 
-  /** 判断是否为占位球队（如 "1A", "2L", "3A/3B/3C/3D/3F"） */
+  /** 判断是否为占位球队（如 "1A", "2L", "3A/3B/3C/3D/3F", "G1", "H2"） */
   private isPlaceholderTeam(name: string): boolean {
     if (!name) return false
-    // 匹配 "1A"-"9Z" 或 "3A/3B/..." 格式
-    return /^\d[A-Z](\/\d[A-Z])*$/.test(name)
+    // 匹配 "1A"-"9Z" 或 "3A/3B/..." 格式（排名+组名）
+    // 匹配 "G1"/"H2" 或 "G1/H2/..." 格式（组名+排名）
+    // 匹配 "W74"/"L77" 格式（Winner/Loser of match）
+    return /^(\d[A-Z](\/\d[A-Z])*)$/.test(name)
+      || /^([A-Z]\d(\/[A-Z]\d)*)$/.test(name)
+      || /^[WL]\d+$/.test(name)
   }
 
   /**
    * 解析单个占位符为实际球队
    * "1A" → Group A 排名第1的球队
+   * "G1" → G组 排名第1的球队（组名+排名格式）
    * "3A/3B/3C/3D/3F" → 这些小组第3名中成绩最好的球队
    */
   private resolvePlaceholder(placeholder: string, groupTeamsMap: Record<string, Array<{ rank: number; team: TeamEntity }>>): { rank: number; team: TeamEntity } | null {
-    // 简单占位符：如 "1A", "2L"
+    // 简单占位符：如 "1A", "2L"（排名+组名）
     const simpleMatch = placeholder.match(/^(\d)([A-L])$/)
     if (simpleMatch) {
       const rank = parseInt(simpleMatch[1])
       const group = simpleMatch[2]
+      const groupTeams = groupTeamsMap[group]
+      if (groupTeams && groupTeams.length >= rank) {
+        return groupTeams[rank - 1]
+      }
+      return null
+    }
+
+    // 反向占位符：如 "G1", "H2"（组名+排名）
+    const reverseMatch = placeholder.match(/^([A-Z])(\d)$/)
+    if (reverseMatch) {
+      const group = reverseMatch[1]
+      const rank = parseInt(reverseMatch[2])
       const groupTeams = groupTeamsMap[group]
       if (groupTeams && groupTeams.length >= rank) {
         return groupTeams[rank - 1]
@@ -472,10 +504,17 @@ export class MatchService {
   }
 
   async getMatchDetail(matchId: string) {
-    return this.matchRepo.findOne({
+    const match = await this.matchRepo.findOne({
       where: { id: matchId },
       relations: ['homeTeam', 'awayTeam'],
     })
+    if (!match) return null
+
+    // 解析占位符队伍（淘汰赛阶段的 "1A"/"G1" 等占位队名替换为实际球队）
+    const leagueId = match.leagueId || 27
+    const groupTeamsMap = await this.buildGroupTeamsMap(leagueId)
+    const groupStageFinished = await this.isGroupStageFinished(leagueId)
+    return this.resolvePlaceholderTeams(match, groupTeamsMap, groupStageFinished)
   }
 
   async getMatchPrediction(matchId: string) {

@@ -1754,6 +1754,20 @@ function normalizeDimKey(dimKey: string, key: string): string {
     if (kl === 'draw' || kl === '平' || kl === '平局' || kl === 'd') return 'draw'
     if (kl === 'away' || kl === 'away_win' || kl === '客胜' || kl === 'a') return 'away'
   }
+  // result_half_full: 中文 key 映射 → 标准英文 key
+  // Agent 可能返回 "主/主"/"主/平"/"主/客" 等中文格式
+  if (dimKey === 'result_half_full') {
+    const hfMap: Record<string, string> = {
+      '主/主': 'HW', '主/平': 'HD', '主/客': 'HL',
+      '平/主': 'DW', '平/平': 'DD', '平/客': 'DL',
+      '客/主': 'LW', '客/平': 'LD', '客/客': 'LL',
+      // 兼容 H-H / H-D / H-A 等格式
+      'H-H': 'HW', 'H-D': 'HD', 'H-A': 'HL',
+      'D-H': 'DW', 'D-D': 'DD', 'D-A': 'DL',
+      'A-H': 'LW', 'A-D': 'LD', 'A-A': 'LL',
+    }
+    if (hfMap[key]) return hfMap[key]
+  }
   // goal_first / goal_last: none → noGoal
   if (dimKey === 'goal_first' || dimKey === 'goal_last') {
     if (kl === 'none' || kl === 'nogoal' || kl === '无') return 'noGoal'
@@ -1762,6 +1776,42 @@ function normalizeDimKey(dimKey: string, key: string): string {
   if (dimKey === 'goal_first_half') {
     if (kl === 'yes' || kl === '是') return 'yes'
     if (kl === 'no' || kl === '否') return 'no'
+  }
+  // goal_clean_sheet: 中文 key 映射
+  if (dimKey === 'goal_clean_sheet') {
+    if (kl === 'homeclean' || kl === '主队零封') return 'homeClean'
+    if (kl === 'awayclean' || kl === '客队零封') return 'awayClean'
+    if (kl === 'bothconcede' || kl === '双方都有失球') return 'bothConcede'
+  }
+  // goal_odd_even: 中文 key 映射
+  if (dimKey === 'goal_odd_even') {
+    if (kl === 'odd' || kl === '奇数') return 'odd'
+    if (kl === 'even' || kl === '偶数') return 'even'
+  }
+  // penalty_awarded / goal_own / goal_stoppage / red_card: 中文 key 映射
+  if (['penalty_awarded', 'goal_own', 'goal_stoppage', 'red_card'].includes(dimKey)) {
+    if (kl === 'yes' || kl === '是') return 'yes'
+    if (kl === 'no' || kl === '否') return 'no'
+  }
+  // extra_round: 中文 key 映射
+  if (dimKey === 'extra_round') {
+    if (kl === 'extra' || kl === '加时赛') return 'extra'
+    if (kl === 'penalty' || kl === '点球大战') return 'penalty'
+    if (kl === 'normal' || kl === '常规时间') return 'normal'
+  }
+  // goal_player_score: 中文 key 映射
+  if (dimKey === 'goal_player_score') {
+    if (kl === 'score' || kl === '进球') return 'score'
+    if (kl === 'noscore' || kl === '未进球') return 'noScore'
+  }
+  // result_total_goals: 中文 key 映射（"4+" 可能返回 "4球以上"）
+  if (dimKey === 'result_total_goals') {
+    if (kl === '4+' || kl === '4球以上' || kl === '4+') return '4+'
+  }
+  // goal_first / goal_last: 中文 key 映射
+  if (dimKey === 'goal_first' || dimKey === 'goal_last') {
+    if (kl === 'home' || kl === '主队') return 'home'
+    if (kl === 'away' || kl === '客队') return 'away'
   }
   // 其他维度：如果 key 在 optionsKeys 中存在，直接返回；否则原样返回
   const optKeys = DIMENSIONS[dimKey as DimensionKey]?.optionsKeys || []

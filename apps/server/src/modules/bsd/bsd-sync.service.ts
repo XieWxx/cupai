@@ -2025,6 +2025,14 @@ export class BsdcSyncService {
       return false
     }
     if (!resp?.odds) return false
+    // 所有赔率字段均为 null 时跳过写入（v2 API 返回空对象）
+    const o = resp.odds
+    if (o.home_win == null && o.draw == null && o.away_win == null
+      && o.over_15_goals == null && o.over_25_goals == null && o.over_35_goals == null
+      && o.under_15_goals == null && o.under_25_goals == null && o.under_35_goals == null
+      && o.btts_yes == null && o.btts_no == null) {
+      return false
+    }
     let entity = await this.oddsRepo.findOne({ where: { matchId: match.id } })
     const payload: Partial<EventOddsEntity> = {
       matchId: match.id,
@@ -2133,37 +2141,64 @@ export class BsdcSyncService {
     return true
   }
 
-  /** 同步 BSD AI 预测：返回写入条数 */
+  /** 同步 BSD AI 预测：返回写入条数（注意：BSD 的 predictions 接口忽略 event_id 过滤） */
   private async syncPredictions(match: MatchEntity, bsEventId: number): Promise<number> {
     let resp: { results: BsPrediction[] }
     try {
-      resp = await this.bsdService.getPredictions({ event_id: bsEventId, limit: 1 })
+      // BSD 忽略 event_id 参数，拉取一批后在内存中按 event.id 匹配
+      resp = await this.bsdService.getPredictions({ limit: 200 })
     } catch {
       return 0
     }
     if (!resp?.results?.length) return 0
-    const pred = resp.results[0]
+    // 内存中按 event.id === bsEventId 过滤
+    const matched = resp.results.filter((p) => p?.event?.id === bsEventId)
+    if (matched.length === 0) return 0
+    // 一条赛事可能有多条预测（不同时间/不同模型），取 created_at 最新
+    matched.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const pred = matched[0]
+
+    // predicted_result 映射 H/D/A -> home/draw/away
+    const predictedMap: Record<string, string> = { H: 'home', D: 'draw', A: 'away' }
+    const predictedNorm = predictedMap[pred.predicted_result] || pred.predicted_result || null
+    const favoriteNorm = pred.favorite
+      ? (predictedMap[pred.favorite] || pred.favorite)
+      : null
+
+    // BSD 返回的 *prob* 字段是 0-100 数值，统一归一化为 0-1 比例
+    const toRatio = (v: number | null | undefined) => (v == null ? null : v / 100)
+    const favoriteProbRatio = toRatio(pred.favorite_prob)
+    const confidenceRatio = toRatio(pred.confidence)
+
     let entity = await this.predictionRepo.findOne({ where: { bsPredictionId: pred.id } })
     const payload: Partial<EventPredictionEntity> = {
       matchId: match.id,
       bsEventId,
       bsPredictionId: pred.id,
-      probHome: pred.markets?.match_result?.prob_home ?? null,
-      probDraw: pred.markets?.match_result?.prob_draw ?? null,
-      probAway: pred.markets?.match_result?.prob_away ?? null,
-      predicted: pred.markets?.match_result?.predicted ?? null,
-      expectedGoalsHome: pred.markets?.expected_goals?.home ?? null,
-      expectedGoalsAway: pred.markets?.expected_goals?.away ?? null,
-      probOver15: pred.markets?.over_under?.prob_over_15 ?? null,
-      probOver25: pred.markets?.over_under?.prob_over_25 ?? null,
-      probOver35: pred.markets?.over_under?.prob_over_35 ?? null,
-      probBttsYes: pred.markets?.btts?.prob_yes ?? null,
-      mostLikelyScore: pred.markets?.score?.most_likely ?? null,
-      favorite: pred.recommendations?.favorite ?? null,
-      favoriteProb: pred.recommendations?.favorite_prob ?? null,
-      modelVersion: pred.model?.version ?? null,
-      confidence: pred.model?.confidence ?? null,
-      recommendations: (pred.recommendations as unknown as Record<string, unknown>) ?? null,
+      probHome: toRatio(pred.prob_home_win),
+      probDraw: toRatio(pred.prob_draw),
+      probAway: toRatio(pred.prob_away_win),
+      predicted: predictedNorm,
+      expectedGoalsHome: pred.expected_home_goals ?? null,
+      expectedGoalsAway: pred.expected_away_goals ?? null,
+      probOver15: toRatio(pred.prob_over_15),
+      probOver25: toRatio(pred.prob_over_25),
+      probOver35: toRatio(pred.prob_over_35),
+      probBttsYes: toRatio(pred.prob_btts_yes),
+      mostLikelyScore: pred.most_likely_score ?? null,
+      favorite: favoriteNorm,
+      favoriteProb: favoriteProbRatio,
+      modelVersion: pred.model_version ?? null,
+      confidence: confidenceRatio,
+      recommendations: {
+        favorite: favoriteNorm,
+        favorite_prob: favoriteProbRatio,
+        confidence: confidenceRatio,
+        model_version: pred.model_version,
+        prob_home: toRatio(pred.prob_home_win),
+        prob_draw: toRatio(pred.prob_draw),
+        prob_away: toRatio(pred.prob_away_win),
+      } as unknown as Record<string, unknown>,
       bsCreatedAt: pred.created_at ? new Date(pred.created_at) : null,
     }
     if (entity) {

@@ -214,13 +214,43 @@ export interface BsBestOdd {
   updated_at: string
 }
 
+/**
+ * BSD AI 预测（实际接口返回扁平结构）
+ * 注意：BSD 的 /api/predictions/?event_id=X 接口会**忽略 event_id 过滤**，
+ * 需调用方在内存中按 prediction.event.id === targetBsEventId 匹配。
+ */
 export interface BsPrediction {
+  /** 预测记录 ID（全局唯一） */
   id: number
+  /** 预测创建时间 ISO 字符串 */
   created_at: string
+  /** 关联的赛事 */
   event: BsPredictionEvent
-  markets: BsPredictionMarkets
-  recommendations: BsPredictionRecommendations
-  model: BsPredictionModel
+  /** 胜平负概率（0-100，百分比数值） */
+  prob_home_win: number
+  prob_draw: number
+  prob_away_win: number
+  /** 预测结果：H=主胜 / D=平 / A=客胜 */
+  predicted_result: 'H' | 'D' | 'A' | string
+  /** 预期进球数 */
+  expected_home_goals: number
+  expected_away_goals: number
+  /** 大小球概率（0-100） */
+  prob_over_15: number
+  prob_over_25: number
+  prob_over_35: number
+  /** 双方进球概率（0-100） */
+  prob_btts_yes: number
+  /** 最可能比分（BSD 部分接口返回，缺省时为空字符串） */
+  most_likely_score?: string
+  /** 模型置信度（0-100） */
+  confidence: number
+  /** 模型版本 */
+  model_version: string
+  /** 倾向概率（0-100） */
+  favorite_prob: number
+  /** 倾向方：H/D/A */
+  favorite?: string
 }
 
 export interface BsPredictionEvent {

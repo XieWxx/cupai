@@ -50,14 +50,14 @@ export class BsdcBusinessService {
     return this.bsdc.get<BsLineups>(`/api/events/${eventId}/lineups/`)
   }
 
-  /** 获取赛事赔率 */
+  /** 获取赛事赔率（v2） */
   async getEventOdds(eventId: number): Promise<BsOdds> {
-    return this.bsdc.get<BsOdds>(`/api/events/${eventId}/odds/`)
+    return this.bsdc.get<BsOdds>(`/api/v2/events/${eventId}/odds/`)
   }
 
-  /** 获取赛事预测 */
+  /** 获取赛事预测（通过 predictions 列表接口筛选） */
   async getEventPredictions(eventId: number): Promise<BsPaginated<BsPrediction>> {
-    return this.bsdc.get<BsPaginated<BsPrediction>>(`/api/events/${eventId}/predictions/`)
+    return this.bsdc.get<BsPaginated<BsPrediction>>('/api/predictions/', { event_id: eventId, limit: 5 })
   }
 
   // ==================== 联赛相关 ====================

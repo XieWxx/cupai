@@ -514,7 +514,20 @@ export class MatchService {
     const leagueId = match.leagueId || 27
     const groupTeamsMap = await this.buildGroupTeamsMap(leagueId)
     const groupStageFinished = await this.isGroupStageFinished(leagueId)
-    return this.resolvePlaceholderTeams(match, groupTeamsMap, groupStageFinished)
+    const resolved = this.resolvePlaceholderTeams(match, groupTeamsMap, groupStageFinished)
+
+    // 聚合盘口数据（赔率 + 预测）
+    const [odds, prediction] = await Promise.all([
+      this.oddsRepo.findOne({ where: { matchId } }),
+      this.predictionRepo.findOne({ where: { matchId }, order: { updatedAt: 'DESC' } }),
+    ])
+
+    // 附加到返回对象
+    const result = resolved as any
+    result.odds = odds || null
+    result.prediction = prediction || null
+
+    return result
   }
 
   async getMatchPrediction(matchId: string) {

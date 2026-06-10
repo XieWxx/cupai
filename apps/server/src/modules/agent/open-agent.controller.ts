@@ -68,6 +68,7 @@ export class OpenAgentController {
   /**
    * 获取某赛事已完成的维度报告
    * GET /agent/open/dimensions?matchId=xxx&range=24h&pageSize=50
+   * 优先从 Redis 缓存读取，缓存未命中时查 DB 并回填缓存
    */
   @Get('dimensions')
   async listDimensions(
@@ -75,12 +76,30 @@ export class OpenAgentController {
     @Query('range') range?: string,
     @Query('pageSize') pageSize?: string,
   ) {
+    if (!matchId) {
+      return { list: [], total: 0 }
+    }
     const size = Math.min(Number(pageSize) || 200, 500)
+
+    // 优先从 Redis 缓存读取
+    const cacheKey = `dimensions:${matchId}:all`
+    const cached = await this.redisCache.get<any[]>(cacheKey)
+    if (cached && cached.length > 0) {
+      return { list: cached.slice(0, size), total: cached.length }
+    }
+
+    // 缓存未命中，查 DB
     const rows = await this.submissionRepo.find({
       where: { matchId },
       order: { createdAt: 'DESC' },
       take: size,
     })
+
+    // 回填缓存（仅在有数据时）
+    if (rows.length > 0) {
+      await this.redisCache.set(cacheKey, rows, 3600)
+    }
+
     return { list: rows, total: rows.length }
   }
 

@@ -12,6 +12,7 @@
 </p>
 
 <p align="center">
+  <a href="https://cupai.asia/"><img src="https://img.shields.io/badge/Live_Demo-cupai.asia-2563eb?style=flat-square&logo=globe&logoColor=white" alt="Live Demo"></a>
   <a href="https://github.com/XieWxx/cupai/blob/main/LICENSE"><img src="https://img.shields.io/github/license/XieWxx/cupai?style=flat-square&color=2563eb" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue"></a>
   <a href="#"><img src="https://img.shields.io/badge/NestJS-latest-E0234E?style=flat-square&logo=nestjs&logoColor=white" alt="NestJS"></a>

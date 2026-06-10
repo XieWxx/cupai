@@ -36,6 +36,7 @@
         <el-table-column :label="$t('match.homeTeam')" min-width="150">
           <template #default="{ row }">
             <div class="team-cell">
+              <img v-if="getTeamLogoUrl(row.homeTeam?.bsTeamId)" :src="getTeamLogoUrl(row.homeTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo-sm" alt="" />
               <span v-if="getFlagClass(row.homeTeam?.countryCode)" :class="getFlagClass(row.homeTeam?.countryCode)"></span>
               <span>{{ getTeamName(row.homeTeam) }}</span>
             </div>
@@ -50,6 +51,7 @@
         <el-table-column :label="$t('match.awayTeam')" min-width="150">
           <template #default="{ row }">
             <div class="team-cell">
+              <img v-if="getTeamLogoUrl(row.awayTeam?.bsTeamId)" :src="getTeamLogoUrl(row.awayTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo-sm" alt="" />
               <span v-if="getFlagClass(row.awayTeam?.countryCode)" :class="getFlagClass(row.awayTeam?.countryCode)"></span>
               <span>{{ getTeamName(row.awayTeam) }}</span>
             </div>
@@ -83,6 +85,7 @@ import { useI18n } from 'vue-i18n'
 import { useMatchStore } from '@/stores/match'
 import { getFlagClass } from '@/utils/flag'
 import { useTeamName } from '@/composables/useTeamName'
+import { getTeamLogoUrl } from '@/utils/bsdImages'
 
 const { locale: i18nLocale } = useI18n()
 const matchStore = useMatchStore()
@@ -133,6 +136,13 @@ onMounted(() => {
   border-radius: 2px;
   flex-shrink: 0;
   display: inline-block;
+}
+
+.team-logo-sm {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .score {

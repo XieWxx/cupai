@@ -33,8 +33,13 @@
               <span :class="{ 'rank-top': $index < 2 }">{{ $index + 1 }}</span>
             </template>
           </el-table-column>
-          <el-table-column :label="$t('standings.team')" min-width="120">
-            <template #default="{ row }">{{ getTeamName(row.team) || $t('standings.unknown') }}</template>
+          <el-table-column :label="$t('standings.team')" min-width="140">
+            <template #default="{ row }">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <img v-if="getTeamLogoUrl(row.team?.bsTeamId)" :src="getTeamLogoUrl(row.team?.bsTeamId, { bg: 'transparent' })" style="width: 22px; height: 22px; object-fit: contain; flex-shrink: 0;" alt="" />
+                <span>{{ getTeamName(row.team) || $t('standings.unknown') }}</span>
+              </div>
+            </template>
           </el-table-column>
           <el-table-column prop="played" :label="$t('standings.played')" width="50" align="center" />
           <el-table-column prop="wins" :label="$t('standings.won')" width="50" align="center" />
@@ -93,6 +98,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { http } from '@/api/request'
 import { useTeamName } from '@/composables/useTeamName'
+import { getTeamLogoUrl } from '@/utils/bsdImages'
 
 const { getTeamName } = useTeamName()
 

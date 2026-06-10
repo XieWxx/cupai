@@ -30,6 +30,7 @@
               </div>
               <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
+                <img v-if="getTeamLogoUrl(getTeamInfo(match, 'home')?.bsTeamId)" :src="getTeamLogoUrl(getTeamInfo(match, 'home')?.bsTeamId, { bg: 'transparent' })" class="team-logo-xs" alt="" />
                 <span v-if="getFlagClass(getTeamInfo(match, 'home')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'home').countryCode)} team-flag`"></span>
                 <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'home')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.homeTeamPlaceholder" class="team-placeholder">{{ match.homeTeamPlaceholder }}</span>
@@ -38,6 +39,7 @@
               </div>
               <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
+                <img v-if="getTeamLogoUrl(getTeamInfo(match, 'away')?.bsTeamId)" :src="getTeamLogoUrl(getTeamInfo(match, 'away')?.bsTeamId, { bg: 'transparent' })" class="team-logo-xs" alt="" />
                 <span v-if="getFlagClass(getTeamInfo(match, 'away')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'away').countryCode)} team-flag`"></span>
                 <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'away')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.awayTeamPlaceholder" class="team-placeholder">{{ match.awayTeamPlaceholder }}</span>
@@ -70,6 +72,7 @@
           </div>
           <!-- 主队 -->
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
+            <img v-if="getTeamLogoUrl(match?.homeTeam?.bsTeamId)" :src="getTeamLogoUrl(match?.homeTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo-xs" alt="" />
             <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam.countryCode)} team-flag`"></span>
             <span class="team-name" :class="{ 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamName(match?.homeTeam) || $t('bracket.tbd') }}</span>
             <span v-if="match?.homeTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
@@ -77,6 +80,7 @@
           </div>
           <!-- 客队 -->
           <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
+            <img v-if="getTeamLogoUrl(match?.awayTeam?.bsTeamId)" :src="getTeamLogoUrl(match?.awayTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo-xs" alt="" />
             <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam.countryCode)} team-flag`"></span>
             <span class="team-name" :class="{ 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamName(match?.awayTeam) || $t('bracket.tbd') }}</span>
             <span v-if="match?.awayTeamConfirmed === false" class="team-pending">{{ $t('bracket.pending') }}</span>
@@ -113,6 +117,7 @@
               </div>
               <!-- 主队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'home') }">
+                <img v-if="getTeamLogoUrl(getTeamInfo(match, 'home')?.bsTeamId)" :src="getTeamLogoUrl(getTeamInfo(match, 'home')?.bsTeamId, { bg: 'transparent' })" class="team-logo-xs" alt="" />
                 <span v-if="getFlagClass(getTeamInfo(match, 'home')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'home').countryCode)} team-flag`"></span>
                 <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'home'), 'is-pending': match?.homeTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'home')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.homeTeamPlaceholder" class="team-placeholder">{{ match.homeTeamPlaceholder }}</span>
@@ -121,6 +126,7 @@
               </div>
               <!-- 客队 -->
               <div class="match-team" :class="{ 'is-winner': isWinner(match, 'away') }">
+                <img v-if="getTeamLogoUrl(getTeamInfo(match, 'away')?.bsTeamId)" :src="getTeamLogoUrl(getTeamInfo(match, 'away')?.bsTeamId, { bg: 'transparent' })" class="team-logo-xs" alt="" />
                 <span v-if="getFlagClass(getTeamInfo(match, 'away')?.countryCode)" :class="`${getFlagClass(getTeamInfo(match, 'away').countryCode)} team-flag`"></span>
                 <span class="team-name" :class="{ 'is-placeholder': isPlaceholderTeam(match, 'away'), 'is-pending': match?.awayTeamConfirmed === false }">{{ getTeamName(getTeamInfo(match, 'away')) || $t('bracket.tbd') }}</span>
                 <span v-if="match?.awayTeamPlaceholder" class="team-placeholder">{{ match.awayTeamPlaceholder }}</span>
@@ -147,6 +153,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getFlagClass } from '@/utils/flag'
 import { useTeamName } from '@/composables/useTeamName'
+import { getTeamLogoUrl } from '@/utils/bsdImages'
 
 const props = defineProps<{
   bracketData?: any
@@ -455,6 +462,13 @@ function onMatchClick(match: any) {
   border-radius: 2px;
   flex-shrink: 0;
   box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.team-logo-xs {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .team-name {

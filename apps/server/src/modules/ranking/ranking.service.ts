@@ -351,21 +351,48 @@ export class RankingService {
         .getManyAndCount()
     }
 
-    // 聚合每个模型的使用用户数（从 user_ai_configs 按 modelName 统计去重用户）
+    // 聚合每个模型的使用用户数
+    // 从 user_ai_configs 按 modelName 统计去重用户
+    // 匹配策略：先精确匹配，再按模型名前缀归一化匹配（如 deepseek-chat 匹配 deepseek-*）
     const configs = await this.userAiConfigRepo.find({ select: ['id', 'userId', 'modelName'] })
+
+    // 建立 modelName -> Set<userId> 映射（精确匹配）
     const modelUserMap = new Map<string, Set<string>>()
     for (const cfg of configs) {
-      const mn = cfg.modelName?.trim().toLowerCase()
+      const mn = cfg.modelName?.trim()
       if (!mn) continue
-      if (!modelUserMap.has(mn)) modelUserMap.set(mn, new Set())
-      modelUserMap.get(mn)!.add(cfg.userId)
+      const key = mn.toLowerCase()
+      if (!modelUserMap.has(key)) modelUserMap.set(key, new Set())
+      modelUserMap.get(key)!.add(cfg.userId)
     }
 
     // 附加 userCount 到每条记录
-    const listWithUserCount = list.map(item => ({
-      ...item,
-      userCount: modelUserMap.get(item.modelName?.trim().toLowerCase())?.size || 0,
-    }))
+    const listWithUserCount = list.map(item => {
+      const mn = item.modelName?.trim()
+      if (!mn) return { ...item, userCount: 0 }
+
+      // 1) 精确匹配
+      const exact = modelUserMap.get(mn.toLowerCase())
+      if (exact && exact.size > 0) {
+        return { ...item, userCount: exact.size }
+      }
+
+      // 2) 前缀归一化匹配：如 deepseek-chat 匹配所有 deepseek-* 配置
+      const prefix = mn.toLowerCase().split(/[-_]/)[0]
+      let count = 0
+      const countedUsers = new Set<string>()
+      for (const [key, users] of modelUserMap) {
+        if (key.startsWith(prefix)) {
+          for (const uid of users) {
+            if (!countedUsers.has(uid)) {
+              countedUsers.add(uid)
+              count++
+            }
+          }
+        }
+      }
+      return { ...item, userCount: count }
+    })
 
     return { list: listWithUserCount, total, page, pageSize }
   }
@@ -378,7 +405,7 @@ export class RankingService {
    * 合并逻辑：同一 platform 取 userCount 较大值，totalPredictions 使用 dimension_submissions 统计
    */
   async getPlatformRankings(limit?: number) {
-    // 数据源 1：从 user_ai_configs 聚合用户数
+    // 数据源 1：从 user_ai_configs 聚合用户数（按 apiEndpoint 域名归一化）
     const configs = await this.userAiConfigRepo.find({
       select: ['id', 'userId', 'apiEndpoint'],
     })
@@ -398,6 +425,34 @@ export class RankingService {
         userCountMap.set(key, new Set())
       }
       userCountMap.get(key)!.add(cfg.userId)
+    }
+
+    // 数据源 1b：从 dimension_submissions 按 platform 字段补充用户数
+    // 使用 apiKeyHint 去重统计每个平台的独立用户
+    const submissionUserRows = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.platform', 'platform')
+      .addSelect('s.model', 'model')
+      .addSelect('s.api_key_hint', 'apiKeyHint')
+      .groupBy('s.platform, s.model, s.api_key_hint')
+      .getRawMany()
+
+    // 补充到 userCountMap
+    for (const row of submissionUserRows) {
+      const rawPlatform: string = row.platform || ''
+      const rawModel: string = row.model || ''
+      const hint: string = row.apiKeyHint || ''
+      if (!hint) continue
+      let key = rawPlatform ? hostToPlatformKey(rawPlatform.toLowerCase()) : ''
+      if (!key || key === 'unknown') {
+        key = modelToPlatformKey(rawModel)
+      }
+      if (!key || key === 'unknown') continue
+      if (!userCountMap.has(key)) {
+        userCountMap.set(key, new Set())
+      }
+      // 用 apiKeyHint 作为用户标识（与 userId 不同体系，但可反映使用人数）
+      userCountMap.get(key)!.add(`sub:${hint}`)
     }
 
     // 数据源 2：从 dimension_submissions 聚合预测次数

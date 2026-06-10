@@ -55,6 +55,7 @@
         <div v-if="match?.homeScore !== null && match?.homeScore !== undefined" class="scoreboard">
           <div class="score-row">
             <div class="team-info team-info--home">
+              <img v-if="getTeamLogoUrl(match?.homeTeam?.bsTeamId)" :src="getTeamLogoUrl(match?.homeTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
               <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
               <div class="team-info__text">
                 <span class="team-name">{{ getTeamName(match?.homeTeam) }}</span>
@@ -78,6 +79,7 @@
                 </div>
               </div>
               <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
+              <img v-if="getTeamLogoUrl(match?.awayTeam?.bsTeamId)" :src="getTeamLogoUrl(match?.awayTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
             </div>
           </div>
           <div v-if="match?.halfTimeHome !== null" class="half-time">
@@ -95,6 +97,7 @@
         <div v-else class="scoreboard scoreboard--upcoming">
           <div class="score-row">
             <div class="team-info team-info--home">
+              <img v-if="getTeamLogoUrl(match?.homeTeam?.bsTeamId)" :src="getTeamLogoUrl(match?.homeTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
               <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
               <div class="team-info__text">
                 <span class="team-name">{{ getTeamName(match?.homeTeam) }}</span>
@@ -116,6 +119,7 @@
                 </div>
               </div>
               <span v-if="getFlagClass(match?.awayTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.awayTeam?.countryCode)}`" />
+              <img v-if="getTeamLogoUrl(match?.awayTeam?.bsTeamId)" :src="getTeamLogoUrl(match?.awayTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
             </div>
           </div>
         </div>
@@ -279,6 +283,7 @@
                 {{ match?.venue || '-' }}{{ match?.city ? `, ${match.city}` : '' }}
                 <span v-if="match?.venueCapacity" class="venue-capacity">({{ match.venueCapacity.toLocaleString() }})</span>
               </div>
+              <img v-if="getVenueImageUrl(match?.venueId)" :src="getVenueImageUrl(match?.venueId)" class="venue-image" alt="" />
             </div>
           </div>
           <div class="key-info-card">
@@ -532,7 +537,7 @@
                     <el-table-column width="48" align="center">
                       <template #default="{ row }">
                         <div class="player-avatar">
-                          <el-avatar v-if="row.avatar" :size="32" :src="row.avatar" />
+                          <el-avatar v-if="getPlayerAvatarUrl(row.bsPlayerId) || row.avatar" :size="32" :src="getPlayerAvatarUrl(row.bsPlayerId) || row.avatar" />
                           <el-avatar v-else :size="32">{{ (row.playerName || row.name || '?').charAt(0) }}</el-avatar>
                         </div>
                       </template>
@@ -1016,6 +1021,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import TimeTriple from '@/components/common/TimeTriple.vue'
 import UserPredictionRanking, { type UserRankingItem } from '@/components/common/UserPredictionRanking.vue'
 import { useTeamName } from '@/composables/useTeamName'
+import { getTeamLogoUrl, getPlayerAvatarUrl, getVenueImageUrl } from '@/utils/bsdImages'
 
 const route = useRoute()
 const router = useRouter()
@@ -2640,6 +2646,12 @@ void openFullMatchCopyDialog
   box-shadow: none !important;
   outline: none !important;
 }
+.team-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 .team-name {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
@@ -3452,6 +3464,13 @@ void openFullMatchCopyDialog
 .venue-capacity {
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+.venue-image {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: var(--el-border-radius-base, 4px);
+  margin-top: 4px;
 }
 
 /* ========== 精彩集锦 ========== */

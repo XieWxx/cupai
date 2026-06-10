@@ -87,6 +87,7 @@
               </div>
               <div class="match-teams">
                 <div class="team-info">
+                  <img v-if="getTeamLogoUrl(match.homeTeam?.bsTeamId)" :src="getTeamLogoUrl(match.homeTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
                   <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam?.countryCode)} team-flag`" />
                   <span class="team-name">{{ getTeamName(match.homeTeam) }}</span>
                 </div>
@@ -94,6 +95,7 @@
                   <span class="score">{{ match.homeScore ?? '-' }} : {{ match.awayScore ?? '-' }}</span>
                 </div>
                 <div class="team-info">
+                  <img v-if="getTeamLogoUrl(match.awayTeam?.bsTeamId)" :src="getTeamLogoUrl(match.awayTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
                   <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam?.countryCode)} team-flag`" />
                   <span class="team-name">{{ getTeamName(match.awayTeam) }}</span>
                 </div>
@@ -134,6 +136,7 @@
               </div>
               <div class="match-teams">
                 <div class="team-info">
+                  <img v-if="getTeamLogoUrl(match.homeTeam?.bsTeamId)" :src="getTeamLogoUrl(match.homeTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
                   <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam?.countryCode)} team-flag`" />
                   <span class="team-name">{{ getTeamName(match.homeTeam) }}</span>
                 </div>
@@ -141,6 +144,7 @@
                   <span class="score">{{ match.homeScore ?? '-' }} : {{ match.awayScore ?? '-' }}</span>
                 </div>
                 <div class="team-info">
+                  <img v-if="getTeamLogoUrl(match.awayTeam?.bsTeamId)" :src="getTeamLogoUrl(match.awayTeam?.bsTeamId, { bg: 'transparent' })" class="team-logo" alt="" />
                   <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam?.countryCode)} team-flag`" />
                   <span class="team-name">{{ getTeamName(match.awayTeam) }}</span>
                 </div>
@@ -259,6 +263,7 @@ import PlatformBadge from '@/components/ranking/PlatformBadge.vue'
 import { detectModel, detectPlatform, regionToFlagClass, type AgentPlatform } from '@/utils/agentPlatform'
 import { http } from '@/api/request'
 import { useTeamName } from '@/composables/useTeamName'
+import { getTeamLogoUrl } from '@/utils/bsdImages'
 
 const { t, locale: i18nLocale } = useI18n()
 const { getTeamName } = useTeamName()
@@ -653,6 +658,13 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.team-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .match-vs {

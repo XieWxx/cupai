@@ -111,10 +111,6 @@ const I18N_MAP: Record<string, Record<string, string>> = {
     'zh-CN': '赛事分析请求', 'en-US': 'Match Analysis Request',
     'ja-JP': '試合分析リクエスト', 'ko-KR': '경기 분석 요청',
   },
-  'copy.playerAnalysis': {
-    'zh-CN': '球员深度分析', 'en-US': 'Player Deep Analysis',
-    'ja-JP': '選手詳細分析', 'ko-KR': '선수 심층 분석',
-  },
   'copy.teamAnalysis': {
     'zh-CN': '球队深度分析', 'en-US': 'Team Deep Analysis',
     'ja-JP': 'チーム詳細分析', 'ko-KR': '팀 심층 분석',
@@ -265,30 +261,6 @@ const I18N_MAP: Record<string, Record<string, string>> = {
   'copy.red': { 'zh-CN': '红', 'en-US': 'R', 'ja-JP': '赤', 'ko-KR': '레드' },
   'copy.yearsOld': { 'zh-CN': '岁', 'en-US': 'y/o', 'ja-JP': '歳', 'ko-KR': '세' },
   'copy.teamName': { 'zh-CN': '名称', 'en-US': 'Name', 'ja-JP': '名称', 'ko-KR': '이름' },
-  'copy.playerTechFit': {
-    'zh-CN': '球员技术特点与位置适配性', 'en-US': 'Player technical traits & positional fit',
-    'ja-JP': '選手の技術的特徴とポジション適性', 'ko-KR': '선수 기술 특징 및 포지션 적합성',
-  },
-  'copy.currentForm': {
-    'zh-CN': '当前状态（评分、最近 5 场趋势）', 'en-US': 'Current form (rating, last 5 matches trend)',
-    'ja-JP': '現在の状態（評価、直近5試合のトレンド）', 'ko-KR': '현재 상태 (평점, 최근 5경기 트렌드)',
-  },
-  'copy.injuryRisk': {
-    'zh-CN': '伤病与停赛风险', 'en-US': 'Injury & suspension risk',
-    'ja-JP': '負傷と出場停止リスク', 'ko-KR': '부상 및 출장 정지 위험',
-  },
-  'copy.keyMatchExpect': {
-    'zh-CN': '关键比赛（淘汰赛 / 强强对话）预期表现',
-    'en-US': 'Expected performance in key matches (knockout / top clashes)',
-    'ja-JP': '重要試合（決勝トーナメント / 強豪対決）での期待パフォーマンス',
-    'ko-KR': '핵심 경기 (토너먼트 / 강팀 대결) 예상 퍼포먼스',
-  },
-  'copy.scoringExpect': {
-    'zh-CN': '是否能在下一场破门（结合对手防线、自身进球效率）',
-    'en-US': 'Can score in next match (considering opponent defense & own scoring efficiency)',
-    'ja-JP': '次戦で得点できるか（相手守備陣と自身の得点効率を考慮）',
-    'ko-KR': '다음 경기 득점 가능 여부 (상대 수비 및 자체 득점 효율 고려)',
-  },
   'copy.tacticalStyle': {
     'zh-CN': '战术风格解读（控球 / 反击 / 高位压迫等）',
     'en-US': 'Tactical style analysis (possession / counter / high press etc.)',
@@ -312,12 +284,6 @@ const I18N_MAP: Record<string, Record<string, string>> = {
   'copy.tacticalMatchup': {
     'zh-CN': '与赛事对手的战术相克分析', 'en-US': 'Tactical matchup analysis vs opponent',
     'ja-JP': '対戦相手との戦術的相性分析', 'ko-KR': '상대팀과의 전술적 상성 분석',
-  },
-  'copy.proScoutPlayer': {
-    'zh-CN': '请扮演专业球探，从技术、状态、伤病、心理四个维度分析该球员的赛季表现与下一场预期。',
-    'en-US': 'Act as a professional scout. Analyze this player\'s season performance and next match expectations from technical, form, injury, and mental dimensions.',
-    'ja-JP': 'プロのスカウトとして、技術・状態・負傷・心理の4つの側面から選手のシーズンパフォーマンスと次戦の期待値を分析してください。',
-    'ko-KR': '프로 스카우트로서 기술, 상태, 부상, 심리의 4가지 차원에서 이 선수의 시즌 퍼포먼스와 다음 경기 예상을 분석해 주세요.',
   },
   'copy.proScoutTeam': {
     'zh-CN': '请扮演专业球探，从战术、阵容、状态三个维度分析这支球队。',
@@ -1022,57 +988,6 @@ export function buildMatchInstruction(input: CopyInstructionInput): string {
   parts.push(ANALYSIS_RULES, '', buildReturnGuidance(input, 'all'))
 
   return parts.filter(Boolean).join('\n')
-}
-
-/**
- * 生成球员分析指令（针对单个球员）
- */
-export function buildPlayerInstruction(input: {
-  player: PlayerSnapshot & { teamName?: string; teamId?: string }
-  recentMatches?: Array<{ opponent: string; goals: number; assists: number; rating?: number }>
-  userApiKey?: string
-  appBaseUrl?: string
-  /** 当前语言（用于生成对应语言的指令文本），默认 zh-CN */
-  locale?: string
-}): string {
-  const p = input.player
-  const loc = input.locale
-  const parts = [
-    `# ${i18n(loc, 'copy.playerAnalysis')} · ${p.name}（${p.teamName || ''}）`,
-    '',
-    `> ${i18n(loc, 'copy.proScoutPlayer')}`,
-    '',
-    `## ${i18n(loc, 'copy.playerAnalysis')}`,
-    `- ${i18n(loc, 'copy.name')}：${p.name}（${p.nameEn || ''}）`,
-    `- ${i18n(loc, 'copy.affiliation')}：${p.teamName || '—'}`,
-    `- ${i18n(loc, 'copy.position')}：${p.position}`,
-    `- ${i18n(loc, 'copy.age')}：${p.age ?? '—'}`,
-    `- ${i18n(loc, 'copy.keyPlayer')}：${p.isKeyPlayer ? `${i18n(loc, 'copy.yes')} ⭐` : i18n(loc, 'copy.no')}`,
-    `- ${i18n(loc, 'copy.seasonGoals')}：${p.seasonGoals ?? 0}`,
-    `- ${i18n(loc, 'copy.seasonAssists')}：${p.seasonAssists ?? 0}`,
-    `- ${i18n(loc, 'copy.yellowCards')}：${p.yellowCards ?? 0}`,
-    `- ${i18n(loc, 'copy.redCards')}：${p.redCards ?? 0}`,
-    `- ${i18n(loc, 'copy.injuryStatus')}：${p.injuryStatus || i18n(loc, 'copy.healthy')}`,
-    '',
-  ]
-  if (input.recentMatches?.length) {
-    parts.push(`## ${i18n(loc, 'copy.recentMatches')}`, '')
-    for (const m of input.recentMatches) {
-      parts.push(`- vs ${m.opponent} · ${m.goals}${i18n(loc, 'copy.goals')} ${m.assists}${i18n(loc, 'copy.assists')}${m.rating ? ` · ${i18n(loc, 'copy.rating')} ${m.rating}` : ''}`)
-    }
-    parts.push('')
-  }
-  parts.push(
-    `## ${i18n(loc, 'copy.analysisRequirements')}`,
-    `1. ${i18n(loc, 'copy.playerTechFit')}`,
-    `2. ${i18n(loc, 'copy.currentForm')}`,
-    `3. ${i18n(loc, 'copy.injuryRisk')}`,
-    `4. ${i18n(loc, 'copy.keyMatchExpect')}`,
-    `5. ${i18n(loc, 'copy.scoringExpect')}`,
-    '',
-    i18n(loc, 'copy.markdownOutput100to200'),
-  )
-  return parts.join('\n')
 }
 
 /**

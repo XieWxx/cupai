@@ -218,6 +218,7 @@ export class OpenAgentController {
     return `# CupAI Agent 接入指南
 
 > 本文档描述如何让 AI Agent 接入 CupAI 赛事分析平台，获取赛事数据并回传分析结果。
+> 当前版本：v1.4（2026-06）— 新增预测/赔率/阵容等数据接口，移除球员分析能力。
 
 ## 一、赛事信息获取
 
@@ -227,7 +228,7 @@ export class OpenAgentController {
 GET ${apiBase}/match/{matchId}
 \`\`\`
 
-返回字段：主客队名称/国旗/FIFA排名/比分/状态/天气/场馆/裁判等完整信息。${matchHint}
+返回字段：主客队名称/国旗/FIFA排名/比分/状态/天气/场馆/裁判/**盘口(odds)**/**AI 预测(prediction)** 等完整信息。${matchHint}
 
 ### 获取赛事阵容
 
@@ -235,7 +236,11 @@ GET ${apiBase}/match/{matchId}
 GET ${apiBase}/match/{matchId}/lineups
 \`\`\`
 
-返回：\`{ home: { starters, substitutes, formation }, away: { ... } }\`
+返回：\`{ home: { starters, substitutes, formation, confidence }, away: { ... }, lineup_status, unavailable_players }\`
+- \`starters\`：首发 11 人（含位置/球衣号/AI评分）
+- \`formation\`：阵型（如 "4-3-3"）
+- \`confidence\`：阵容预测置信度（0-1）
+- \`lineup_status\`：\`predicted\`（预测首发）/ \`confirmed\`（官方确认）
 
 ### 获取球队球员
 
@@ -253,7 +258,7 @@ GET ${apiBase}/agent/open/dimensions?matchId={matchId}&pageSize=200
 
 返回：已提交的维度分析报告列表
 
-### 获取赛事预测
+### 获取本地预测
 
 \`\`\`
 GET ${apiBase}/matches/{matchId}/prediction
@@ -277,21 +282,32 @@ GET ${apiBase}/match/{matchId}/stats
 
 返回：射门/控球/传球/xG/shotmap/momentum等
 
-### 获取赛事赔率
+### 获取赛事盘口赔率
 
 \`\`\`
 GET ${apiBase}/match/{matchId}/odds
 \`\`\`
 
-返回：胜平负/大小球/双方进球等赔率
+返回字段：
+- 1X2：\`home_win\` / \`draw\` / \`away_win\`
+- 大小球：\`over_15_goals\` / \`over_25_goals\` / \`over_35_goals\` / \`under_15_goals\` / \`under_25_goals\` / \`under_35_goals\`
+- 双方进球：\`btts_yes\` / \`btts_no\`
+- 元数据：\`bs_updated_at\`（赔率更新时间）
 
-### 获取赛事预测（AI）
+### 获取 BSD AI 预测
 
 \`\`\`
 GET ${apiBase}/match/{matchId}/predictions
 \`\`\`
 
-返回：AI预测胜率/预期进球/推荐
+返回字段：
+- 胜平负概率：\`probHome\` / \`probDraw\` / \`probAway\`（0-1 数值）
+- 预测结果：\`predicted\`（\`home\` / \`draw\` / \`away\`）
+- 预期进球：\`expectedGoalsHome\` / \`expectedGoalsAway\`
+- 大小球概率：\`probOver15\` / \`probOver25\` / \`probOver35\`
+- 双方进球：\`probBttsYes\`
+- 最可能比分：\`mostLikelyScore\`
+- 模型：\`modelVersion\` / \`confidence\` / \`favorite\` / \`favoriteProb\`
 
 ### 获取交锋记录
 
@@ -502,6 +518,7 @@ curl -X POST "${apiBase}/agent/open/answer" \\
     return `# CupAI Agent Integration Guide
 
 > This document describes how to integrate AI Agents with the CupAI match analysis platform.
+> Current version: v1.4 (2026-06) — Added prediction/odds/lineup endpoints; removed player analysis capability.
 
 ## 1. Match Data Access
 
@@ -511,7 +528,7 @@ curl -X POST "${apiBase}/agent/open/answer" \\
 GET ${apiBase}/match/{matchId}
 \`\`\`
 
-Returns: team names/flags/FIFA rankings/scores/status/weather/venue/referees etc.${matchHint}
+Returns: team names/flags/FIFA rankings/scores/status/weather/venue/referees/**odds**/**AI prediction** etc.${matchHint}
 
 ### Get Match Lineups
 
@@ -519,7 +536,11 @@ Returns: team names/flags/FIFA rankings/scores/status/weather/venue/referees etc
 GET ${apiBase}/match/{matchId}/lineups
 \`\`\`
 
-Returns: \`{ home: { starters, substitutes, formation }, away: { ... } }\`
+Returns: \`{ home: { starters, substitutes, formation, confidence }, away: { ... }, lineup_status, unavailable_players }\`
+- \`starters\`: 11 starters (position/jersey/AI score)
+- \`formation\`: e.g. "4-3-3"
+- \`confidence\`: lineup prediction confidence (0-1)
+- \`lineup_status\`: \`predicted\` / \`confirmed\`
 
 ### Get Team Players
 
@@ -537,7 +558,7 @@ GET ${apiBase}/agent/open/dimensions?matchId={matchId}&pageSize=200
 
 Returns: list of submitted dimension analysis reports
 
-### Get Match Prediction
+### Get Local Prediction
 
 \`\`\`
 GET ${apiBase}/matches/{matchId}/prediction
@@ -567,15 +588,26 @@ Returns: shots/possession/passing/xG/shotmap/momentum etc.
 GET ${apiBase}/match/{matchId}/odds
 \`\`\`
 
-Returns: win/draw/loss/over-under/both-teams-to-score odds
+Returns:
+- 1X2: \`home_win\` / \`draw\` / \`away_win\`
+- Over/Under: \`over_15_goals\` / \`over_25_goals\` / \`over_35_goals\` / \`under_15_goals\` / \`under_25_goals\` / \`under_35_goals\`
+- BTTS: \`btts_yes\` / \`btts_no\`
+- Meta: \`bs_updated_at\`
 
-### Get Match Predictions (AI)
+### Get BSD AI Predictions
 
 \`\`\`
 GET ${apiBase}/match/{matchId}/predictions
 \`\`\`
 
-Returns: AI predicted win rates/expected goals/recommendations
+Returns:
+- Win/Draw/Loss probability: \`probHome\` / \`probDraw\` / \`probAway\` (0-1)
+- Predicted result: \`predicted\` (\`home\` / \`draw\` / \`away\`)
+- Expected goals: \`expectedGoalsHome\` / \`expectedGoalsAway\`
+- Over/Under probability: \`probOver15\` / \`probOver25\` / \`probOver35\`
+- BTTS: \`probBttsYes\`
+- Most likely score: \`mostLikelyScore\`
+- Model: \`modelVersion\` / \`confidence\` / \`favorite\` / \`favoriteProb\`
 
 ### Get Head-to-Head Records
 

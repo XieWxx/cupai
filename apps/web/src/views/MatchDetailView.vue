@@ -253,6 +253,157 @@
           </SectionCard>
         </div>
 
+        <!-- ========== 盘口赔率 + AI 预测（两列布局） ========== -->
+        <div class="odds-2col" style="margin-top: var(--space-4)">
+          <!-- 左：盘口赔率 -->
+          <SectionCard :title="$t('match.oddsTitle')">
+            <template #extra>
+              <span v-if="match?.odds?.bsUpdatedAt" class="odds-update-time">
+                {{ $t('match.oddsUpdatedAt') }}: {{ formatTime(match.odds.bsUpdatedAt) }}
+              </span>
+            </template>
+            <div v-if="match?.odds" class="odds-content">
+              <!-- 1X2 胜平负 -->
+              <div class="odds-section">
+                <div class="odds-section__title">{{ $t('match.odds1x2') }}</div>
+                <div class="odds-row">
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">{{ $t('match.oddsHomeWin') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.homeWin?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">{{ $t('match.oddsDraw') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.draw?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">{{ $t('match.oddsAwayWin') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.awayWin?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                </div>
+              </div>
+              <!-- 大小球 -->
+              <div class="odds-section">
+                <div class="odds-section__title">{{ $t('match.oddsOverUnder') }}</div>
+                <div class="odds-row">
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">1.5 {{ $t('match.oddsOver') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.over15Goals?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">2.5 {{ $t('match.oddsOver') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.over25Goals?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">2.5 {{ $t('match.oddsUnder') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.under25Goals?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                </div>
+              </div>
+              <!-- 双方进球 -->
+              <div class="odds-section">
+                <div class="odds-section__title">{{ $t('match.oddsBtts') }}</div>
+                <div class="odds-row">
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">{{ $t('match.oddsYes') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.bttsYes?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                  <div class="odds-cell">
+                    <span class="odds-cell__label">{{ $t('match.oddsNo') }}</span>
+                    <span class="odds-cell__value">{{ match.odds.bttsNo?.toFixed(2) ?? '-' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <EmptyState
+              v-else
+              :title="$t('match.oddsEmpty')"
+              :description="$t('match.oddsEmptyDesc')"
+              variant="document"
+            />
+          </SectionCard>
+
+          <!-- 右：AI 预测（BSD prediction 数据） -->
+          <SectionCard :title="$t('match.oddsPredictionTitle')">
+            <template #extra>
+              <el-tag v-if="match?.prediction" size="small" type="info" effect="plain">
+                <el-icon :size="12"><Cpu /></el-icon>
+                <span style="margin-left: 4px">BSD</span>
+              </el-tag>
+            </template>
+            <div v-if="match?.prediction" class="odds-prediction">
+              <!-- 胜平负概率 -->
+              <div class="odds-prediction__row" v-if="match.prediction.probHome != null">
+                <span class="odds-prediction__label">{{ $t('match.oddsHomeWin') }}</span>
+                <el-progress
+                  :percentage="match.prediction.probHome * 100"
+                  :stroke-width="10"
+                  :show-text="true"
+                  :format="(p: number) => p.toFixed(1) + '%'"
+                  :color="getRateColor(match.prediction.probHome)"
+                />
+              </div>
+              <div class="odds-prediction__row" v-if="match.prediction.probDraw != null">
+                <span class="odds-prediction__label">{{ $t('match.oddsDraw') }}</span>
+                <el-progress
+                  :percentage="match.prediction.probDraw * 100"
+                  :stroke-width="10"
+                  :show-text="true"
+                  :format="(p: number) => p.toFixed(1) + '%'"
+                  :color="getRateColor(match.prediction.probDraw)"
+                />
+              </div>
+              <div class="odds-prediction__row" v-if="match.prediction.probAway != null">
+                <span class="odds-prediction__label">{{ $t('match.oddsAwayWin') }}</span>
+                <el-progress
+                  :percentage="match.prediction.probAway * 100"
+                  :stroke-width="10"
+                  :show-text="true"
+                  :format="(p: number) => p.toFixed(1) + '%'"
+                  :color="getRateColor(match.prediction.probAway)"
+                />
+              </div>
+              <!-- 预期进球 -->
+              <div class="odds-prediction__stats" v-if="match.prediction.expectedGoalsHome != null || match.prediction.expectedGoalsAway != null">
+                <div class="odds-prediction__stat">
+                  <span class="odds-prediction__stat-label">{{ $t('match.oddsExpectedGoals') }}</span>
+                  <span class="odds-prediction__stat-value">
+                    {{ getTeamName(match?.homeTeam) }} {{ match.prediction.expectedGoalsHome?.toFixed(2) ?? '-' }}
+                    —
+                    {{ getTeamName(match?.awayTeam) }} {{ match.prediction.expectedGoalsAway?.toFixed(2) ?? '-' }}
+                  </span>
+                </div>
+              </div>
+              <!-- 最可能比分 -->
+              <div class="odds-prediction__stats" v-if="match.prediction.mostLikelyScore">
+                <div class="odds-prediction__stat">
+                  <span class="odds-prediction__stat-label">{{ $t('match.oddsMostLikelyScore') }}</span>
+                  <span class="odds-prediction__stat-value">{{ match.prediction.mostLikelyScore }}</span>
+                </div>
+              </div>
+              <!-- 大小球概率 -->
+              <div class="odds-prediction__stats" v-if="match.prediction.probOver25 != null">
+                <div class="odds-prediction__stat">
+                  <span class="odds-prediction__stat-label">2.5 {{ $t('match.oddsOver') }}</span>
+                  <span class="odds-prediction__stat-value">{{ (match.prediction.probOver25 * 100).toFixed(1) }}%</span>
+                </div>
+              </div>
+              <!-- 双方进球概率 -->
+              <div class="odds-prediction__stats" v-if="match.prediction.probBttsYes != null">
+                <div class="odds-prediction__stat">
+                  <span class="odds-prediction__stat-label">{{ $t('match.oddsBtts') }}</span>
+                  <span class="odds-prediction__stat-value">{{ $t('match.oddsYes') }} {{ (match.prediction.probBttsYes * 100).toFixed(1) }}%</span>
+                </div>
+              </div>
+            </div>
+            <EmptyState
+              v-else
+              :title="$t('match.oddsEmpty')"
+              :description="$t('match.oddsEmptyDesc')"
+              variant="document"
+            />
+          </SectionCard>
+        </div>
+
         <!-- ========== 关键信息紧凑卡 ========== -->
         <div class="key-info-bar" style="margin-top: var(--space-4)">
           <div class="key-info-card">
@@ -606,19 +757,6 @@
                         <el-tag :type="injuryType(row.injuryStatus)" size="small" effect="plain">
                           {{ injuryLabel(row.injuryStatus) }}
                         </el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column :label="$t('common.operation')" width="80" align="center" fixed="right">
-                      <template #default="{ row }">
-                        <el-tooltip :content="$t('copyIntro.copyPlayerTip')" placement="top">
-                          <el-button
-                            text
-                            type="primary"
-                            size="small"
-                            :icon="CopyDocument"
-                            @click="openPlayerCopyDialog(row, activeLineupTab)"
-                          />
-                        </el-tooltip>
                       </template>
                     </el-table-column>
                   </el-table>
@@ -999,7 +1137,6 @@ import {
 } from '@element-plus/icons-vue'
 import {
   buildDimensionInstruction,
-  buildPlayerInstruction,
   buildTeamInstruction,
   buildMatchInstruction,
   DIMENSION_SECTIONS,
@@ -1447,51 +1584,6 @@ async function copyDimension(dimKey: DimensionKey) {
   }
 
   // 打开引导弹窗
-  copyDialogInstructionText.value = text
-  copyDialogAutoCopied.value = autoCopied
-  copyDialogOpen.value = true
-}
-
-/**
- * 分析球员 — 自动复制指令 + 打开引导弹窗
- */
-async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
-  // 未登录跳转登录页
-  if (!userStore.isLoggedIn) {
-    router.push('/login')
-    return
-  }
-  const teamName = side === 'home' ? getTeamName(match.value?.homeTeam) : getTeamName(match.value?.awayTeam)
-  const text = buildPlayerInstruction({
-    player: { ...player, teamName },
-    userApiKey: currentApiKey.value,
-    locale: i18nLocale.value,
-    appBaseUrl: import.meta.env.VITE_API_BASE_URL
-      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
-      : (typeof window !== 'undefined' ? window.location.origin : undefined),
-  })
-
-  // 自动复制到剪贴板
-  let autoCopied = false
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      autoCopied = true
-    } else {
-      const textarea = document.createElement('textarea')
-      textarea.value = text
-      textarea.style.position = 'fixed'
-      textarea.style.opacity = '0'
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-      autoCopied = true
-    }
-  } catch {
-    autoCopied = false
-  }
-
   copyDialogInstructionText.value = text
   copyDialogAutoCopied.value = autoCopied
   copyDialogOpen.value = true
@@ -3090,6 +3182,108 @@ void openFullMatchCopyDialog
   text-align: right;
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
+}
+
+/* ========== 盘口赔率 + AI 预测（两列布局） ========== */
+.odds-2col {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+@media (max-width: 1100px) {
+  .odds-2col {
+    grid-template-columns: 1fr;
+  }
+}
+.odds-update-time {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+.odds-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.odds-section {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.odds-section__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+.odds-row {
+  display: flex;
+  gap: var(--space-3);
+}
+.odds-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2);
+  background: var(--color-bg-normal);
+  border-radius: var(--radius-sm);
+}
+.odds-cell__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+.odds-cell__value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+/* AI 预测（BSD prediction） */
+.odds-prediction {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.odds-prediction__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.odds-prediction__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  min-width: 48px;
+  flex-shrink: 0;
+}
+.odds-prediction__row .el-progress {
+  flex: 1;
+}
+.odds-prediction__stats {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.odds-prediction__stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+.odds-prediction__stat + .odds-prediction__stat {
+  margin-top: var(--space-2);
+}
+.odds-prediction__stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.odds-prediction__stat-value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
 }
 
 /* ========== 阵容与球员分析 ========== */

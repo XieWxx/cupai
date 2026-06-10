@@ -37,6 +37,7 @@ import ICON_URL_YI from '@lobehub/icons-static-svg/icons/yi.svg?url'
 import ICON_URL_META from '@lobehub/icons-static-svg/icons/meta.svg?url'
 import ICON_URL_MISTRAL from '@lobehub/icons-static-svg/icons/mistral.svg?url'
 import ICON_URL_BAICHUAN from '@lobehub/icons-static-svg/icons/baichuan.svg?url'
+import ICON_URL_HERMESAGENT from '@lobehub/icons-static-svg/icons/hermesagent.svg?url'
 
 /** Agent 平台 / 大模型展示元数据 */
 export interface AgentPlatform {
@@ -364,6 +365,18 @@ const PLATFORM_RULES: Array<{ key: string; match: (host: string) => boolean; met
       letter: 'B',
     },
   },
+  {
+    key: 'hermesagent',
+    match: (h) => /hermes/i.test(h),
+    meta: {
+      key: 'hermesagent',
+      name: 'platform.hermesagent',
+      nameEn: 'Hermes Agent',
+      color: '#6366f1',
+      iconUrl: ICON_URL_HERMESAGENT,
+      letter: 'H',
+    },
+  },
 ]
 
 /* ============================================================
@@ -638,6 +651,10 @@ const PLATFORM_KEY_ALIASES: Record<string, string> = {
   mixtral: 'mistral',
   // 百川
   baichuan: 'baichuan',
+  // Hermes Agent
+  hermesagent: 'hermesagent',
+  'hermes-agent': 'hermesagent',
+  hermes: 'hermesagent',
   // Cohere
   cohere: 'cohere',
   // IDE / Agent 客户端

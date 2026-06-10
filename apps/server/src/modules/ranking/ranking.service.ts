@@ -38,6 +38,7 @@ function hostToPlatformKey(host: string): string {
     'glm', 'moonshot', 'cohere', 'cursor', 'windsurf', 'cline', 'trae',
     'codex-cli', 'workbuddy', 'agnes', 'coze',
     'doubao', 'hunyuan', 'stepfun', 'yi', 'meta', 'mistral', 'baichuan',
+    'hermesagent',
   ]
   if (standardKeys.includes(h)) return h
 
@@ -65,6 +66,8 @@ function hostToPlatformKey(host: string): string {
     llama: 'meta',
     mixtral: 'mistral',
     codex: 'codex-cli',
+    'hermes-agent': 'hermesagent',
+    hermes: 'hermesagent',
   }
   if (aliasMap[h]) return aliasMap[h]
 
@@ -94,6 +97,7 @@ function hostToPlatformKey(host: string): string {
   if (/\bllama\b|meta\.com|meta-llama/i.test(h)) return 'meta'
   if (/mistral|mixtral|codestral/i.test(h)) return 'mistral'
   if (/baichuan/i.test(h)) return 'baichuan'
+  if (/hermes/i.test(h)) return 'hermesagent'
 
   // 兜底：取主域名前缀
   const m = h.match(/^([a-z0-9-]+)/i)
@@ -129,6 +133,7 @@ const PLATFORM_DISPLAY: Record<string, string> = {
   meta: 'Meta Llama',
   mistral: 'Mistral',
   baichuan: '百川',
+  hermesagent: 'Hermes Agent',
   unknown: '未配置',
 }
 

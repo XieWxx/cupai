@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Query, Res, Headers } from '@nestjs/common'
+import { Controller, Get, Post, Body, Query, Res, Req, Headers } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { RedisCacheService } from '../../config/redis-cache.service'
 import { DimensionSubmissionEntity } from './entities/dimension-submission.entity'
 import { UserEntity } from '../user/entities/user.entity'
@@ -16,8 +16,6 @@ import { RankingService } from '../ranking/ranking.service'
  */
 @Controller('agent/open')
 export class OpenAgentController {
-  private readonly baseUrl: string
-
   constructor(
     private readonly redisCache: RedisCacheService,
     private readonly configService: ConfigService,
@@ -26,9 +24,21 @@ export class OpenAgentController {
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
     private readonly rankingService: RankingService,
-  ) {
-    // 从环境变量获取服务基础 URL
-    this.baseUrl = this.configService.get<string>('SERVER_BASE_URL') || 'http://localhost:3002'
+  ) {}
+
+  /**
+   * 从请求中动态构建 baseUrl
+   * 优先使用请求的 Host header，fallback 到环境变量 SERVER_BASE_URL
+   */
+  private resolveBaseUrl(req: Request): string {
+    const host = req.get('host')
+    if (host) {
+      // 信任 nginx 代理传递的 x-forwarded-proto，默认 http
+      const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http')
+      return `${protocol}://${host}`
+    }
+    // fallback：环境变量或默认值
+    return this.configService.get<string>('SERVER_BASE_URL') || 'http://localhost:3002'
   }
 
   // ==================== 指令相关 ====================
@@ -201,12 +211,14 @@ export class OpenAgentController {
    */
   @Get('skill.md')
   async getSkillMd(
+    @Req() req: Request,
     @Res() res: Response,
     @Query('matchId') matchId?: string,
     @Query('lang') lang?: string,
   ) {
     const isZh = lang !== 'en'
-    const apiBase = `${this.baseUrl}/api/v1`
+    const baseUrl = this.resolveBaseUrl(req)
+    const apiBase = `${baseUrl}/api/v1`
     const md = isZh ? this.buildSkillMdZh(apiBase, matchId) : this.buildSkillMdEn(apiBase, matchId)
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8')
     res.send(md)
@@ -218,17 +230,17 @@ export class OpenAgentController {
     return `# CupAI Agent 接入指南
 
 > 本文档描述如何让 AI Agent 接入 CupAI 赛事分析平台，获取赛事数据并回传分析结果。
-> 当前版本：v1.4（2026-06）— 新增预测/赔率/阵容等数据接口，移除球员分析能力。
+> 当前版本：v2.0（2026-06）— 全面扩充数据接口，修正 API 路径，移除球员分析能力。
 
 ## 一、赛事信息获取
 
-### 获取赛事详情
+### 获取赛事详情（核心接口）
 
 \`\`\`
 GET ${apiBase}/match/{matchId}
 \`\`\`
 
-返回字段：主客队名称/国旗/FIFA排名/比分/状态/天气/场馆/裁判/**盘口(odds)**/**AI 预测(prediction)** 等完整信息。${matchHint}
+返回字段：主客队名称/国旗/FIFA排名/比分/状态/天气(temperature/humidity/weatherCondition/windSpeed)/场馆/裁判(homeCoach/awayCoach/refereeName)/**盘口(odds)**/**AI 预测(prediction)** 等完整信息。${matchHint}
 
 ### 获取赛事阵容
 
@@ -242,47 +254,15 @@ GET ${apiBase}/match/{matchId}/lineups
 - \`confidence\`：阵容预测置信度（0-1）
 - \`lineup_status\`：\`predicted\`（预测首发）/ \`confirmed\`（官方确认）
 
-### 获取球队球员
+### 获取赛事元数据
 
 \`\`\`
-GET ${apiBase}/match/teams/{teamId}
+GET ${apiBase}/match/{matchId}/metadata
 \`\`\`
 
-返回：球队信息 + \`players\` 数组（含位置/进球/助攻/伤病等）
+返回：球衣颜色 + 趣味事实 + AI 预览等元信息
 
-### 获取赛事统计
-
-\`\`\`
-GET ${apiBase}/agent/open/dimensions?matchId={matchId}&pageSize=200
-\`\`\`
-
-返回：已提交的维度分析报告列表
-
-### 获取本地预测
-
-\`\`\`
-GET ${apiBase}/matches/{matchId}/prediction
-\`\`\`
-
-返回：\`{ homeWin, draw, awayWin, reasoning, source }\`（无数据时返回 null）
-
-### 获取赛事事件流
-
-\`\`\`
-GET ${apiBase}/match/{matchId}/incidents
-\`\`\`
-
-返回：进球/红黄牌/换人/VAR等事件列表
-
-### 获取赛事统计数据
-
-\`\`\`
-GET ${apiBase}/match/{matchId}/stats
-\`\`\`
-
-返回：射门/控球/传球/xG/shotmap/momentum等
-
-### 获取赛事盘口赔率
+### 获取赛事赔率
 
 \`\`\`
 GET ${apiBase}/match/{matchId}/odds
@@ -294,20 +274,45 @@ GET ${apiBase}/match/{matchId}/odds
 - 双方进球：\`btts_yes\` / \`btts_no\`
 - 元数据：\`bs_updated_at\`（赔率更新时间）
 
-### 获取 BSD AI 预测
+### 获取赔率对比（多博彩公司）
 
 \`\`\`
-GET ${apiBase}/match/{matchId}/predictions
+GET ${apiBase}/match/{matchId}/odds-comparison
+\`\`\`
+
+返回：各博彩公司赔率对比数据
+
+### 获取 AI 预测
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/prediction
 \`\`\`
 
 返回字段：
-- 胜平负概率：\`probHome\` / \`probDraw\` / \`probAway\`（0-1 数值）
+- 胜平负概率：\`homeWin\` / \`draw\` / \`awayWin\`（0-1 数值）
 - 预测结果：\`predicted\`（\`home\` / \`draw\` / \`away\`）
-- 预期进球：\`expectedGoalsHome\` / \`expectedGoalsAway\`
-- 大小球概率：\`probOver15\` / \`probOver25\` / \`probOver35\`
-- 双方进球：\`probBttsYes\`
+- 预期进球：\`expectedGoals\`
+- 大小球：\`overUnder\`
+- 双方进球：\`btts\`
 - 最可能比分：\`mostLikelyScore\`
-- 模型：\`modelVersion\` / \`confidence\` / \`favorite\` / \`favoriteProb\`
+- 推理依据：\`reasoning\`
+- 来源：\`source\`
+
+### 获取赛事事件流
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/incidents
+\`\`\`
+
+返回：进球/红黄牌/换人/VAR等事件列表（按 minute 升序）
+
+### 获取赛事统计数据
+
+\`\`\`
+GET ${apiBase}/bsd/events/{bsEventId}/stats
+\`\`\`
+
+返回：射门/控球/传球/xG/shotmap/momentum等（注意：此接口使用 BSD 原始赛事 ID，非 matchId）
 
 ### 获取交锋记录
 
@@ -325,7 +330,169 @@ GET ${apiBase}/match/{matchId}/player-stats
 
 返回：单场球员统计（评分/射门/传球/铲球等）
 
-## 二、21 维度分析规则
+### 获取社交媒体内容
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/social
+\`\`\`
+
+返回：赛事相关社交媒体内容
+
+### 获取比赛精彩集锦
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/highlights
+\`\`\`
+
+返回：精彩集锦列表
+
+## 二、球队与球员数据
+
+### 获取球队详情（含球员）
+
+\`\`\`
+GET ${apiBase}/match/teams/{teamId}
+\`\`\`
+
+返回：球队信息 + \`players\` 数组（含位置/进球/助攻/伤病等）
+
+### 获取所有球队列表
+
+\`\`\`
+GET ${apiBase}/match/teams/all
+\`\`\`
+
+返回：所有球队列表（按 FIFA 排名排序）
+
+### 获取球员详情
+
+\`\`\`
+GET ${apiBase}/match/players/{playerId}
+\`\`\`
+
+返回：球员信息 + 所属球队
+
+## 三、积分榜与排行
+
+### 获取全部小组积分榜
+
+\`\`\`
+GET ${apiBase}/match/standings
+\`\`\`
+
+返回：所有小组积分数据
+
+### 获取指定小组积分榜
+
+\`\`\`
+GET ${apiBase}/match/standings/{group}
+\`\`\`
+
+返回：指定小组积分数据（group 如 A/B/C...）
+
+### 获取出线形势分析
+
+\`\`\`
+GET ${apiBase}/match/advance/{group}
+\`\`\`
+
+返回：小组出线形势分析
+
+### 获取模型排行
+
+\`\`\`
+GET ${apiBase}/ranking/model
+\`\`\`
+
+返回：AI 模型预测排行
+
+### 获取平台排行
+
+\`\`\`
+GET ${apiBase}/ranking/platforms
+\`\`\`
+
+返回：Agent 平台排行
+
+## 四、舆情数据
+
+### 获取赛事舆情
+
+\`\`\`
+GET ${apiBase}/sentiment/match/{matchId}
+\`\`\`
+
+返回：赛事相关舆情聚合
+
+### 获取球队舆情
+
+\`\`\`
+GET ${apiBase}/sentiment/team/{teamId}
+\`\`\`
+
+返回：球队相关舆情聚合
+
+### 获取舆情时间线
+
+\`\`\`
+GET ${apiBase}/sentiment/timeline?matchId={matchId}&interval=1h
+\`\`\`
+
+返回：舆情随时间变化趋势
+
+### 获取全局舆情概览
+
+\`\`\`
+GET ${apiBase}/sentiment/overview
+\`\`\`
+
+返回：全局舆情概览
+
+## 五、天气与外部数据
+
+### 查询天气
+
+\`\`\`
+GET ${apiBase}/external/weather?lat={纬度}&lon={经度}&date={日期}
+\`\`\`
+
+返回：指定位置和日期的天气数据
+
+### 获取球员头像
+
+\`\`\`
+GET ${apiBase}/external/avatar/{nameEn}
+\`\`\`
+
+返回：球员头像图片
+
+## 六、赛事列表与筛选
+
+### 获取赛事列表
+
+\`\`\`
+GET ${apiBase}/match?page=1&pageSize=20
+\`\`\`
+
+返回：\`{ list: MatchEntity[], total, page, pageSize }\`
+
+### 获取赛事动态（首页）
+
+\`\`\`
+GET ${apiBase}/match/dynamics
+\`\`\`
+
+返回：\`{ live: MatchEntity[], upcoming: MatchEntity[] }\`
+
+### 获取淘汰赛对阵图
+
+\`\`\`
+GET ${apiBase}/match/bracket
+\`\`\`
+
+返回：\`{ list, bracketStage: { r32, r16, qf, sf, final } }\`
+
+## 七、21 维度分析规则
 
 Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出概率分布和首选结论。
 
@@ -386,11 +553,12 @@ Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出�
 4. **舆情数据**：社交媒体情绪分析（辅助参考）
 
 ### 处理流程
-1. 调用对应 API 获取赛事基础数据（赛事详情 + 阵容）
-2. 获取补充数据（统计/赔率/预测/交锋记录，按需）
-3. 基于数据推理各维度结论，给出概率分布
-4. 概率分布必须合计 100%（或 1.0）
-5. 首选结论的置信度不得低于 30%
+1. 调用 \`GET /match/{matchId}\` 获取赛事基础数据（含天气/裁判/教练/赔率/预测）
+2. 调用 \`GET /match/{matchId}/lineups\` 获取双方阵容
+3. 按需获取补充数据（赔率对比/交锋记录/舆情/球员统计等）
+4. 基于数据推理各维度结论，给出概率分布
+5. 概率分布必须合计 100%（或 1.0）
+6. 首选结论的置信度不得低于 30%
 
 ### 验证机制
 1. **概率归一化**：所有维度 distribution 的概率之和必须等于 1.0（±0.01 容差）
@@ -399,7 +567,7 @@ Agent 需对以下 5 大板块共 21 个维度进行分析，每个维度输出�
 4. **摘要完整性**：summary 字段不得为空，且字数在 50-500 之间
 5. **dimKey 校验**：dimKey 必须是上述 21 个维度之一
 
-## 三、回调接口
+## 八、回调接口
 
 ### 提交维度分析结果
 
@@ -453,14 +621,14 @@ POST ${apiBase}/agent/open/answer
 }
 \`\`\`
 
-## 四、API Key 鉴权
+## 九、API Key 鉴权
 
 1. 注册 CupAI 账号后，系统自动生成 API Key（格式 \`cpk_xxx…\`）
 2. 在个人中心查看和复制 API Key
 3. 所有回调接口需在 Header 中携带 \`X-API-Key\`
 4. 未登录用户可查看赛事数据，但无法回传分析结果
 
-## 五、curl 示例
+## 十、curl 示例
 
 ### 提交维度分析
 
@@ -471,9 +639,9 @@ curl -X POST "${apiBase}/agent/open/dimension/submit" \\
   -d '{
     "matchId": "<match_id>",
     "dimKey": "result_wdl",
-    "topOption": "home_win",
+    "topOption": "home",
     "topProbability": 0.55,
-    "distribution": {"home_win": 0.55, "draw": 0.25, "away_win": 0.20},
+    "distribution": {"home": 0.55, "draw": 0.25, "away": 0.20},
     "summary": "基于历史交锋和近期状态分析...",
     "model": "deepseek-chat"
   }'
@@ -487,9 +655,9 @@ curl -X POST "${apiBase}/agent/open/answer" \\
   -H "Content-Type: application/json" \\
   -d '{
     "instructionId": "<instruction_id>",
-    "answer": "home_win",
+    "answer": "home",
     "confidence": 0.78,
-    "distribution": {"home_win": 0.55, "draw": 0.25, "away_win": 0.20},
+    "distribution": {"home": 0.55, "draw": 0.25, "away": 0.20},
     "text": "综合分析推理依据...",
     "time": "'$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'",
     "platform": "deepseek",
@@ -498,7 +666,7 @@ curl -X POST "${apiBase}/agent/open/answer" \\
   }'
 \`\`\`
 
-## 六、成功响应
+## 十一、成功响应
 
 \`\`\`json
 {
@@ -518,17 +686,17 @@ curl -X POST "${apiBase}/agent/open/answer" \\
     return `# CupAI Agent Integration Guide
 
 > This document describes how to integrate AI Agents with the CupAI match analysis platform.
-> Current version: v1.4 (2026-06) — Added prediction/odds/lineup endpoints; removed player analysis capability.
+> Current version: v2.0 (2026-06) — Expanded data endpoints, corrected API paths, removed player analysis capability.
 
 ## 1. Match Data Access
 
-### Get Match Details
+### Get Match Details (Core Endpoint)
 
 \`\`\`
 GET ${apiBase}/match/{matchId}
 \`\`\`
 
-Returns: team names/flags/FIFA rankings/scores/status/weather/venue/referees/**odds**/**AI prediction** etc.${matchHint}
+Returns: team names/flags/FIFA rankings/scores/status/weather(temperature/humidity/weatherCondition/windSpeed)/venue/referees(homeCoach/awayCoach/refereeName)/**odds**/**AI prediction** etc.${matchHint}
 
 ### Get Match Lineups
 
@@ -542,45 +710,13 @@ Returns: \`{ home: { starters, substitutes, formation, confidence }, away: { ...
 - \`confidence\`: lineup prediction confidence (0-1)
 - \`lineup_status\`: \`predicted\` / \`confirmed\`
 
-### Get Team Players
+### Get Match Metadata
 
 \`\`\`
-GET ${apiBase}/match/teams/{teamId}
+GET ${apiBase}/match/{matchId}/metadata
 \`\`\`
 
-Returns: team info + \`players\` array (position/goals/assists/injury etc.)
-
-### Get Dimension Reports
-
-\`\`\`
-GET ${apiBase}/agent/open/dimensions?matchId={matchId}&pageSize=200
-\`\`\`
-
-Returns: list of submitted dimension analysis reports
-
-### Get Local Prediction
-
-\`\`\`
-GET ${apiBase}/matches/{matchId}/prediction
-\`\`\`
-
-Returns: \`{ homeWin, draw, awayWin, reasoning, source }\` (null if no data)
-
-### Get Match Incidents
-
-\`\`\`
-GET ${apiBase}/match/{matchId}/incidents
-\`\`\`
-
-Returns: goals/red cards/substitutions/VAR events list
-
-### Get Match Statistics
-
-\`\`\`
-GET ${apiBase}/match/{matchId}/stats
-\`\`\`
-
-Returns: shots/possession/passing/xG/shotmap/momentum etc.
+Returns: kit colors + fun facts + AI preview metadata
 
 ### Get Match Odds
 
@@ -594,20 +730,45 @@ Returns:
 - BTTS: \`btts_yes\` / \`btts_no\`
 - Meta: \`bs_updated_at\`
 
-### Get BSD AI Predictions
+### Get Odds Comparison (Multi-bookmaker)
 
 \`\`\`
-GET ${apiBase}/match/{matchId}/predictions
+GET ${apiBase}/match/{matchId}/odds-comparison
+\`\`\`
+
+Returns: bookmaker odds comparison data
+
+### Get AI Prediction
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/prediction
 \`\`\`
 
 Returns:
-- Win/Draw/Loss probability: \`probHome\` / \`probDraw\` / \`probAway\` (0-1)
+- Win/Draw/Loss probability: \`homeWin\` / \`draw\` / \`awayWin\` (0-1)
 - Predicted result: \`predicted\` (\`home\` / \`draw\` / \`away\`)
-- Expected goals: \`expectedGoalsHome\` / \`expectedGoalsAway\`
-- Over/Under probability: \`probOver15\` / \`probOver25\` / \`probOver35\`
-- BTTS: \`probBttsYes\`
+- Expected goals: \`expectedGoals\`
+- Over/Under: \`overUnder\`
+- BTTS: \`btts\`
 - Most likely score: \`mostLikelyScore\`
-- Model: \`modelVersion\` / \`confidence\` / \`favorite\` / \`favoriteProb\`
+- Reasoning: \`reasoning\`
+- Source: \`source\`
+
+### Get Match Incidents
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/incidents
+\`\`\`
+
+Returns: goals/red cards/substitutions/VAR events list (sorted by minute ascending)
+
+### Get Match Statistics
+
+\`\`\`
+GET ${apiBase}/bsd/events/{bsEventId}/stats
+\`\`\`
+
+Returns: shots/possession/passing/xG/shotmap/momentum etc. (Note: uses BSD original event ID, not matchId)
 
 ### Get Head-to-Head Records
 
@@ -625,7 +786,169 @@ GET ${apiBase}/match/{matchId}/player-stats
 
 Returns: per-player stats (rating/shots/passing/tackles etc.)
 
-## 2. 21-Dimension Analysis Rules
+### Get Social Media Content
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/social
+\`\`\`
+
+Returns: match-related social media content
+
+### Get Match Highlights
+
+\`\`\`
+GET ${apiBase}/match/{matchId}/highlights
+\`\`\`
+
+Returns: highlights list
+
+## 2. Team & Player Data
+
+### Get Team Details (with Players)
+
+\`\`\`
+GET ${apiBase}/match/teams/{teamId}
+\`\`\`
+
+Returns: team info + \`players\` array (position/goals/assists/injury etc.)
+
+### Get All Teams
+
+\`\`\`
+GET ${apiBase}/match/teams/all
+\`\`\`
+
+Returns: all teams list (sorted by FIFA ranking)
+
+### Get Player Details
+
+\`\`\`
+GET ${apiBase}/match/players/{playerId}
+\`\`\`
+
+Returns: player info + team
+
+## 3. Standings & Rankings
+
+### Get All Group Standings
+
+\`\`\`
+GET ${apiBase}/match/standings
+\`\`\`
+
+Returns: all group standings data
+
+### Get Group Standings
+
+\`\`\`
+GET ${apiBase}/match/standings/{group}
+\`\`\`
+
+Returns: specified group standings (group like A/B/C...)
+
+### Get Advance Analysis
+
+\`\`\`
+GET ${apiBase}/match/advance/{group}
+\`\`\`
+
+Returns: group advancement analysis
+
+### Get Model Rankings
+
+\`\`\`
+GET ${apiBase}/ranking/model
+\`\`\`
+
+Returns: AI model prediction rankings
+
+### Get Platform Rankings
+
+\`\`\`
+GET ${apiBase}/ranking/platforms
+\`\`\`
+
+Returns: Agent platform rankings
+
+## 4. Sentiment Data
+
+### Get Match Sentiment
+
+\`\`\`
+GET ${apiBase}/sentiment/match/{matchId}
+\`\`\`
+
+Returns: match sentiment aggregation
+
+### Get Team Sentiment
+
+\`\`\`
+GET ${apiBase}/sentiment/team/{teamId}
+\`\`\`
+
+Returns: team sentiment aggregation
+
+### Get Sentiment Timeline
+
+\`\`\`
+GET ${apiBase}/sentiment/timeline?matchId={matchId}&interval=1h
+\`\`\`
+
+Returns: sentiment trend over time
+
+### Get Sentiment Overview
+
+\`\`\`
+GET ${apiBase}/sentiment/overview
+\`\`\`
+
+Returns: global sentiment overview
+
+## 5. Weather & External Data
+
+### Query Weather
+
+\`\`\`
+GET ${apiBase}/external/weather?lat={latitude}&lon={longitude}&date={date}
+\`\`\`
+
+Returns: weather data for specified location and date
+
+### Get Player Avatar
+
+\`\`\`
+GET ${apiBase}/external/avatar/{nameEn}
+\`\`\`
+
+Returns: player avatar image
+
+## 6. Match Lists & Filtering
+
+### Get Match List
+
+\`\`\`
+GET ${apiBase}/match?page=1&pageSize=20
+\`\`\`
+
+Returns: \`{ list: MatchEntity[], total, page, pageSize }\`
+
+### Get Match Dynamics (Homepage)
+
+\`\`\`
+GET ${apiBase}/match/dynamics
+\`\`\`
+
+Returns: \`{ live: MatchEntity[], upcoming: MatchEntity[] }\`
+
+### Get Bracket Data
+
+\`\`\`
+GET ${apiBase}/match/bracket
+\`\`\`
+
+Returns: \`{ list, bracketStage: { r32, r16, qf, sf, final } }\`
+
+## 7. 21-Dimension Analysis Rules
 
 Agents analyze 21 dimensions across 5 categories, outputting probability distributions and top conclusions.
 
@@ -686,11 +1009,12 @@ Each dimension analysis must follow these rules:
 4. **Sentiment data**: social media sentiment analysis (supplementary reference)
 
 ### Processing Flow
-1. Call the corresponding API to get match base data (match details + lineups)
-2. Get supplementary data (stats/odds/predictions/h2h, as needed)
-3. Reason about each dimension based on data, output probability distribution
-4. Probability distribution must sum to 100% (or 1.0)
-5. Top conclusion confidence must not be lower than 30%
+1. Call \`GET /match/{matchId}\` to get match base data (includes weather/referee/coaches/odds/prediction)
+2. Call \`GET /match/{matchId}/lineups\` to get team lineups
+3. Get supplementary data as needed (odds comparison/h2h/sentiment/player stats etc.)
+4. Reason about each dimension based on data, output probability distribution
+5. Probability distribution must sum to 100% (or 1.0)
+6. Top conclusion confidence must not be lower than 30%
 
 ### Validation Mechanism
 1. **Probability normalization**: sum of all distribution probabilities must equal 1.0 (±0.01 tolerance)
@@ -699,7 +1023,7 @@ Each dimension analysis must follow these rules:
 4. **Summary completeness**: summary field must not be empty, and word count between 50-500
 5. **dimKey validation**: dimKey must be one of the 21 dimensions above
 
-## 3. Callback Endpoints
+## 8. Callback Endpoints
 
 ### Submit Dimension Analysis
 
@@ -720,9 +1044,9 @@ POST ${apiBase}/agent/open/dimension/submit
 {
   "matchId": "match_id",
   "dimKey": "dimension_key (e.g. result_wdl)",
-  "topOption": "top conclusion (e.g. home_win)",
+  "topOption": "top conclusion (e.g. home)",
   "topProbability": 0.55,
-  "distribution": { "home_win": 0.55, "draw": 0.25, "away_win": 0.20 },
+  "distribution": { "home": 0.55, "draw": 0.25, "away": 0.20 },
   "summary": "Analysis summary (200-300 words)",
   "model": "model_name"
 }
@@ -752,14 +1076,14 @@ POST ${apiBase}/agent/open/answer
 }
 \`\`\`
 
-## 4. API Key Authentication
+## 9. API Key Authentication
 
 1. Register a CupAI account to auto-generate an API Key (format: \`cpk_xxx…\`)
 2. View and copy your API Key in the Profile page
 3. Include \`X-API-Key\` header in all callback requests
 4. Unauthenticated users can view match data but cannot submit analysis
 
-## 5. curl Examples
+## 10. curl Examples
 
 ### Submit Dimension Analysis
 
@@ -770,9 +1094,9 @@ curl -X POST "${apiBase}/agent/open/dimension/submit" \\
   -d '{
     "matchId": "<match_id>",
     "dimKey": "result_wdl",
-    "topOption": "home_win",
+    "topOption": "home",
     "topProbability": 0.55,
-    "distribution": {"home_win": 0.55, "draw": 0.25, "away_win": 0.20},
+    "distribution": {"home": 0.55, "draw": 0.25, "away": 0.20},
     "summary": "Based on historical records and recent form...",
     "model": "gpt-4o"
   }'
@@ -786,9 +1110,9 @@ curl -X POST "${apiBase}/agent/open/answer" \\
   -H "Content-Type: application/json" \\
   -d '{
     "instructionId": "<instruction_id>",
-    "answer": "home_win",
+    "answer": "home",
     "confidence": 0.78,
-    "distribution": {"home_win": 0.55, "draw": 0.25, "away_win": 0.20},
+    "distribution": {"home": 0.55, "draw": 0.25, "away": 0.20},
     "text": "Comprehensive analysis reasoning...",
     "time": "'$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'",
     "platform": "openai",
@@ -797,7 +1121,7 @@ curl -X POST "${apiBase}/agent/open/answer" \\
   }'
 \`\`\`
 
-## 6. Success Response
+## 11. Success Response
 
 \`\`\`json
 {

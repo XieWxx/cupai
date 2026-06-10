@@ -615,140 +615,48 @@ export const DIMENSIONS: Record<DimensionKey, DimensionDef> = {
 // ============================================================
 
 /**
- * 球员按位置分组并格式化
- * @param players 球员列表
- * @param sideLabel 阵营标签（如"主队"/"客队"）
- * @param locale 当前语言
- */
-function groupPlayersText(players: PlayerSnapshot[] | undefined, sideLabel: string, locale?: string): string {
-  if (!players || players.length === 0) return `_${sideLabel} ${i18n(locale, 'copy.noPlayerData')}_\n`
-
-  const posLabel: Record<string, string> = {
-    GK: i18n(locale, 'copy.goalkeeper'), DF: i18n(locale, 'copy.defender'),
-    MF: i18n(locale, 'copy.midfielder'), FW: i18n(locale, 'copy.forward'),
-    Goalkeeper: i18n(locale, 'copy.goalkeeper'), Defender: i18n(locale, 'copy.defender'),
-    Midfielder: i18n(locale, 'copy.midfielder'), Forward: i18n(locale, 'copy.forward'),
-  }
-  const order: string[] = ['GK', 'DF', 'MF', 'FW']
-  const groups: Record<string, PlayerSnapshot[]> = { GK: [], DF: [], MF: [], FW: [], OTHER: [] }
-  for (const p of players) {
-    const key = (p.position || '').toUpperCase()
-    ;(groups[key] || groups.OTHER).push(p)
-  }
-  const lines: string[] = []
-  for (const k of order) {
-    if (!groups[k] || groups[k].length === 0) continue
-    lines.push(`**${posLabel[k] || k}（${groups[k].length}）**`)
-    for (const p of groups[k]) {
-      const keyTag = p.isKeyPlayer ? ' ⭐' : ''
-      const inj = p.injuryStatus ? ` · ${i18n(locale, 'copy.injury')}:${p.injuryStatus}` : ''
-      const cards = (p.yellowCards || p.redCards)
-        ? ` · ${p.yellowCards || 0}${i18n(locale, 'copy.yellow')}${p.redCards ? `+${p.redCards}${i18n(locale, 'copy.red')}` : ''}`
-        : ''
-      lines.push(
-        `- #${p.name}（${p.nameEn || ''}）· ${p.age || '-'}${i18n(locale, 'copy.yearsOld')}${keyTag} · ` +
-        `${p.seasonGoals ?? 0}${i18n(locale, 'copy.goals')}/${p.seasonAssists ?? 0}${i18n(locale, 'copy.assists')}${cards}${inj}`,
-      )
-    }
-    lines.push('')
-  }
-  return lines.join('\n')
-}
-
-/**
- * 球队统计数据格式化
- * @param t 球队快照
- * @param label 标签（如"主队"/"客队"）
- * @param locale 当前语言
- */
-function teamStats(t: TeamSnapshot | null | undefined, label: string, locale?: string): string {
-  if (!t) return `_${label} ${i18n(locale, 'copy.dataMissing')}_\n`
-  const rankChange = t.fifaRankChange
-    ? ` (${t.fifaRankChange > 0 ? '▲' : '▼'}${Math.abs(t.fifaRankChange)})`
-    : ''
-  return [
-    `- **${label}**：${t.name}${t.nameEn ? `（${t.nameEn}）` : ''}`,
-    `  - ${i18n(locale, 'copy.fifaRank')}：#${t.fifaRank ?? '—'}${rankChange}`,
-    `  - ${i18n(locale, 'copy.formation')}：${t.formation || '—'}`,
-    `  - ${i18n(locale, 'copy.style')}：${t.playStyle || '—'}`,
-    `  - ${i18n(locale, 'copy.avgGoals')}：${Number(t.avgGoalsScored || 0).toFixed(2)}`,
-    `  - ${i18n(locale, 'copy.avgConceded')}：${Number(t.avgGoalsConceded || 0).toFixed(2)}`,
-    `  - ${i18n(locale, 'copy.avgPossession')}：${Number(t.avgPossession || 0).toFixed(1)}%`,
-    `  - ${i18n(locale, 'copy.winRate')}：${Number(t.winRate || 0).toFixed(1)}%`,
-    '',
-  ].join('\n')
-}
-
-/**
- * 基础数据快照（每个维度都需要的通用部分）
+ * 基础数据快照（精简版：引用 skill.md API，仅保留关键摘要）
+ * Agent 可通过 skill.md 文档中的 API 端点获取完整数据
  */
 function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, _question: string, _optionsText: string): string {
   const m = input.match
   if (!m) return ''
   const loc = input.locale
 
-  const weather = m.temperature || m.humidity || m.weatherCondition
-    ? `- ${i18n(loc, 'copy.weather')}：${m.temperature ?? '—'}°C / ${i18n(loc, 'copy.humidity')} ${m.humidity ?? '—'}% / ${m.weatherCondition || '—'} / ${i18n(loc, 'copy.windSpeed')} ${m.windSpeed ?? '—'}m/s`
-    : ''
-  const referee = m.refereeName
-    ? `- ${i18n(loc, 'copy.referee')}：${m.refereeName}（${m.refereeNationality || '—'}，${i18n(loc, 'copy.refereeStyle')}：${m.refereeStyle || '—'}）`
-    : ''
-
-  const sentimentText = input.sentiment
-    ? [
-        `- ${i18n(loc, 'copy.overallSentiment')}：${(input.sentiment.overall * 100).toFixed(0)} ${i18n(loc, 'copy.sentimentScore')}`,
-        `- ${i18n(loc, 'copy.distribution')}：${i18n(loc, 'copy.positive')} ${(input.sentiment.positiveRatio * 100).toFixed(0)}% / ${i18n(loc, 'copy.neutral')} ${(input.sentiment.neutralRatio * 100).toFixed(0)}% / ${i18n(loc, 'copy.negative')} ${(input.sentiment.negativeRatio * 100).toFixed(0)}%`,
-      ].join('\n')
-    : `_${i18n(loc, 'copy.sentimentMissing')}_`
-
-  const predictionText = input.prediction
-    ? [
-        `- ${i18n(loc, 'copy.homeWin')}：${(input.prediction.homeWin * 100).toFixed(1)}%`,
-        `- ${i18n(loc, 'copy.draw')}：${(input.prediction.draw * 100).toFixed(1)}%`,
-        `- ${i18n(loc, 'copy.awayWin')}：${(input.prediction.awayWin * 100).toFixed(1)}%`,
-      ].join('\n')
-    : `_${i18n(loc, 'copy.predictionMissing')}_`
-
   const homeTeamName = getTeamName(input, m.homeTeam) || i18n(loc, 'copy.homeTeam')
   const awayTeamName = getTeamName(input, m.awayTeam) || i18n(loc, 'copy.awayTeam')
 
-  const parts: string[] = [
-    `# 单维度分析 · ${dimTitle}`,
-    '',
-    `> 详细数据可通过 skill.md API 获取，或由系统自动获取。以下为关键数据摘要。`,
-    '',
-    `> ${i18n(loc, 'copy.thisMatch')}：**${homeTeamName} VS ${awayTeamName}**`,
-    '',
-    `## 一、${i18n(loc, 'copy.matchInfo')}`,
-    '',
-    `- ${i18n(loc, 'copy.event')}：${m.leagueName || '—'}`,
-    `- ${i18n(loc, 'copy.stage')}：${m.stage || '—'}`,
-    `- ${i18n(loc, 'copy.kickoff')}：${m.startTime ? new Date(m.startTime).toISOString() : '—'}`,
-    `- ${i18n(loc, 'copy.venue')}：${m.venue || '—'}`,
-    weather,
-    referee,
-    '',
-    `## 二、${i18n(loc, 'copy.teamProfile')}`,
-    '',
-    teamStats(input.homeTeam, i18n(loc, 'copy.homeTeam'), loc),
-    teamStats(input.awayTeam, i18n(loc, 'copy.awayTeam'), loc),
-    `## 三、${i18n(loc, 'copy.lineup')}`,
-    '',
-    groupPlayersText(input.homePlayers, i18n(loc, 'copy.homeTeam'), loc),
-    '---',
-    '',
-    groupPlayersText(input.awayPlayers, i18n(loc, 'copy.awayTeam'), loc),
-    `## 四、${i18n(loc, 'copy.sentimentSnapshot')}`,
-    '',
-    sentimentText,
-    '',
-    `## 五、${i18n(loc, 'copy.localPrediction')}`,
-    '',
-    predictionText,
-    '',
-  ]
+  const base = input.appBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '<cupai_host>')
+  const skillMdUrl = `${base}/api/v1/agent/open/skill.md?matchId=${m.id || ''}`
+  const matchDetailUrl = `${base}/api/v1/match/${m.id || ''}`
+  const lineupsUrl = `${base}/api/v1/match/${m.id || ''}/lineups`
 
-  return parts.filter(Boolean).join('\n')
+  return `# 单维度分析 · ${dimTitle}
+
+> ${i18n(loc, 'copy.thisMatch')}：**${homeTeamName} VS ${awayTeamName}**
+
+## 数据获取
+
+> **完整 API 文档**：${skillMdUrl}
+> 包含所有数据端点、维度定义、分析规则与验证机制。
+
+请先调用以下 API 获取分析所需数据：
+
+1. **赛事详情**（含天气/裁判/教练/赔率/预测）：\`GET ${matchDetailUrl}\`
+2. **双方阵容**：\`GET ${lineupsUrl}\`
+3. 其他补充数据（赔率对比/交锋记录/舆情/球员统计等）请参考 skill.md 文档按需获取
+
+## 关键数据摘要
+
+- **${i18n(loc, 'copy.event')}**：${m.leagueName || '—'}
+- **${i18n(loc, 'copy.stage')}**：${m.stage || '—'}
+- **${i18n(loc, 'copy.kickoff')}**：${m.startTime ? new Date(m.startTime).toISOString() : '—'}
+- **${i18n(loc, 'copy.venue')}**：${m.venue || '—'}
+${m.temperature ? `- **${i18n(loc, 'copy.weather')}**：${m.temperature}°C / ${m.weatherCondition || '—'}` : ''}
+${m.refereeName ? `- **${i18n(loc, 'copy.referee')}**：${m.refereeName}` : ''}
+${input.homeTeam ? `- **${i18n(loc, 'copy.homeTeam')}**：${getTeamName(input, m.homeTeam)} · FIFA #${input.homeTeam.fifaRank ?? '—'} · ${input.homeTeam.formation || '—'} · ${i18n(loc, 'copy.winRate')} ${(input.homeTeam.winRate || 0).toFixed(1)}%` : ''}
+${input.awayTeam ? `- **${i18n(loc, 'copy.awayTeam')}**：${getTeamName(input, m.awayTeam)} · FIFA #${input.awayTeam.fifaRank ?? '—'} · ${input.awayTeam.formation || '—'} · ${i18n(loc, 'copy.winRate')} ${(input.awayTeam.winRate || 0).toFixed(1)}%` : ''}
+`
 }
 
 /**
@@ -912,77 +820,52 @@ const ANALYSIS_RULES = `## 分析维度（请逐项输出结论）
 - 适合的投注玩法建议（仅作数据娱乐参考，不构成任何投注建议）`
 
 /**
- * 生成比赛分析复制指令（完整版，21 维度综合）
+ * 生成比赛分析复制指令（精简版：引用 skill.md API，仅保留关键摘要 + 分析任务）
  */
 export function buildMatchInstruction(input: CopyInstructionInput): string {
   const m = input.match
   if (!m) return ''
   const loc = input.locale
 
-  const weather = m.temperature || m.humidity || m.weatherCondition
-    ? `  - ${i18n(loc, 'copy.weather')}：${m.temperature ?? '—'}°C / ${i18n(loc, 'copy.humidity')} ${m.humidity ?? '—'}% / ${m.weatherCondition || '—'} / ${i18n(loc, 'copy.windSpeed')} ${m.windSpeed ?? '—'}m/s`
-    : ''
-  const referee = m.refereeName
-    ? `  - ${i18n(loc, 'copy.referee')}：${m.refereeName}（${m.refereeNationality || '—'}，${i18n(loc, 'copy.refereeStyle')}：${m.refereeStyle || '—'}）`
-    : ''
-
-  const sentimentText = input.sentiment
-    ? [
-        `- **${i18n(loc, 'copy.overallSentiment')}**：${(input.sentiment.overall * 100).toFixed(0)} ${i18n(loc, 'copy.sentimentScore')}`,
-        `- **${i18n(loc, 'copy.distribution')}**：${i18n(loc, 'copy.positive')} ${(input.sentiment.positiveRatio * 100).toFixed(0)}% / ${i18n(loc, 'copy.neutral')} ${(input.sentiment.neutralRatio * 100).toFixed(0)}% / ${i18n(loc, 'copy.negative')} ${(input.sentiment.negativeRatio * 100).toFixed(0)}%`,
-      ].join('\n')
-    : `_${i18n(loc, 'copy.sentimentMissing')}_`
-
-  const predictionText = input.prediction
-    ? [
-        `- **${i18n(loc, 'copy.homeWin')}**：${(input.prediction.homeWin * 100).toFixed(1)}%`,
-        `- **${i18n(loc, 'copy.draw')}**：${(input.prediction.draw * 100).toFixed(1)}%`,
-        `- **${i18n(loc, 'copy.awayWin')}**：${(input.prediction.awayWin * 100).toFixed(1)}%`,
-      ].join('\n')
-    : `_${i18n(loc, 'copy.predictionMissing')}_`
-
   const homeTeamName = getTeamName(input, m.homeTeam) || i18n(loc, 'copy.homeTeam')
   const awayTeamName = getTeamName(input, m.awayTeam) || i18n(loc, 'copy.awayTeam')
+
+  const base = input.appBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '<cupai_host>')
+  const skillMdUrl = `${base}/api/v1/agent/open/skill.md?matchId=${m.id || ''}`
+  const matchDetailUrl = `${base}/api/v1/match/${m.id || ''}`
+  const lineupsUrl = `${base}/api/v1/match/${m.id || ''}/lineups`
 
   const parts: string[] = [
     `# ${i18n(loc, 'copy.matchAnalysis')} · ${homeTeamName} VS ${awayTeamName}`,
     '',
-    '> 详细数据可通过 skill.md API 获取，或由系统自动获取。以下为关键数据摘要。',
-    '',
     '> 请扮演专业的足球赛事分析师，**严格按照下方 21 维度逐项分析**，并使用 Markdown 格式输出报告。',
     '',
-    `## 一、${i18n(loc, 'copy.matchInfo')}`,
+    `## 数据获取`,
+    '',
+    `> **完整 API 文档**：${skillMdUrl}`,
+    `> 包含所有数据端点、维度定义、分析规则与验证机制。`,
+    '',
+    '请先调用以下 API 获取分析所需数据：',
+    '',
+    `1. **赛事详情**（含天气/裁判/教练/赔率/预测）：\`GET ${matchDetailUrl}\``,
+    `2. **双方阵容**：\`GET ${lineupsUrl}\``,
+    '3. 其他补充数据（赔率对比/交锋记录/舆情/球员统计等）请参考 skill.md 文档按需获取',
+    '',
+    `## 关键数据摘要`,
     '',
     `- **${i18n(loc, 'copy.event')}**：${m.leagueName || '—'}`,
     `- **${i18n(loc, 'copy.stage')}**：${m.stage || '—'}`,
     `- **${i18n(loc, 'copy.kickoff')}**：${m.startTime ? new Date(m.startTime).toISOString() : '—'}`,
     `- **${i18n(loc, 'copy.venue')}**：${m.venue || '—'}`,
-    weather,
-    referee,
-    `- **${i18n(loc, 'copy.audience')}**：${i18n(loc, 'copy.homeZone')} ${m.homeAttendance?.toLocaleString?.() || m.homeAttendance || '—'} / ${i18n(loc, 'copy.awayZone')} ${m.awayAttendance?.toLocaleString?.() || m.awayAttendance || '—'} / ${i18n(loc, 'copy.total')} ${m.totalAttendance?.toLocaleString?.() || m.totalAttendance || '—'}`,
-    '',
-    `## 二、${i18n(loc, 'copy.teamProfile')}`,
-    '',
-    teamStats(input.homeTeam, i18n(loc, 'copy.homeTeam'), loc),
-    teamStats(input.awayTeam, i18n(loc, 'copy.awayTeam'), loc),
-    `## 三、${i18n(loc, 'copy.lineup')}`,
-    '',
-    groupPlayersText(input.homePlayers, i18n(loc, 'copy.homeTeam'), loc),
-    '---',
-    '',
-    groupPlayersText(input.awayPlayers, i18n(loc, 'copy.awayTeam'), loc),
-    `## 四、${i18n(loc, 'copy.sentimentSnapshot')}`,
-    '',
-    sentimentText,
-    '',
-    `## 五、${i18n(loc, 'copy.localPrediction')}`,
-    '',
-    predictionText,
+    m.temperature ? `- **${i18n(loc, 'copy.weather')}**：${m.temperature}°C / ${m.weatherCondition || '—'}` : '',
+    m.refereeName ? `- **${i18n(loc, 'copy.referee')}**：${m.refereeName}` : '',
+    input.homeTeam ? `- **${i18n(loc, 'copy.homeTeam')}**：${getTeamName(input, m.homeTeam)} · FIFA #${input.homeTeam.fifaRank ?? '—'} · ${input.homeTeam.formation || '—'} · ${i18n(loc, 'copy.winRate')} ${(input.homeTeam.winRate || 0).toFixed(1)}%` : '',
+    input.awayTeam ? `- **${i18n(loc, 'copy.awayTeam')}**：${getTeamName(input, m.awayTeam)} · FIFA #${input.awayTeam.fifaRank ?? '—'} · ${input.awayTeam.formation || '—'} · ${i18n(loc, 'copy.winRate')} ${(input.awayTeam.winRate || 0).toFixed(1)}%` : '',
     '',
   ]
 
   if (input.promptTemplateContent) {
-    parts.push('## 六、自定义分析模板', '', input.promptTemplateContent, '')
+    parts.push('## 自定义分析模板', '', input.promptTemplateContent, '')
   }
 
   parts.push(ANALYSIS_RULES, '', buildReturnGuidance(input, 'all'))

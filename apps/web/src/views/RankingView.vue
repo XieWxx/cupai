@@ -102,7 +102,7 @@
           </el-table-column>
           <el-table-column :label="$t('common.model')" min-width="260" :show-overflow-tooltip="true">
             <template #default="{ row }">
-              <PlatformBadge :platform="detectModel(row.modelName || '')" :show-name="true" />
+              <PlatformBadge :platform="detectModel(row.modelName || '')" :show-name="true" :display-name="row.modelName" />
             </template>
           </el-table-column>
           <el-table-column :label="$t('ranking.userCount')" prop="userCount" width="240" align="center" />
@@ -126,7 +126,7 @@
           </el-table-column>
           <el-table-column :label="$t('ranking.platformLabel')" min-width="240" :show-overflow-tooltip="true">
             <template #default="{ row }">
-              <PlatformBadge :platform="detectPlatform(row.platformKey || row.platform)" :show-name="true" />
+              <PlatformBadge :platform="detectPlatform(row.platformKey || row.platform)" :show-name="true" :display-name="row.platform" />
             </template>
           </el-table-column>
           <el-table-column :label="$t('ranking.userCount')" prop="userCount" width="240" align="center" />

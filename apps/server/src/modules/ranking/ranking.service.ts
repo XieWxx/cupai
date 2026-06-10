@@ -380,6 +380,8 @@ export class RankingService {
    * 获取大模型准确率排行
    * 按总积分降序
    *
+   * userCount 统计来源：dimension_submissions 表，按归一化模型名统计去重 apiKeyHint
+   *
    * @param limit  限制返回条数（首页摘要用）
    */
   async getModelRankings(seasonId?: string, page = 1, pageSize = 20, limit?: number) {
@@ -403,27 +405,33 @@ export class RankingService {
         .getManyAndCount()
     }
 
-    // 聚合每个模型的使用用户数
-    // 使用统一的模型名归一化函数，确保 model_rankings.modelName 与 user_ai_configs.modelName 可匹配
-    const configs = await this.userAiConfigRepo.find({ select: ['id', 'userId', 'modelName'] })
+    // 从 dimension_submissions 统计每个模型的使用用户数（按归一化模型名去重 apiKeyHint）
+    const submissionRows = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.model', 'model')
+      .addSelect('s.apiKeyHint', 'apiKeyHint')
+      .where('s.model IS NOT NULL')
+      .andWhere('s.model != :empty', { empty: '' })
+      .andWhere('s.apiKeyHint IS NOT NULL')
+      .getRawMany()
 
-    // 建立 归一化模型名 -> Set<userId> 映射
+    // 建立 归一化模型名 -> Set<apiKeyHint> 映射
     const modelUserMap = new Map<string, Set<string>>()
-    for (const cfg of configs) {
-      const mn = cfg.modelName?.trim()
+    for (const row of submissionRows) {
+      const mn = (row.model || '').trim()
       if (!mn) continue
       const key = normalizeModelName(mn)
       if (!modelUserMap.has(key)) modelUserMap.set(key, new Set())
-      modelUserMap.get(key)!.add(cfg.userId)
+      modelUserMap.get(key)!.add(row.apiKeyHint)
     }
 
-    // 附加 userCount 到每条记录
+    // 附加 userCount 和 modelKey 到每条记录
     const listWithUserCount = list.map(item => {
       const mn = item.modelName?.trim()
-      if (!mn) return { ...item, userCount: 0 }
+      if (!mn) return { ...item, userCount: 0, modelKey: '' }
       const normalizedKey = normalizeModelName(mn)
       const users = modelUserMap.get(normalizedKey)
-      return { ...item, userCount: users?.size || 0 }
+      return { ...item, userCount: users?.size || 0, modelKey: normalizedKey }
     })
 
     return { list: listWithUserCount, total, page, pageSize }
@@ -431,80 +439,68 @@ export class RankingService {
 
   /**
    * 热门 Agent 平台排行
-   * 双数据源聚合：
-   * 1. user_ai_configs.apiEndpoint -> 按域名归一化统计用户数
-   * 2. dimension_submissions.platform -> 按 platform 字段统计预测次数
-   * 合并逻辑：同一 platform 取 userCount 较大值，totalPredictions 使用 dimension_submissions 统计
+   * 从 dimension_submissions 聚合：
+   * 1. 按 platform/model 字段归一化为 platformKey
+   * 2. 统计每个 platformKey 的去重用户数（apiKeyHint）和预测次数
+   * 3. 保留用户传的原始 platform 名作为 platformName
    */
   async getPlatformRankings(limit?: number) {
-    // 数据源 1：从 user_ai_configs 聚合用户数
-    // 优先按 apiEndpoint 域名归一化，apiEndpoint 为空时从 modelName 推断平台
-    const configs = await this.userAiConfigRepo.find({
-      select: ['id', 'userId', 'apiEndpoint', 'modelName'],
-    })
-
-    // 用户数统计：按平台 key 统计去重 userId
-    const userCountMap = new Map<string, Set<string>>()
-    for (const cfg of configs) {
-      let key = ''
-      // 优先从 apiEndpoint 推断平台
-      if (cfg.apiEndpoint?.trim()) {
-        let host = ''
-        try {
-          let url = cfg.apiEndpoint.trim()
-          if (!/^https?:\/\//i.test(url)) url = 'https://' + url
-          host = url ? new URL(url).host.toLowerCase() : ''
-        } catch {
-          host = cfg.apiEndpoint.split('/')[0].toLowerCase()
-        }
-        key = hostToPlatformKey(host)
-      }
-      // apiEndpoint 为空或推断失败时，从 modelName 推断平台
-      if (!key || key === 'unknown') {
-        key = modelToPlatformKey(cfg.modelName || '')
-      }
-      if (!key || key === 'unknown') continue
-      if (!userCountMap.has(key)) {
-        userCountMap.set(key, new Set())
-      }
-      userCountMap.get(key)!.add(cfg.userId)
-    }
-
-    // 数据源 2：从 dimension_submissions 聚合预测次数
-    // 优先使用 platform 字段，若为空则从 model 字段推断平台
+    // 从 dimension_submissions 聚合
     const submissionRows = await this.submissionRepo
       .createQueryBuilder('s')
       .select('s.platform', 'platform')
       .addSelect('s.model', 'model')
-      .addSelect('COUNT(*)', 'totalPredictions')
-      .groupBy('s.platform, s.model')
+      .addSelect('s.apiKeyHint', 'apiKeyHint')
       .getRawMany()
 
-    const predictionMap = new Map<string, number>()
+    // 按 platformKey 聚合：统计去重用户数 + 预测次数 + 保留原始名
+    const platformAggMap = new Map<string, {
+      platformKey: string
+      platformName: string
+      userSet: Set<string>
+      totalPredictions: number
+    }>()
+
     for (const row of submissionRows) {
       const rawPlatform: string = row.platform || ''
       const rawModel: string = row.model || ''
+      const apiKeyHint: string = row.apiKeyHint || ''
+
       // 优先使用 platform 字段，若为空则从 model 推断
       let key = rawPlatform ? hostToPlatformKey(rawPlatform.toLowerCase()) : ''
       if (!key || key === 'unknown') {
-        // 从 model 名推断：如 deepseek-chat -> deepseek, gpt-4o -> openai
         key = modelToPlatformKey(rawModel)
       }
       if (!key || key === 'unknown') continue
-      const count = Number(row.totalPredictions) || 0
-      predictionMap.set(key, (predictionMap.get(key) || 0) + count)
+
+      // 保留用户传的原始平台名（优先用 platform 字段，否则用 model 推断出的平台展示名）
+      const displayName = rawPlatform || rawModel || key
+
+      if (!platformAggMap.has(key)) {
+        platformAggMap.set(key, {
+          platformKey: key,
+          platformName: displayName,
+          userSet: new Set(),
+          totalPredictions: 0,
+        })
+      }
+      const agg = platformAggMap.get(key)!
+      agg.totalPredictions += 1
+      if (apiKeyHint) agg.userSet.add(apiKeyHint)
+      // 优先保留更短的原始名（如 "coze" 优先于 "coze/xxx"）
+      if (rawPlatform && (!agg.platformName || agg.platformName.length > rawPlatform.length)) {
+        agg.platformName = rawPlatform
+      }
     }
 
-    // 合并两个数据源
-    const allKeys = new Set([...userCountMap.keys(), ...predictionMap.keys()])
-    let list = Array.from(allKeys)
-      .map((platformKey) => ({
-        platform: PLATFORM_DISPLAY[platformKey] || platformKey,
-        platformKey,
-        userCount: userCountMap.get(platformKey)?.size || 0,
-        totalPredictions: predictionMap.get(platformKey) || 0,
-      }))
+    let list = Array.from(platformAggMap.values())
       .filter((row) => row.platformKey !== 'unknown')
+      .map((agg) => ({
+        platform: agg.platformName,
+        platformKey: agg.platformKey,
+        userCount: agg.userSet.size,
+        totalPredictions: agg.totalPredictions,
+      }))
       .sort((a, b) => b.totalPredictions - a.totalPredictions)
 
     if (limit && limit > 0) {

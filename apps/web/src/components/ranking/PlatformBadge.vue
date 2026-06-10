@@ -11,7 +11,7 @@
     <!-- 第 2 列：icon -->
     <span
       class="badge-icon"
-      :title="platform?.nameEn || displayName"
+      :title="platform?.nameEn || resolvedDisplayName"
       :style="{ backgroundColor: platform?.color || '#94a3b8' }"
     >
       <!-- 优先使用本地 SVG（@lobehub/icons-static-svg，通过 Vite ?url import） -->
@@ -25,11 +25,11 @@
       <span v-else class="badge-letter">{{ platform?.letter || '?' }}</span>
     </span>
     <!-- 第 3 列：name -->
-    <span v-if="showName" class="badge-name" :title="displayName">
-      {{ displayName }}
+    <span v-if="showName" class="badge-name" :title="resolvedDisplayName">
+      {{ resolvedDisplayName }}
     </span>
   </template>
-  <div v-else class="platform-badge" :title="platform?.nameEn || displayName">
+  <div v-else class="platform-badge" :title="platform?.nameEn || resolvedDisplayName">
     <span
       class="badge-icon"
       :style="{ backgroundColor: platform?.color || '#94a3b8' }"
@@ -45,7 +45,7 @@
       <span v-else class="badge-letter">{{ platform?.letter || '?' }}</span>
     </span>
     <span v-if="showName" class="badge-name">
-      {{ displayName }}
+      {{ resolvedDisplayName }}
     </span>
   </div>
 </template>
@@ -80,12 +80,19 @@ const props = withDefaults(
      * 默认 false
      */
     split?: boolean
+    /**
+     * 自定义展示名称（覆盖 platform.name 的解析结果）
+     * 用于排行页面展示用户传的原始模型名/平台名
+     */
+    displayName?: string
   }>(),
   { showName: true, split: false },
 )
 
-/** 解析平台名称：name 为 i18n key 时通过 t() 解析，否则直接展示 */
-const displayName = computed(() => {
+/** 解析展示名称：优先使用 prop 传入的自定义名，否则从 platform.name 解析 */
+const resolvedDisplayName = computed(() => {
+  // 优先使用 prop 传入的自定义名称（如用户传的原始模型名/平台名）
+  if (props.displayName) return props.displayName
   if (!props.platform) return '—'
   const name = props.platform.name
   // name 以 'platform.' 开头时视为 i18n key，通过 t() 解析

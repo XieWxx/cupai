@@ -97,7 +97,7 @@
             <div class="team-info team-info--home">
               <span v-if="getFlagClass(match?.homeTeam?.countryCode)" :class="`team-flag ${getFlagClass(match?.homeTeam?.countryCode)}`" />
               <div class="team-info__text">
-                <span class="team-name">{{ match?.homeTeam?.name }}</span>
+                <span class="team-name">{{ getTeamName(match?.homeTeam) }}</span>
                 <div class="team-meta">
                   <el-tag size="small" effect="dark" type="primary" class="team-side-tag">{{ $t('match.homeTeam') }}</el-tag>
                   <span class="team-rank" v-if="match?.homeTeam?.fifaRank">FIFA #{{ match.homeTeam.fifaRank }}</span>
@@ -109,7 +109,7 @@
             </div>
             <div class="team-info team-info--away">
               <div class="team-info__text">
-                <span class="team-name">{{ match?.awayTeam?.name }}</span>
+                <span class="team-name">{{ getTeamName(match?.awayTeam) }}</span>
                 <div class="team-meta">
                   <el-tag size="small" effect="dark" type="warning" class="team-side-tag">{{ $t('match.awayTeam') }}</el-tag>
                   <span class="team-rank" v-if="match?.awayTeam?.fifaRank">FIFA #{{ match.awayTeam.fifaRank }}</span>
@@ -1270,6 +1270,8 @@ function buildCommonInput(dimKey?: DimensionKey): CopyInstructionInput {
     awayTeam: match.value?.awayTeam as any,
     homePlayers: homePlayers.value,
     awayPlayers: awayPlayers.value,
+    locale: i18nLocale.value,
+    getTeamNameFn: getTeamName,
     sentiment: matchSentiment.value
       ? {
           overall: matchSentiment.value.avgScore ?? 0,
@@ -1421,6 +1423,7 @@ async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
   const text = buildPlayerInstruction({
     player: { ...player, teamName },
     userApiKey: currentApiKey.value,
+    locale: i18nLocale.value,
     // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
     appBaseUrl: import.meta.env.VITE_API_BASE_URL
       ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
@@ -1451,6 +1454,7 @@ async function openTeamCopyDialog(side: 'home' | 'away') {
       keyPlayers: players.filter((p) => p.isKeyPlayer).slice(0, 5),
     },
     userApiKey: currentApiKey.value,
+    locale: i18nLocale.value,
     // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
     appBaseUrl: import.meta.env.VITE_API_BASE_URL
       ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')

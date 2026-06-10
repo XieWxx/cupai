@@ -135,14 +135,14 @@
               <div class="match-teams">
                 <div class="team-info">
                   <span v-if="getFlagClass(match.homeTeam?.countryCode)" :class="`${getFlagClass(match.homeTeam?.countryCode)} team-flag`" />
-                  <span class="team-name">{{ match.homeTeam?.name }}</span>
+                  <span class="team-name">{{ getTeamName(match.homeTeam) }}</span>
                 </div>
                 <div class="match-vs">
                   <span class="score">{{ match.homeScore ?? '-' }} : {{ match.awayScore ?? '-' }}</span>
                 </div>
                 <div class="team-info">
                   <span v-if="getFlagClass(match.awayTeam?.countryCode)" :class="`${getFlagClass(match.awayTeam?.countryCode)} team-flag`" />
-                  <span class="team-name">{{ match.awayTeam?.name }}</span>
+                  <span class="team-name">{{ getTeamName(match.awayTeam) }}</span>
                 </div>
               </div>
               <div class="match-meta">

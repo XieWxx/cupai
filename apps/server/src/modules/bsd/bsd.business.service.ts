@@ -85,7 +85,7 @@ export class BsdcBusinessService {
   // ==================== 球队相关 ====================
 
   /** 获取所有球队 */
-  async getTeams(params?: { limit?: number; offset?: number }): Promise<BsPaginated<BsTeam>> {
+  async getTeams(params?: { limit?: number; offset?: number; page?: number }): Promise<BsPaginated<BsTeam>> {
     return this.bsdc.get<BsPaginated<BsTeam>>('/api/teams/', params)
   }
 

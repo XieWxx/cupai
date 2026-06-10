@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Not, Repository } from 'typeorm'
 import { BsdcBusinessService } from './bsd.business.service'
 import { getPlayerChineseName } from '../../utils/player-translate'
-import { translateTeamName } from './team-translate'
+import { translateTeamName, translateTeamNameTo } from './team-translate'
 import { MatchEntity } from '../match/entities/match.entity'
 import { TeamEntity } from '../match/entities/team.entity'
 import { GroupStandingEntity } from '../match/entities/group-standing.entity'
@@ -24,6 +24,7 @@ import {
   BsPrediction,
   BsStandingRow,
   BsStats,
+  BsTeam,
 } from './bsd.interfaces'
 
 /** 2026 世界杯联赛 ID（BSD 固定值） */
@@ -511,14 +512,41 @@ export class BsdcSyncService {
     let created = 0
     let updated = 0
     try {
-      const teams = await this.bsdService.getTeams({ limit: 200 })
-      for (const bsTeam of (teams.results ?? [])) {
+      // 分页循环拉取所有球队（BSD API 每页固定返回 50 条，忽略 limit 参数）
+      const allTeams: BsTeam[] = []
+      let page = 1
+      while (true) {
+        const resp = await this.bsdService.getTeams({ limit: 200, page })
+        const batch = resp.results ?? []
+        allTeams.push(...batch)
+        this.logger.log(`syncTeams: fetched page ${page}, batch=${batch.length}, total_fetched=${allTeams.length}`)
+        // BSD API 可能忽略 limit 参数，每页固定 50 条，需根据 next 判断是否继续
+        if (!resp.next) break
+        page++
+      }
+      this.logger.log(`syncTeams: total teams fetched=${allTeams.length}`)
+
+      for (const bsTeam of allTeams) {
         const bsdId = String(bsTeam.id)
         const isoCode = countryToIso(bsTeam.country)
+        // 多语言队名翻译
+        const nameJa = translateTeamNameTo(bsTeam.name, 'ja')
+        const nameKo = translateTeamNameTo(bsTeam.name, 'ko')
+        const nameEs = translateTeamNameTo(bsTeam.name, 'es')
+        const nameFr = translateTeamNameTo(bsTeam.name, 'fr')
+        const namePt = translateTeamNameTo(bsTeam.name, 'pt')
+        const nameAr = translateTeamNameTo(bsTeam.name, 'ar')
+
         const existing = await this.teamRepo.findOne({ where: { dataSource: `bsd_${bsdId}` } })
         if (existing) {
           existing.name = translateTeamName(bsTeam.name) || bsTeam.name
           existing.nameEn = bsTeam.name
+          existing.nameJa = nameJa
+          existing.nameKo = nameKo
+          existing.nameEs = nameEs
+          existing.nameFr = nameFr
+          existing.namePt = namePt
+          existing.nameAr = nameAr
           existing.shortName = (bsTeam as any).short_name || null
           existing.countryCode = isoCode
           existing.country = bsTeam.country || null
@@ -535,6 +563,12 @@ export class BsdcSyncService {
             bsTeamId: bsTeam.id,
             name: translateTeamName(bsTeam.name) || bsTeam.name,
             nameEn: bsTeam.name,
+            nameJa,
+            nameKo,
+            nameEs,
+            nameFr,
+            namePt,
+            nameAr,
             shortName: (bsTeam as any).short_name || null,
             countryCode: isoCode,
             country: bsTeam.country || null,
@@ -1697,8 +1731,6 @@ export class BsdcSyncService {
     const cacheHit = cache?.get(bsdId)
     if (cacheHit) return cacheHit
     const key = `bsd_${bsdId}`
-    // 兜底：确保 name 不为空（NOT NULL 字段）
-    const safeName = (name || `Team-${bsdId}`).toString().trim() || `Team-${bsdId}`
     let team = await this.teamRepo.findOne({ where: { dataSource: key } })
     if (!team) {
       let isoCode = 'INT'
@@ -1708,8 +1740,10 @@ export class BsdcSyncService {
       let isNational = false
       let founded: number | null = null
       let shortName: string | null = null
+      let detailName: string | null = null
       try {
         const detail = (await this.bsdService.getTeamDetail(bsdId)) as {
+          name?: string
           country?: string
           logo?: string
           is_national?: boolean
@@ -1717,6 +1751,7 @@ export class BsdcSyncService {
           founded?: number
           short_name?: string
         }
+        detailName = detail?.name || null
         isoCode = countryToIso(detail?.country)
         country = detail?.country || null
         logo = detail?.logo || null
@@ -1727,11 +1762,20 @@ export class BsdcSyncService {
       } catch {
         /* 兜底用默认值 */
       }
+      // 优先使用详情 API 返回的 name，其次使用传入的 name，最后兜底 Team-{id}
+      const realName = detailName || name || `Team-${bsdId}`
+      const safeName = realName.toString().trim() || `Team-${bsdId}`
       // 显式构造，避免 TypeORM 对 'name' 字段的意外处理
       const newTeam = new TeamEntity()
       newTeam.bsTeamId = bsdId
       newTeam.name = translateTeamName(safeName) || safeName
       newTeam.nameEn = safeName
+      newTeam.nameJa = translateTeamNameTo(safeName, 'ja')
+      newTeam.nameKo = translateTeamNameTo(safeName, 'ko')
+      newTeam.nameEs = translateTeamNameTo(safeName, 'es')
+      newTeam.nameFr = translateTeamNameTo(safeName, 'fr')
+      newTeam.namePt = translateTeamNameTo(safeName, 'pt')
+      newTeam.nameAr = translateTeamNameTo(safeName, 'ar')
       newTeam.shortName = shortName
       newTeam.countryCode = isoCode
       newTeam.country = country
@@ -1743,19 +1787,62 @@ export class BsdcSyncService {
       newTeam.dataSourceUrl = `https://sports.bzzoiro.com/api/v2/teams/${bsdId}/`
       newTeam.lastSyncedAt = new Date()
       team = await this.teamRepo.save(newTeam)
-    } else if (team.countryCode === 'INT') {
-      // 已有但 country 为默认值，尝试补充
-      try {
-        const detail = (await this.bsdService.getTeamDetail(bsdId)) as { country?: string; logo?: string }
-        if (detail?.country) {
-          team.countryCode = countryToIso(detail.country)
-          team.country = detail.country
-          if (detail.logo) team.logo = detail.logo
-          team.lastSyncedAt = new Date()
-          await this.teamRepo.save(team)
+    } else {
+      // 已有队伍：补充缺失的多语言字段和占位符队名
+      const needsI18n = !team.nameJa || !team.nameKo || !team.nameEs || !team.nameFr || !team.namePt || !team.nameAr
+      // 如果队名是占位符（Team-{id}），尝试通过详情 API 获取真实名称
+      const isPlaceholder = team.nameEn?.startsWith('Team-') || team.name?.startsWith('Team-')
+      if (isPlaceholder) {
+        try {
+          const detail = (await this.bsdService.getTeamDetail(bsdId)) as {
+            name?: string
+            country?: string
+            logo?: string
+          }
+          if (detail?.name) {
+            team.name = translateTeamName(detail.name) || detail.name
+            team.nameEn = detail.name
+            if (needsI18n) {
+              team.nameJa = translateTeamNameTo(detail.name, 'ja')
+              team.nameKo = translateTeamNameTo(detail.name, 'ko')
+              team.nameEs = translateTeamNameTo(detail.name, 'es')
+              team.nameFr = translateTeamNameTo(detail.name, 'fr')
+              team.namePt = translateTeamNameTo(detail.name, 'pt')
+              team.nameAr = translateTeamNameTo(detail.name, 'ar')
+            }
+          }
+          if (detail?.country) {
+            team.countryCode = countryToIso(detail.country)
+            team.country = detail.country
+          }
+          if (detail?.logo) team.logo = detail.logo
+        } catch {
+          /* ignore */
         }
-      } catch {
-        /* ignore */
+      } else if (needsI18n) {
+        team.nameJa = team.nameJa || translateTeamNameTo(team.nameEn, 'ja')
+        team.nameKo = team.nameKo || translateTeamNameTo(team.nameEn, 'ko')
+        team.nameEs = team.nameEs || translateTeamNameTo(team.nameEn, 'es')
+        team.nameFr = team.nameFr || translateTeamNameTo(team.nameEn, 'fr')
+        team.namePt = team.namePt || translateTeamNameTo(team.nameEn, 'pt')
+        team.nameAr = team.nameAr || translateTeamNameTo(team.nameEn, 'ar')
+      }
+      if (team.countryCode === 'INT') {
+        // 已有但 country 为默认值，尝试补充
+        try {
+          const detail = (await this.bsdService.getTeamDetail(bsdId)) as { country?: string; logo?: string }
+          if (detail?.country) {
+            team.countryCode = countryToIso(detail.country)
+            team.country = detail.country
+            if (detail.logo) team.logo = detail.logo
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      if (needsI18n || team.countryCode === 'INT') {
+        team.lastSyncedAt = new Date()
+        await this.teamRepo.save(team)
       }
     }
     cache?.set(bsdId, team)

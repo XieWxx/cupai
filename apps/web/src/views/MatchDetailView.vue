@@ -175,7 +175,7 @@
                   :icon="CopyDocument"
                   @click="copyDimension('result_wdl')"
                 >
-                  {{ $t('dim.copy') }}
+                  {{ $t('dim.analyze') }}
                 </el-button>
               </div>
             </template>
@@ -399,7 +399,7 @@
                     :icon="CopyDocument"
                     @click="copyDimension(dim.key)"
                   >
-                    {{ $t('dim.copy') }}
+                    {{ $t('dim.analyze') }}
                   </el-button>
                 </div>
                 <div
@@ -910,11 +910,12 @@
       </template>
     </template>
 
-    <!-- ========== 复制指令弹窗（兼容非安全上下文） ========== -->
+    <!-- ========== AI 分析指引弹窗 ========== -->
     <CopyInstructionDialog
       v-model="copyDialogOpen"
-      :title="$t('copyIntro.title')"
-      :tabs="copyDialogTabs"
+      :title="$t('copyIntro.dialogTitle')"
+      :instruction-text="copyDialogInstructionText"
+      :auto-copied="copyDialogAutoCopied"
     />
 
     <!-- 右侧分享栏（跟随屏幕滚动） -->
@@ -1226,6 +1227,9 @@ const DIM_COLOR_PALETTE = [
 // ========== 复制指令弹窗（兼容非安全上下文，避免 navigator.clipboard 报错）==========
 const copyDialogOpen = ref(false)
 const copyDialogTabs = ref<Array<{ key: string; label: string; content: string }>>([])
+// 新版引导弹窗：指令文本 + 自动复制状态
+const copyDialogInstructionText = ref('')
+const copyDialogAutoCopied = ref(false)
 
 // ========== 舆情 ==========
 /** 舆情数据三档：全部（赛事范围）/ 主队 / 客队 */
@@ -1396,9 +1400,8 @@ function resolvePlayerName(
 }
 
 /**
- * 复制单维度分析指令
- * 改为弹窗显示完整 Markdown，避免 navigator.clipboard 在非安全上下文报错
- * 新版（按产品要求）：每条复制指令末尾都附带 agent 回传地址、Header、Body 字段、curl 模板
+ * 分析单维度 — 自动复制指令 + 打开引导弹窗
+ * 新版交互：点击"分析"按钮后，系统自动复制指令到剪贴板，同时弹出 3 步引导弹窗
  */
 async function copyDimension(dimKey: DimensionKey) {
   // 未登录跳转登录页
@@ -1421,15 +1424,36 @@ async function copyDimension(dimKey: DimensionKey) {
     options = Object.keys(r?.distribution || {})
   }
   const text = buildDimensionInstruction(dimKey, input, title, question, options)
-  // 弹窗显示 + 用户主动复制（兼容非安全上下文）
+
+  // 自动复制到剪贴板
+  let autoCopied = false
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      autoCopied = true
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      autoCopied = true
+    }
+  } catch {
+    autoCopied = false
+  }
+
+  // 打开引导弹窗
+  copyDialogInstructionText.value = text
+  copyDialogAutoCopied.value = autoCopied
   copyDialogOpen.value = true
-  copyDialogTabs.value = [
-    { key: dimKey, label: title, content: text },
-  ]
 }
 
 /**
- * 复制球员分析指令（弹窗显示）
+ * 分析球员 — 自动复制指令 + 打开引导弹窗
  */
 async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
   // 未登录跳转登录页
@@ -1442,19 +1466,39 @@ async function openPlayerCopyDialog(player: any, side: 'home' | 'away') {
     player: { ...player, teamName },
     userApiKey: currentApiKey.value,
     locale: i18nLocale.value,
-    // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
     appBaseUrl: import.meta.env.VITE_API_BASE_URL
       ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
       : (typeof window !== 'undefined' ? window.location.origin : undefined),
   })
+
+  // 自动复制到剪贴板
+  let autoCopied = false
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      autoCopied = true
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      autoCopied = true
+    }
+  } catch {
+    autoCopied = false
+  }
+
+  copyDialogInstructionText.value = text
+  copyDialogAutoCopied.value = autoCopied
   copyDialogOpen.value = true
-  copyDialogTabs.value = [
-    { key: `player-${player.id || ''}`, label: player.name || t('copyIntro.tabPlayer'), content: text },
-  ]
 }
 
 /**
- * 复制球队分析指令（弹窗显示）
+ * 分析球队 — 自动复制指令 + 打开引导弹窗
  */
 async function openTeamCopyDialog(side: 'home' | 'away') {
   // 未登录跳转登录页
@@ -1473,15 +1517,35 @@ async function openTeamCopyDialog(side: 'home' | 'away') {
     },
     userApiKey: currentApiKey.value,
     locale: i18nLocale.value,
-    // 回传地址使用后端直连地址，不走 Vite 代理（避免代理连接问题导致 404）
     appBaseUrl: import.meta.env.VITE_API_BASE_URL
       ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1$/, '')
       : (typeof window !== 'undefined' ? window.location.origin : undefined),
   })
+
+  // 自动复制到剪贴板
+  let autoCopied = false
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      autoCopied = true
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      autoCopied = true
+    }
+  } catch {
+    autoCopied = false
+  }
+
+  copyDialogInstructionText.value = text
+  copyDialogAutoCopied.value = autoCopied
   copyDialogOpen.value = true
-  copyDialogTabs.value = [
-    { key: `team-${side}`, label: getTeamName(team) || t('copyIntro.tabTeam'), content: text },
-  ]
 }
 
 /** 复制整场赛事分析指令（弹窗显示），预留功能 */

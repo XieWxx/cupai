@@ -1,55 +1,79 @@
 <template>
   <!--
-    复制指令弹窗（占位组件）
-    用于在非安全上下文（HTTP / 不受信任域）中展示并手动复制 AI 指令文本，
-    避免直接调用 navigator.clipboard 抛错。
-    后续可补充：内容格式化、下载 .md、暗色主题适配等。
+    AI 分析指引弹窗
+    点击"分析"按钮后弹出，自动复制指令到剪贴板，
+    并展示 3 步操作引导流程。
   -->
   <el-dialog
     :model-value="modelValue"
-    :title="title"
-    width="640px"
+    :title="title || t('copyIntro.dialogTitle')"
+    width="520px"
     :close-on-click-modal="false"
     @update:model-value="handleUpdate"
   >
-    <el-tabs v-if="hasMultipleTabs" v-model="activeKey">
-      <el-tab-pane
-        v-for="tab in tabs"
-        :key="tab.key"
-        :label="tab.label"
-        :name="tab.key"
-      />
-    </el-tabs>
+    <!-- 步骤引导 -->
+    <div class="analysis-guide">
+      <!-- 步骤 1：复制分析指令 -->
+      <div class="analysis-guide__step" :class="{ 'analysis-guide__step--done': autoCopySuccess }">
+        <div class="analysis-guide__step-number">
+          <el-icon v-if="autoCopySuccess" :size="20" color="var(--el-color-success)"><CircleCheckFilled /></el-icon>
+          <span v-else>1</span>
+        </div>
+        <div class="analysis-guide__step-content">
+          <div class="analysis-guide__step-title">{{ t('copyIntro.step1Title') }}</div>
+          <div class="analysis-guide__step-desc">{{ t('copyIntro.step1Desc') }}</div>
+          <div v-if="autoCopySuccess" class="analysis-guide__step-badge analysis-guide__step-badge--success">
+            <el-icon :size="12"><CircleCheckFilled /></el-icon>
+            {{ t('copyIntro.autoCopied') }}
+          </div>
+          <div v-else class="analysis-guide__step-badge analysis-guide__step-badge--warning">
+            <el-icon :size="12"><WarningFilled /></el-icon>
+            {{ t('copyIntro.autoCopyFail') }}
+          </div>
+        </div>
+      </div>
 
-    <div v-else-if="firstTab" class="copy-dialog__single-label">
-      {{ firstTab.label }}
+      <!-- 步骤连接线 -->
+      <div class="analysis-guide__connector" />
+
+      <!-- 步骤 2：粘贴到 Agent -->
+      <div class="analysis-guide__step">
+        <div class="analysis-guide__step-number">2</div>
+        <div class="analysis-guide__step-content">
+          <div class="analysis-guide__step-title">{{ t('copyIntro.step2Title') }}</div>
+          <div class="analysis-guide__step-desc">{{ t('copyIntro.step2Desc') }}</div>
+        </div>
+      </div>
+
+      <!-- 步骤连接线 -->
+      <div class="analysis-guide__connector" />
+
+      <!-- 步骤 3：等待分析回传 -->
+      <div class="analysis-guide__step">
+        <div class="analysis-guide__step-number">3</div>
+        <div class="analysis-guide__step-content">
+          <div class="analysis-guide__step-title">{{ t('copyIntro.step3Title') }}</div>
+          <div class="analysis-guide__step-desc">{{ t('copyIntro.step3Desc') }}</div>
+        </div>
+      </div>
     </div>
 
-    <pre class="copy-dialog__content">{{ activeContent }}</pre>
-
     <template #footer>
-      <el-button @click="handleClose">{{ $t('common.cancel') }}</el-button>
-      <el-button type="primary" :disabled="!activeContent" @click="handleCopy">
-        {{ $t('copyIntro.copyThisTab') }}
+      <el-button @click="handleClose">{{ t('common.close') }}</el-button>
+      <el-button type="primary" @click="handleManualCopy">
+        {{ t('copyIntro.copyThisTab') }}
       </el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 
-// 国际化（必须在 setup 顶层调用）
 const { t } = useI18n()
-
-// 单个 tab 的数据结构（对外暴露，便于调用方复用类型）
-export interface CopyInstructionTab {
-  key: string
-  label: string
-  content: string
-}
 
 // 组件 props
 const props = defineProps<{
@@ -57,8 +81,10 @@ const props = defineProps<{
   modelValue: boolean
   /** 弹窗标题 */
   title?: string
-  /** 指令内容分页（支持多 tab 切换） */
-  tabs?: CopyInstructionTab[]
+  /** 指令文本内容（用于复制到剪贴板） */
+  instructionText?: string
+  /** 自动复制是否成功（由父组件传入） */
+  autoCopied?: boolean
 }>()
 
 // v-model 事件
@@ -66,34 +92,16 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
 }>()
 
-// 派生：tab 数量
-const hasMultipleTabs = computed(() => (props.tabs?.length ?? 0) > 1)
+// 自动复制结果
+const autoCopySuccess = ref(false)
 
-// 派生：第一个 tab（用于单 tab 模式下的 label 显示）
-const firstTab = computed<CopyInstructionTab | undefined>(() => props.tabs?.[0])
-
-// 当前激活的 tab key
-const activeKey = ref<string>('')
-
-// 当前展示内容（根据 activeKey 选中对应 tab.content）
-const activeContent = computed(() => {
-  if (!props.tabs || props.tabs.length === 0) return ''
-  const found = props.tabs.find((tab) => tab.key === activeKey.value)
-  return found ? found.content : props.tabs[0].content
-})
-
-// 当前激活 tab 的 label（用于复制成功提示）
-const activeLabel = computed(() => {
-  if (!props.tabs || props.tabs.length === 0) return ''
-  const found = props.tabs.find((tab) => tab.key === activeKey.value)
-  return found ? found.label : props.tabs[0].label
-})
-
-// 同步：tabs 变化时重置激活项为第一个
+// 监听弹窗打开，同步自动复制状态
 watch(
-  () => props.tabs,
-  (list) => {
-    activeKey.value = list && list.length > 0 ? list[0].key : ''
+  () => props.modelValue,
+  (visible) => {
+    if (visible) {
+      autoCopySuccess.value = props.autoCopied ?? false
+    }
   },
   { immediate: true },
 )
@@ -108,56 +116,109 @@ function handleUpdate(value: boolean) {
   emit('update:modelValue', value)
 }
 
-// 复制按钮：clipboard API 优先，textarea+execCommand 兜底（兼容非安全上下文）
-async function handleCopy() {
-  const text = activeContent.value
+// 手动复制按钮
+async function handleManualCopy() {
+  const text = props.instructionText
   if (!text) return
 
   try {
     if (navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
     } else {
-      // 兜底方案：创建隐藏 textarea 手动执行 copy 命令
       const textarea = document.createElement('textarea')
       textarea.value = text
       textarea.style.position = 'fixed'
       textarea.style.opacity = '0'
       document.body.appendChild(textarea)
       textarea.select()
-      // execCommand 已弃用，但作为非安全上下文下的最后兜底仍可用
       document.execCommand('copy')
       document.body.removeChild(textarea)
     }
-    ElMessage.success(t('copyIntro.copySuccess', { name: activeLabel.value }))
+    autoCopySuccess.value = true
+    ElMessage.success(t('copyIntro.autoCopied'))
   } catch (err) {
-    // 复制失败时给出提示，原始文本已在 <pre> 中可手动选择
     ElMessage.warning(t('copyIntro.copyFail'))
-    // eslint-disable-next-line no-console
-    console.error('[CopyInstructionDialog] copy failed:', err)
+    console.error('[AnalysisGuideDialog] copy failed:', err)
   }
 }
 </script>
 
 <style scoped>
-.copy-dialog__single-label {
+.analysis-guide {
+  padding: 8px 0;
+}
+
+.analysis-guide__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.analysis-guide__step--done {
+  /* 完成状态 */
+}
+
+.analysis-guide__step-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--el-color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
-  color: var(--el-text-color-regular);
-  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.analysis-guide__step--done .analysis-guide__step-number {
+  background: var(--el-color-success-light-3);
+}
+
+.analysis-guide__step-content {
+  flex: 1;
+  padding-top: 4px;
+}
+
+.analysis-guide__step-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin-bottom: 4px;
+}
+
+.analysis-guide__step-desc {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.analysis-guide__step-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 500;
 }
 
-.copy-dialog__content {
-  max-height: 360px;
-  overflow: auto;
-  padding: 12px 14px;
-  margin: 0;
-  background: var(--el-fill-color-light);
-  border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  user-select: text;
+.analysis-guide__step-badge--success {
+  background: var(--el-color-success-light-9);
+  color: var(--el-color-success);
+}
+
+.analysis-guide__step-badge--warning {
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning-dark-2);
+}
+
+.analysis-guide__connector {
+  width: 2px;
+  height: 20px;
+  margin-left: 15px;
+  background: var(--el-border-color-light);
 }
 </style>

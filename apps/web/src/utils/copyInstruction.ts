@@ -312,6 +312,148 @@ const I18N_MAP: Record<string, Record<string, string>> = {
   'copy.refereeInfo': {
     'zh-CN': '主裁', 'en-US': 'Referee', 'ja-JP': '主審', 'ko-KR': '주심',
   },
+  // ---- 精简版指令专用 i18n key ----
+  'copy.dimAnalysis': {
+    'zh-CN': '单维度分析', 'en-US': 'Dimension Analysis',
+  },
+  'copy.dataFetch': {
+    'zh-CN': '数据获取', 'en-US': 'Data Access',
+  },
+  'copy.fullApiDoc': {
+    'zh-CN': '完整 API 文档', 'en-US': 'Full API Documentation',
+  },
+  'copy.apiDocDesc': {
+    'zh-CN': '包含所有数据端点、维度定义、分析规则与验证机制。', 'en-US': 'Includes all data endpoints, dimension definitions, analysis rules, and validation mechanisms.',
+  },
+  'copy.callApiFirst': {
+    'zh-CN': '请先调用以下 API 获取分析所需数据：', 'en-US': 'Call the following APIs first to get data for analysis:',
+  },
+  'copy.matchDetailWithExtras': {
+    'zh-CN': '赛事详情（含天气/裁判/教练/赔率/预测）', 'en-US': 'Match details (weather/referee/coaches/odds/prediction)',
+  },
+  'copy.bothLineups': {
+    'zh-CN': '双方阵容', 'en-US': 'Both lineups',
+  },
+  'copy.otherDataRefSkillMd': {
+    'zh-CN': '其他补充数据（赔率对比/交锋记录/舆情/球员统计等）请参考 skill.md 文档按需获取', 'en-US': 'For other supplementary data (odds comparison/h2h/sentiment/player stats etc.), refer to skill.md as needed',
+  },
+  'copy.keyDataSummary': {
+    'zh-CN': '关键数据摘要', 'en-US': 'Key Data Summary',
+  },
+  'copy.returnGuide': {
+    'zh-CN': '回传指引', 'en-US': 'Submission Guide',
+  },
+  'copy.fullIntegrationDoc': {
+    'zh-CN': '完整接入文档', 'en-US': 'Full Integration Doc',
+  },
+  'copy.afterAnalysisSubmit': {
+    'zh-CN': '完成分析后，请将结果回传至 CupAI：', 'en-US': 'After analysis, submit your results to CupAI:',
+  },
+  'copy.topOptionPlaceholder': {
+    'zh-CN': '<首选结论>', 'en-US': '<top conclusion>',
+  },
+  'copy.summaryPlaceholder': {
+    'zh-CN': '<分析摘要>', 'en-US': '<analysis summary>',
+  },
+  'copy.modelPlaceholder': {
+    'zh-CN': '<模型名>', 'en-US': '<model name>',
+  },
+  'copy.platformPlaceholder': {
+    'zh-CN': '<Agent平台名>', 'en-US': '<Agent platform>',
+  },
+  'copy.fieldDesc': {
+    'zh-CN': '字段说明：', 'en-US': 'Field descriptions: ',
+  },
+  'copy.fieldRequired': {
+    'zh-CN': '(必填)', 'en-US': '(required)',
+  },
+  'copy.analysisTask': {
+    'zh-CN': '分析任务', 'en-US': 'Analysis Task',
+  },
+  'copy.question': {
+    'zh-CN': '问题', 'en-US': 'Question',
+  },
+  'copy.optionsLabel': {
+    'zh-CN': '可选结论（请从下列候选项中选一个或多个，并给出概率）', 'en-US': 'Options (select one or more from the candidates below, with probabilities)',
+  },
+  'copy.outputFormat': {
+    'zh-CN': '输出格式', 'en-US': 'Output Format',
+  },
+  'copy.outputFormatDesc': {
+    'zh-CN': '请使用 **Markdown** 输出，结构如下：', 'en-US': 'Please output in **Markdown** with the following structure:',
+  },
+  'copy.conclusion': {
+    'zh-CN': '结论', 'en-US': 'Conclusion',
+  },
+  'copy.conclusionDesc': {
+    'zh-CN': '<从候选项中选择 1 个最可能结论，给出 0-100% 的置信度>', 'en-US': '<Select 1 most likely option from candidates, with 0-100% confidence>',
+  },
+  'copy.probDistribution': {
+    'zh-CN': '概率分布', 'en-US': 'Probability Distribution',
+  },
+  'copy.probDistributionDesc': {
+    'zh-CN': '<列出所有候选项的概率分布，合计 100%>', 'en-US': '<List probability distribution for all candidates, summing to 100%>',
+  },
+  'copy.reasoning': {
+    'zh-CN': '推理依据', 'en-US': 'Reasoning',
+  },
+  'copy.reasoningDesc': {
+    'zh-CN': '<200-300 字：基于双方进攻/防守/历史/舆情/裁判风格等因素的推理>', 'en-US': '<200-300 words: reasoning based on offense/defense/history/sentiment/referee style etc.>',
+  },
+  'copy.riskUncertainty': {
+    'zh-CN': '风险与不确定性', 'en-US': 'Risks & Uncertainties',
+  },
+  'copy.riskDesc': {
+    'zh-CN': '<100-150 字：影响结论的主要不确定因素>', 'en-US': '<100-150 words: main uncertain factors affecting the conclusion>',
+  },
+  'copy.stayObjective': {
+    'zh-CN': '请保持客观中立，**不要遗漏任何要求项**。', 'en-US': 'Stay objective and neutral. **Do not omit any required item.**',
+  },
+  'copy.analysisDimensions': {
+    'zh-CN': '分析维度（请逐项输出结论）', 'en-US': 'Analysis Dimensions (output conclusions for each)',
+  },
+  'copy.rulesRefSkillMd': {
+    'zh-CN': '完整的维度定义、选项说明、数据来源优先级、处理流程与验证机制，请参考 skill.md 中的"分析规则"章节。', 'en-US': 'For complete dimension definitions, option descriptions, data source priority, processing flow, and validation mechanisms, refer to the "Analysis Rules" section in skill.md.',
+  },
+  'copy.sectionResult': {
+    'zh-CN': '赛果比分板块', 'en-US': 'Match Result',
+  },
+  'copy.sectionGoal': {
+    'zh-CN': '进球细节板块', 'en-US': 'Goal Details',
+  },
+  'copy.sectionPenalty': {
+    'zh-CN': '点球、VAR、判罚板块', 'en-US': 'Penalties & VAR',
+  },
+  'copy.sectionCard': {
+    'zh-CN': '红黄牌、犯规板块', 'en-US': 'Cards & Fouls',
+  },
+  'copy.sectionCorner': {
+    'zh-CN': '边角趣味数据板块', 'en-US': 'Fun Stats',
+  },
+  'copy.outputFormatReq': {
+    'zh-CN': '输出格式要求', 'en-US': 'Output Format Requirements',
+  },
+  'copy.outputFormatReqDesc': {
+    'zh-CN': '请使用 **Markdown** 输出，每个维度一个二级标题（##），结论在前、推理在后，**不要遗漏任何一项**。', 'en-US': 'Output in **Markdown**, one ## heading per dimension, conclusion first then reasoning. **Do not omit any dimension.**',
+  },
+  'copy.conclusionSummary': {
+    'zh-CN': '综合结论', 'en-US': 'Overall Conclusion',
+  },
+  'copy.conclusionSummaryDesc': {
+    'zh-CN': '报告末尾给出一段 **200 字以内的"综合结论"**，包含：', 'en-US': 'At the end, provide an **"Overall Conclusion" within 200 words**, including:',
+  },
+  'copy.mostLikelyResult': {
+    'zh-CN': '- 最可能的结果 + 概率', 'en-US': '- Most likely result + probability',
+  },
+  'copy.keyUncertainties': {
+    'zh-CN': '- 关键不确定因素', 'en-US': '- Key uncertainties',
+  },
+  'copy.bettingDisclaimer': {
+    'zh-CN': '- 适合的投注玩法建议（仅作数据娱乐参考，不构成任何投注建议）', 'en-US': '- Suggested betting markets (for data entertainment only, not betting advice)',
+  },
+  'copy.pleaseAnalyst': {
+    'zh-CN': '请扮演专业的足球赛事分析师，**严格按照下方 21 维度逐项分析**，并使用 Markdown 格式输出报告。', 'en-US': 'Act as a professional football analyst. **Analyze all 21 dimensions strictly** and output in Markdown format.',
+  },
 }
 
 /** 获取国际化文本，fallback 到中文 */
@@ -631,22 +773,22 @@ function buildBaseSnapshot(input: CopyInstructionInput, dimTitle: string, _quest
   const matchDetailUrl = `${base}/api/v1/match/${m.id || ''}`
   const lineupsUrl = `${base}/api/v1/match/${m.id || ''}/lineups`
 
-  return `# 单维度分析 · ${dimTitle}
+  return `# ${i18n(loc, 'copy.dimAnalysis')} · ${dimTitle}
 
 > ${i18n(loc, 'copy.thisMatch')}：**${homeTeamName} VS ${awayTeamName}**
 
-## 数据获取
+## ${i18n(loc, 'copy.dataFetch')}
 
-> **完整 API 文档**：${skillMdUrl}
-> 包含所有数据端点、维度定义、分析规则与验证机制。
+> **${i18n(loc, 'copy.fullApiDoc')}**：${skillMdUrl}
+> ${i18n(loc, 'copy.apiDocDesc')}
 
-请先调用以下 API 获取分析所需数据：
+${i18n(loc, 'copy.callApiFirst')}
 
-1. **赛事详情**（含天气/裁判/教练/赔率/预测）：\`GET ${matchDetailUrl}\`
-2. **双方阵容**：\`GET ${lineupsUrl}\`
-3. 其他补充数据（赔率对比/交锋记录/舆情/球员统计等）请参考 skill.md 文档按需获取
+1. **${i18n(loc, 'copy.matchDetailWithExtras')}**：\`GET ${matchDetailUrl}\`
+2. **${i18n(loc, 'copy.bothLineups')}**：\`GET ${lineupsUrl}\`
+3. ${i18n(loc, 'copy.otherDataRefSkillMd')}
 
-## 关键数据摘要
+## ${i18n(loc, 'copy.keyDataSummary')}
 
 - **${i18n(loc, 'copy.event')}**：${m.leagueName || '—'}
 - **${i18n(loc, 'copy.stage')}**：${m.stage || '—'}
@@ -672,17 +814,18 @@ function buildReturnGuidance(input: CopyInstructionInput, dimKey: string): strin
   const realInstructionId = input.instructionId || '<instruction_id>'
   void realInstructionId
   const matchId = input.match?.id || '<match_id>'
+  const loc = input.locale
 
   return `
 
 ---
 
-## 回传指引
+## ${i18n(loc, 'copy.returnGuide')}
 
-> **完整接入文档**：${skillMdUrl}
-> 包含所有 API 端点、维度定义、分析规则与验证机制。
+> **${i18n(loc, 'copy.fullIntegrationDoc')}**：${skillMdUrl}
+> ${i18n(loc, 'copy.apiDocDesc')}
 
-完成分析后，请将结果回传至 CupAI：
+${i18n(loc, 'copy.afterAnalysisSubmit')}
 
 \`\`\`bash
 curl -X POST "${submitUrl}" \\
@@ -691,16 +834,16 @@ curl -X POST "${submitUrl}" \\
   -d '{
     "matchId": "${matchId}",
     "dimKey": "${dimKey}",
-    "topOption": "<首选结论>",
+    "topOption": "${i18n(loc, 'copy.topOptionPlaceholder')}",
     "topProbability": 0.55,
     "distribution": {},
-    "summary": "<分析摘要>",
-    "model": "<模型名>",
-    "platform": "<Agent平台名>"
+    "summary": "${i18n(loc, 'copy.summaryPlaceholder')}",
+    "model": "${i18n(loc, 'copy.modelPlaceholder')}",
+    "platform": "${i18n(loc, 'copy.platformPlaceholder')}"
   }'
 \`\`\`
 
-字段说明：\`matchId\`(必填) \`dimKey\`(必填) \`topOption\`(首选结论) \`topProbability\`(0-1) \`distribution\`(概率分布) \`summary\`(分析摘要) \`model\`(模型名) \`platform\`(Agent平台名)`
+${i18n(loc, 'copy.fieldDesc')}\`matchId\`${i18n(loc, 'copy.fieldRequired')} \`dimKey\`${i18n(loc, 'copy.fieldRequired')} \`topOption\` \`topProbability\`(0-1) \`distribution\` \`summary\` \`model\` \`platform\``
 }
 
 // ============================================================
@@ -716,35 +859,36 @@ function buildDimensionPrompt(
   dimTitle: string,
   question: string,
   optionsText: string,
+  locale?: string,
 ): string {
-  return `## 分析任务
+  return `## ${i18n(locale, 'copy.analysisTask')}
 
 **${dimTitle}**
 
-**问题**：${question}
+**${i18n(locale, 'copy.question')}**：${question}
 
-**可选结论**（请从下列候选项中选一个或多个，并给出概率）：
+**${i18n(locale, 'copy.optionsLabel')}**：
 ${optionsText}
 
-## 输出格式
+## ${i18n(locale, 'copy.outputFormat')}
 
-请使用 **Markdown** 输出，结构如下：
+${i18n(locale, 'copy.outputFormatDesc')}
 
 \`\`\`
-## 结论
-<从候选项中选择 1 个最可能结论，给出 0-100% 的置信度>
+## ${i18n(locale, 'copy.conclusion')}
+${i18n(locale, 'copy.conclusionDesc')}
 
-## 概率分布
-<列出所有候选项的概率分布，合计 100%>
+## ${i18n(locale, 'copy.probDistribution')}
+${i18n(locale, 'copy.probDistributionDesc')}
 
-## 推理依据
-<200-300 字：基于双方进攻/防守/历史/舆情/裁判风格等因素的推理>
+## ${i18n(locale, 'copy.reasoning')}
+${i18n(locale, 'copy.reasoningDesc')}
 
-## 风险与不确定性
-<100-150 字：影响结论的主要不确定因素>
+## ${i18n(locale, 'copy.riskUncertainty')}
+${i18n(locale, 'copy.riskDesc')}
 \`\`\`
 
-请保持客观中立，**不要遗漏任何要求项**。`
+${i18n(locale, 'copy.stayObjective')}`
 }
 
 /**
@@ -764,7 +908,7 @@ export function buildDimensionInstruction(
 ): string {
   const optionsText = resolvedOptions.map((o, i) => `${i + 1}. ${o}`).join('\n')
   const base = buildBaseSnapshot(input, resolvedTitle, resolvedQuestion, optionsText)
-  const task = buildDimensionPrompt(dimKey, resolvedTitle, resolvedQuestion, optionsText)
+  const task = buildDimensionPrompt(dimKey, resolvedTitle, resolvedQuestion, optionsText, input.locale)
   const returnGuide = buildReturnGuidance(input, dimKey)
   return [base, task, returnGuide].filter(Boolean).join('\n')
 }
@@ -775,49 +919,53 @@ export function buildDimensionInstruction(
 
 /**
  * 21 维度分析规则（精简版，详细规则见 skill.md）
+ * @param locale 当前语言
  */
-const ANALYSIS_RULES = `## 分析维度（请逐项输出结论）
+function buildAnalysisRules(locale?: string): string {
+  return `## ${i18n(locale, 'copy.analysisDimensions')}
 
-> 完整的维度定义、选项说明、数据来源优先级、处理流程与验证机制，请参考 skill.md 中的"分析规则"章节。
+> ${i18n(locale, 'copy.rulesRefSkillMd')}
 
-### （一）赛果比分板块
-1. **全场胜平负**（result_wdl）：home / draw / away
-2. **全场总进球档位**（result_total_goals）：0 / 1 / 2 / 3 / 4+
-3. **半全场结果**（result_half_full）：HW / HD / HL / DW / DD / DL / LW / LD / LL
-4. **精准比分**（result_exact_score）：列出最可能的 3 个比分及各自概率
+### ${i18n(locale, 'copy.sectionResult')}
+1. **result_wdl**：home / draw / away
+2. **result_total_goals**：0 / 1 / 2 / 3 / 4+
+3. **result_half_full**：HW / HD / HL / DW / DD / DL / LW / LD / LL
+4. **result_exact_score**：top 3 most likely scores with probabilities
 
-### （二）进球细节板块
-5. **上半场有无进球**（goal_first_half）：yes / no
-6. **首球归属**（goal_first）：home / away / noGoal
-7. **末球归属**（goal_last）：home / away / noGoal
-8. **是否出现乌龙球**（goal_own）：yes / no
-9. **指定球员能否破门**（goal_player_score）：score / noScore
-10. **补时阶段能否产生进球**（goal_stoppage）：yes / no
-11. **单队零封**（goal_clean_sheet）：homeClean / awayClean / bothConcede
-12. **全场进球总数单/双**（goal_odd_even）：odd / even
+### ${i18n(locale, 'copy.sectionGoal')}
+5. **goal_first_half**：yes / no
+6. **goal_first**：home / away / noGoal
+7. **goal_last**：home / away / noGoal
+8. **goal_own**：yes / no
+9. **goal_player_score**：score / noScore
+10. **goal_stoppage**：yes / no
+11. **goal_clean_sheet**：homeClean / awayClean / bothConcede
+12. **goal_odd_even**：odd / even
 
-### （三）点球、VAR、判罚板块
-13. **常规比赛是否判罚点球**（penalty_awarded）：yes / no
-14. **是否出现进球被 VAR 取消**（penalty_var_cancel）：yes / no
-15. **淘汰赛加时/点球**（penalty_knockout_extra）：extra / shootout / noExtra
+### ${i18n(locale, 'copy.sectionPenalty')}
+13. **penalty_awarded**：yes / no
+14. **penalty_var_cancel**：yes / no
+15. **penalty_knockout_extra**：extra / shootout / noExtra
 
-### （四）红黄牌、犯规板块
-16. **全场是否出现红牌**（card_red）：yes / no
-17. **黄牌总量**（card_yellow_total）：0 / 1-2 / 3+
-18. **两队黄牌数量**（card_yellow_compare）：homeMore / awayMore / equal
+### ${i18n(locale, 'copy.sectionCard')}
+16. **card_red**：yes / no
+17. **card_yellow_total**：0 / 1-2 / 3+
+18. **card_yellow_compare**：homeMore / awayMore / equal
 
-### （五）边角趣味数据板块
-19. **全场角球总数档位**（corner_total）：0-3 / 4-6 / 7+
-20. **有无任意球直接得分**（corner_freekick_goal）：yes / no
-21. **两队换人次数**（corner_substitutions）：homeMore / awayMore / equal
+### ${i18n(locale, 'copy.sectionCorner')}
+19. **corner_total**：0-3 / 4-6 / 7+
+20. **corner_freekick_goal**：yes / no
+21. **corner_substitutions**：homeMore / awayMore / equal
 
-## 输出格式要求
+## ${i18n(locale, 'copy.outputFormatReq')}
 
-请使用 **Markdown** 输出，每个维度一个二级标题（##），结论在前、推理在后，**不要遗漏任何一项**。
-报告末尾给出一段 **200 字以内的"综合结论"**，包含：
-- 最可能的结果 + 概率
-- 关键不确定因素
-- 适合的投注玩法建议（仅作数据娱乐参考，不构成任何投注建议）`
+${i18n(locale, 'copy.outputFormatReqDesc')}
+
+${i18n(locale, 'copy.conclusionSummaryDesc')}
+${i18n(locale, 'copy.mostLikelyResult')}
+${i18n(locale, 'copy.keyUncertainties')}
+${i18n(locale, 'copy.bettingDisclaimer')}`
+}
 
 /**
  * 生成比赛分析复制指令（精简版：引用 skill.md API，仅保留关键摘要 + 分析任务）
@@ -838,20 +986,20 @@ export function buildMatchInstruction(input: CopyInstructionInput): string {
   const parts: string[] = [
     `# ${i18n(loc, 'copy.matchAnalysis')} · ${homeTeamName} VS ${awayTeamName}`,
     '',
-    '> 请扮演专业的足球赛事分析师，**严格按照下方 21 维度逐项分析**，并使用 Markdown 格式输出报告。',
+    `> ${i18n(loc, 'copy.pleaseAnalyst')}`,
     '',
-    `## 数据获取`,
+    `## ${i18n(loc, 'copy.dataFetch')}`,
     '',
-    `> **完整 API 文档**：${skillMdUrl}`,
-    `> 包含所有数据端点、维度定义、分析规则与验证机制。`,
+    `> **${i18n(loc, 'copy.fullApiDoc')}**：${skillMdUrl}`,
+    `> ${i18n(loc, 'copy.apiDocDesc')}`,
     '',
-    '请先调用以下 API 获取分析所需数据：',
+    i18n(loc, 'copy.callApiFirst'),
     '',
-    `1. **赛事详情**（含天气/裁判/教练/赔率/预测）：\`GET ${matchDetailUrl}\``,
-    `2. **双方阵容**：\`GET ${lineupsUrl}\``,
-    '3. 其他补充数据（赔率对比/交锋记录/舆情/球员统计等）请参考 skill.md 文档按需获取',
+    `1. **${i18n(loc, 'copy.matchDetailWithExtras')}**：\`GET ${matchDetailUrl}\``,
+    `2. **${i18n(loc, 'copy.bothLineups')}**：\`GET ${lineupsUrl}\``,
+    `3. ${i18n(loc, 'copy.otherDataRefSkillMd')}`,
     '',
-    `## 关键数据摘要`,
+    `## ${i18n(loc, 'copy.keyDataSummary')}`,
     '',
     `- **${i18n(loc, 'copy.event')}**：${m.leagueName || '—'}`,
     `- **${i18n(loc, 'copy.stage')}**：${m.stage || '—'}`,
@@ -865,10 +1013,10 @@ export function buildMatchInstruction(input: CopyInstructionInput): string {
   ]
 
   if (input.promptTemplateContent) {
-    parts.push('## 自定义分析模板', '', input.promptTemplateContent, '')
+    parts.push(`## ${i18n(loc, 'copy.analysisTask')}`, '', input.promptTemplateContent, '')
   }
 
-  parts.push(ANALYSIS_RULES, '', buildReturnGuidance(input, 'all'))
+  parts.push(buildAnalysisRules(loc), '', buildReturnGuidance(input, 'all'))
 
   return parts.filter(Boolean).join('\n')
 }

@@ -163,6 +163,58 @@ function modelToPlatformKey(model: string): string {
 }
 
 /**
+ * 模型名归一化函数
+ * 将各种变体的模型名统一为标准形式，确保 model_rankings 和 user_ai_configs 中的模型名可匹配
+ * 规则：
+ * 1. 全部转小写
+ * 2. 去除空格和常见分隔符变体（统一为连字符）
+ * 3. 将同一模型的不同版本归一化（如 deepseek-chat/deepseek-reasoner → deepseek-chat/deepseek-reasoner，保持区分）
+ * 4. 将常见别名归一化（如 gpt4 → gpt-4, claude3 → claude-3）
+ */
+function normalizeModelName(name: string): string {
+  if (!name) return ''
+  let n = name.trim().toLowerCase()
+  // 统一分隔符：空格、下划线 → 连字符
+  n = n.replace(/[\s_]+/g, '-')
+  // 去除连续连字符
+  n = n.replace(/-+/g, '-')
+  // 去除首尾连字符
+  n = n.replace(/^-+|-+$/g, '')
+
+  // 常见别名归一化
+  const aliasMap: Record<string, string> = {
+    'gpt4': 'gpt-4',
+    'gpt4o': 'gpt-4o',
+    'gpt4-turbo': 'gpt-4-turbo',
+    'gpt3.5': 'gpt-3.5',
+    'gpt35': 'gpt-3.5',
+    'gpt-35-turbo': 'gpt-3.5-turbo',
+    'claude3': 'claude-3',
+    'claude3.5': 'claude-3.5',
+    'claude35': 'claude-3.5',
+    'o1preview': 'o1-preview',
+    'o1mini': 'o1-mini',
+    'o3mini': 'o3-mini',
+    'deepseekchat': 'deepseek-chat',
+    'deepseekreasoner': 'deepseek-reasoner',
+    'deepseek-v3': 'deepseek-chat',
+    'deepseek-r1': 'deepseek-reasoner',
+    'qwen2.5': 'qwen-2.5',
+    'qwenmax': 'qwen-max',
+    'qwq': 'qwen-qwq',
+    'glm4': 'glm-4',
+    'chatglm4': 'glm-4',
+    'doubao-pro': 'doubao-pro',
+    'hunyuan-lite': 'hunyuan-lite',
+    'moonshot-v1': 'moonshot-v1',
+    'kimi': 'moonshot-v1',
+  }
+  if (aliasMap[n]) return aliasMap[n]
+
+  return n
+}
+
+/**
  * 权重模型与排行服务
  */
 @Injectable()
@@ -352,16 +404,15 @@ export class RankingService {
     }
 
     // 聚合每个模型的使用用户数
-    // 从 user_ai_configs 按 modelName 统计去重用户
-    // 匹配策略：先精确匹配，再按模型名前缀归一化匹配（如 deepseek-chat 匹配 deepseek-*）
+    // 使用统一的模型名归一化函数，确保 model_rankings.modelName 与 user_ai_configs.modelName 可匹配
     const configs = await this.userAiConfigRepo.find({ select: ['id', 'userId', 'modelName'] })
 
-    // 建立 modelName -> Set<userId> 映射（精确匹配）
+    // 建立 归一化模型名 -> Set<userId> 映射
     const modelUserMap = new Map<string, Set<string>>()
     for (const cfg of configs) {
       const mn = cfg.modelName?.trim()
       if (!mn) continue
-      const key = mn.toLowerCase()
+      const key = normalizeModelName(mn)
       if (!modelUserMap.has(key)) modelUserMap.set(key, new Set())
       modelUserMap.get(key)!.add(cfg.userId)
     }
@@ -370,28 +421,9 @@ export class RankingService {
     const listWithUserCount = list.map(item => {
       const mn = item.modelName?.trim()
       if (!mn) return { ...item, userCount: 0 }
-
-      // 1) 精确匹配
-      const exact = modelUserMap.get(mn.toLowerCase())
-      if (exact && exact.size > 0) {
-        return { ...item, userCount: exact.size }
-      }
-
-      // 2) 前缀归一化匹配：如 deepseek-chat 匹配所有 deepseek-* 配置
-      const prefix = mn.toLowerCase().split(/[-_]/)[0]
-      let count = 0
-      const countedUsers = new Set<string>()
-      for (const [key, users] of modelUserMap) {
-        if (key.startsWith(prefix)) {
-          for (const uid of users) {
-            if (!countedUsers.has(uid)) {
-              countedUsers.add(uid)
-              count++
-            }
-          }
-        }
-      }
-      return { ...item, userCount: count }
+      const normalizedKey = normalizeModelName(mn)
+      const users = modelUserMap.get(normalizedKey)
+      return { ...item, userCount: users?.size || 0 }
     })
 
     return { list: listWithUserCount, total, page, pageSize }
@@ -405,54 +437,37 @@ export class RankingService {
    * 合并逻辑：同一 platform 取 userCount 较大值，totalPredictions 使用 dimension_submissions 统计
    */
   async getPlatformRankings(limit?: number) {
-    // 数据源 1：从 user_ai_configs 聚合用户数（按 apiEndpoint 域名归一化）
+    // 数据源 1：从 user_ai_configs 聚合用户数
+    // 优先按 apiEndpoint 域名归一化，apiEndpoint 为空时从 modelName 推断平台
     const configs = await this.userAiConfigRepo.find({
-      select: ['id', 'userId', 'apiEndpoint'],
+      select: ['id', 'userId', 'apiEndpoint', 'modelName'],
     })
 
+    // 用户数统计：按平台 key 统计去重 userId
     const userCountMap = new Map<string, Set<string>>()
     for (const cfg of configs) {
-      let host = ''
-      try {
-        let url = (cfg.apiEndpoint || '').trim()
-        if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url
-        host = url ? new URL(url).host.toLowerCase() : ''
-      } catch {
-        host = (cfg.apiEndpoint || '').split('/')[0].toLowerCase()
+      let key = ''
+      // 优先从 apiEndpoint 推断平台
+      if (cfg.apiEndpoint?.trim()) {
+        let host = ''
+        try {
+          let url = cfg.apiEndpoint.trim()
+          if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+          host = url ? new URL(url).host.toLowerCase() : ''
+        } catch {
+          host = cfg.apiEndpoint.split('/')[0].toLowerCase()
+        }
+        key = hostToPlatformKey(host)
       }
-      const key = hostToPlatformKey(host)
-      if (!userCountMap.has(key)) {
-        userCountMap.set(key, new Set())
-      }
-      userCountMap.get(key)!.add(cfg.userId)
-    }
-
-    // 数据源 1b：从 dimension_submissions 按 platform 字段补充用户数
-    // 使用 apiKeyHint 去重统计每个平台的独立用户
-    const submissionUserRows = await this.submissionRepo
-      .createQueryBuilder('s')
-      .select('s.platform', 'platform')
-      .addSelect('s.model', 'model')
-      .addSelect('s.api_key_hint', 'apiKeyHint')
-      .groupBy('s.platform, s.model, s.api_key_hint')
-      .getRawMany()
-
-    // 补充到 userCountMap
-    for (const row of submissionUserRows) {
-      const rawPlatform: string = row.platform || ''
-      const rawModel: string = row.model || ''
-      const hint: string = row.apiKeyHint || ''
-      if (!hint) continue
-      let key = rawPlatform ? hostToPlatformKey(rawPlatform.toLowerCase()) : ''
+      // apiEndpoint 为空或推断失败时，从 modelName 推断平台
       if (!key || key === 'unknown') {
-        key = modelToPlatformKey(rawModel)
+        key = modelToPlatformKey(cfg.modelName || '')
       }
       if (!key || key === 'unknown') continue
       if (!userCountMap.has(key)) {
         userCountMap.set(key, new Set())
       }
-      // 用 apiKeyHint 作为用户标识（与 userId 不同体系，但可反映使用人数）
-      userCountMap.get(key)!.add(`sub:${hint}`)
+      userCountMap.get(key)!.add(cfg.userId)
     }
 
     // 数据源 2：从 dimension_submissions 聚合预测次数

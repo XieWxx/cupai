@@ -1162,6 +1162,8 @@ const dimensionReports = ref<any[]>([])
 const reportsLoading = ref(false)
 
 // 监听 dimensionReports 变化，自动聚合 result_wdl 维度生成 AI 胜负率预测 + 重渲染图表
+// 使用防抖避免高频分析时频繁触发全量重渲染
+let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
 watch(dimensionReports, (reports) => {
   const wdlReports = (reports || []).filter((r: any) => r?.dimKey === 'result_wdl' && r?.distribution)
   if (!wdlReports.length) {
@@ -1175,26 +1177,36 @@ watch(dimensionReports, (reports) => {
       if (kl === 'away' || kl === 'away_win' || kl === '客胜' || kl === 'a') return 'away'
       return 'draw' // 未知 key 归入平局
     }
-    const totals: Record<string, number> = { home: 0, draw: 0, away: 0 }
-    wdlReports.forEach((r: any) => {
+    // 时间加权聚合：越新的分析权重越高（指数衰减）
+    // 最新报告权重=1，每往前一条衰减 0.85，最低 0.1
+    const DECAY = 0.85
+    const MIN_WEIGHT = 0.1
+    let totalWeight = 0
+    const weightedTotals: Record<string, number> = { home: 0, draw: 0, away: 0 }
+    // wdlReports 按 createdAt DESC 排序（后端 order: { createdAt: 'DESC' }），所以第一条最新
+    wdlReports.forEach((r: any, idx: number) => {
+      const weight = Math.max(MIN_WEIGHT, Math.pow(DECAY, idx))
+      totalWeight += weight
       const dist = r.distribution || {}
       Object.entries(dist).forEach(([k, v]) => {
         const nk = normalizeKey(k)
-        totals[nk] = (totals[nk] || 0) + Number(v || 0)
+        weightedTotals[nk] = (weightedTotals[nk] || 0) + Number(v || 0) * weight
       })
     })
-    const n = wdlReports.length
-    const latest = wdlReports[wdlReports.length - 1]
+    const latest = wdlReports[0] // 最新的报告（DESC 排序后第一条）
     prediction.value = {
-      homeWin: Number((totals['home'] / n).toFixed(4)),
-      draw: Number((totals['draw'] / n).toFixed(4)),
-      awayWin: Number((totals['away'] / n).toFixed(4)),
+      homeWin: Number((weightedTotals['home'] / totalWeight).toFixed(4)),
+      draw: Number((weightedTotals['draw'] / totalWeight).toFixed(4)),
+      awayWin: Number((weightedTotals['away'] / totalWeight).toFixed(4)),
       reasoning: latest?.summary || '',
       source: latest?.model || 'Agent',
     }
   }
-  // 维度数据变化时重渲染所有图表
-  nextTick(() => renderAllDimensionCharts())
+  // 防抖重渲染：300ms 内多次数据变化只触发一次
+  if (renderDebounceTimer) clearTimeout(renderDebounceTimer)
+  renderDebounceTimer = setTimeout(() => {
+    renderAllDimensionCharts()
+  }, 300)
 }, { deep: true })
 // 21 个维度的图表容器与实例（按 dimKey 索引）
 const dimChartRefs = ref<Record<string, HTMLElement | null>>({})
@@ -1883,14 +1895,9 @@ function pickChartType(dimKey: DimensionKey, n: number): ChartKind {
 
 /**
  * 渲染所有 21 个维度的图表
- * 每个维度调用 renderDimensionChart
+ * 优化：复用已有 ECharts 实例，仅对无实例的维度 init，已有实例直接 setOption 更新
  */
 function renderAllDimensionCharts() {
-  // 清理旧实例
-  for (const k of Object.keys(dimCharts)) {
-    try { dimCharts[k]?.dispose() } catch {}
-    delete dimCharts[k]
-  }
   // 遍历 5 大板块的所有维度
   for (const section of DIMENSION_SECTIONS) {
     for (const dim of Object.values(DIMENSIONS)) {
@@ -1902,17 +1909,19 @@ function renderAllDimensionCharts() {
 
 /**
  * 渲染单个维度的图表
+ * 优化：复用已有 ECharts 实例，仅 setOption 更新数据，避免 dispose+init 导致闪烁
  * @param dimKey 维度 key
  */
 function renderDimensionChart(dimKey: DimensionKey) {
   const el = dimChartRefs.value[dimKey]
   if (!el) return
-  if (dimCharts[dimKey]) {
-    try { dimCharts[dimKey].dispose() } catch {}
-    delete dimCharts[dimKey]
+  // 复用已有实例，避免 dispose+init 导致图表闪烁
+  let chart = dimCharts[dimKey]
+  if (!chart || chart.isDisposed?.()) {
+    chart = echarts.init(el)
+    dimCharts[dimKey] = chart
   }
   const { labels, values } = aggregateDimension(dimKey)
-  const chart = echarts.init(el)
   const dimDef = DIMENSIONS[dimKey]
   const optKeys = dimDef?.optionsKeys || []
   const optI18nKeys = dimDef?.optionsI18nKeys || []
@@ -2527,14 +2536,15 @@ watch(
 // ========== 球员加载完成后强制重渲染指定球员维度 ==========
 // 目的：goal_player_score 维度的"赢家"标签需要根据 playerId 解析球员名。
 // 当 dimensionReports 比球员阵容先加载完成时，dimWinner 首次返回"进球"（无球员名）。
-// 此 watch 在主客队任一加载完成后触发 21 维度图表重渲染，让 el-tooltip / el-tag 重新求值 dimWinner。
+// 此 watch 在主客队任一加载完成后触发模板中的 dimWinner() 重新求值。
+// 优化：不再通过 dimensionReports.value = [...] 触发全量图表重渲染，
+//       仅触发 Vue 模板响应式更新即可。
 watch(
   [homePlayers, awayPlayers],
   () => {
     if (!dimensionReports.value?.length) return
-    // 不需要重建实例，只重新触发模板中的 dimWinner() 求值即可
-    // （Vue 3 模板已自动跟踪 homePlayers/awayPlayers 依赖；这里仅做一次显式兜底刷新）
-    dimensionReports.value = [...dimensionReports.value]
+    // 触发模板中依赖 homePlayers/awayPlayers 的 computed 重新求值
+    // Vue 3 模板已自动跟踪 homePlayers/awayPlayers 依赖，无需手动刷新
   },
   { deep: true },
 )
@@ -2544,10 +2554,19 @@ onUnmounted(() => {
   unsubscribe = null
   stopDimensionPoll()
   stopMatchMinutePoll()
+  if (renderDebounceTimer) {
+    clearTimeout(renderDebounceTimer)
+    renderDebounceTimer = null
+  }
   sentimentChart?.dispose()
   sentimentChart = null
   distributionChart?.dispose()
   distributionChart = null
+  // 清理所有维度图表实例
+  for (const k of Object.keys(dimCharts)) {
+    try { dimCharts[k]?.dispose() } catch {}
+    delete dimCharts[k]
+  }
   // 取消未完成的 fetch，避免组件卸载后 setState 与 net::ERR_ABORTED
   fetchAbortCtrl?.abort()
   fetchAbortCtrl = null

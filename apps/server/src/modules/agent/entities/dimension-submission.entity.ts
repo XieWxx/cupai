@@ -52,6 +52,10 @@ export class DimensionSubmissionEntity {
   @Column({ name: 'platform', length: 100, nullable: true })
   platform: string
 
+  /** 是否为系统自动分析（定时任务生成），排行榜统计时排除 */
+  @Column({ name: 'is_auto_analysis', type: 'boolean', default: false, comment: '是否为系统自动分析' })
+  isAutoAnalysis: boolean
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date
 }

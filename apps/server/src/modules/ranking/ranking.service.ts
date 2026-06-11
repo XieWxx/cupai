@@ -411,6 +411,7 @@ export class RankingService {
     }
 
     // 从 dimension_submissions 统计每个模型的使用用户数（按归一化模型名去重 apiKeyHint）
+    // 排除系统自动分析数据（isAutoAnalysis = true）
     const submissionRows = await this.submissionRepo
       .createQueryBuilder('s')
       .select('s.model', 'model')
@@ -418,16 +419,20 @@ export class RankingService {
       .where('s.model IS NOT NULL')
       .andWhere('s.model != :empty', { empty: '' })
       .andWhere('s.apiKeyHint IS NOT NULL')
+      .andWhere('s.isAutoAnalysis = :isAuto', { isAuto: false })
       .getRawMany()
 
     // 建立 归一化模型名 -> Set<apiKeyHint> 映射
+    // 排除系统内部 apiKeyHint（scheduler / auto-analysis）
     const modelUserMap = new Map<string, Set<string>>()
     for (const row of submissionRows) {
       const mn = (row.model || '').trim()
       if (!mn) continue
+      const hint = row.apiKeyHint || ''
+      if (hint === 'scheduler' || hint === 'auto-analysis') continue
       const key = normalizeModelName(mn)
       if (!modelUserMap.has(key)) modelUserMap.set(key, new Set())
-      modelUserMap.get(key)!.add(row.apiKeyHint)
+      modelUserMap.get(key)!.add(hint)
     }
 
     // 附加 userCount 和 modelKey 到每条记录
@@ -450,15 +455,17 @@ export class RankingService {
    * 3. 保留用户传的原始 platform 名作为 platformName
    */
   async getPlatformRankings(limit?: number) {
-    // 从 dimension_submissions 聚合
+    // 从 dimension_submissions 聚合（排除系统自动分析数据）
     const submissionRows = await this.submissionRepo
       .createQueryBuilder('s')
       .select('s.platform', 'platform')
       .addSelect('s.model', 'model')
       .addSelect('s.apiKeyHint', 'apiKeyHint')
+      .where('s.isAutoAnalysis = :isAuto', { isAuto: false })
       .getRawMany()
 
     // 按 platformKey 聚合：统计去重用户数 + 预测次数 + 保留原始名
+    // 排除系统内部平台（cupai-scheduler / cupai-auto-analysis）
     const platformAggMap = new Map<string, {
       platformKey: string
       platformName: string
@@ -499,7 +506,9 @@ export class RankingService {
     }
 
     let list = Array.from(platformAggMap.values())
-      .filter((row) => row.platformKey !== 'unknown')
+      .filter((row) => row.platformKey !== 'unknown'
+        && row.platformKey !== 'cupai-scheduler'
+        && row.platformKey !== 'cupai-auto-analysis')
       .map((agg) => ({
         platform: agg.platformName,
         platformKey: agg.platformKey,

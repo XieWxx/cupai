@@ -474,7 +474,7 @@
             <div v-for="rm in h2hData.recent_matches.slice(0, 5)" :key="rm.date" class="h2h-match">
               <span class="h2h-teams">{{ rm.home }} vs {{ rm.away }}</span>
               <span class="h2h-score">{{ rm.score }}</span>
-              <span class="h2h-date">{{ new Date(rm.date).toLocaleDateString() }}</span>
+              <span class="h2h-date">{{ new Date(rm.date).toLocaleDateString(i18nLocale) }}</span>
             </div>
           </div>
         </div>
@@ -730,7 +730,7 @@
                     </el-table-column>
                     <el-table-column :label="$t('match.marketValue')" width="72" align="center">
                       <template #default="{ row }">
-                        {{ row.marketValueEur ? `${(row.marketValueEur / 10000).toFixed(0)}` : '-' }}
+                        {{ row.marketValueEur ? `${(row.marketValueEur / 10000).toFixed(0)}万€` : '-' }}
                       </template>
                     </el-table-column>
                     <el-table-column :label="$t('match.goals')" width="56" align="center">
@@ -825,7 +825,7 @@
               <img :src="h.thumbnail" :alt="h.title" class="highlight-thumb" />
               <div class="highlight-info">
                 <span class="highlight-title">{{ h.title }}</span>
-                <span class="highlight-date">{{ new Date(h.published_at).toLocaleDateString() }}</span>
+                <span class="highlight-date">{{ new Date(h.published_at).toLocaleDateString(i18nLocale) }}</span>
               </div>
             </a>
           </div>
@@ -1646,7 +1646,7 @@ async function openFullMatchCopyDialog() {
   const text = buildMatchInstruction(buildCommonInput())
   copyDialogOpen.value = true
   copyDialogTabs.value = [
-    { key: 'match-all', label: getTeamName(match.value?.homeTeam) ? `${getTeamName(match.value?.homeTeam)} VS ${getTeamName(match.value?.awayTeam) || ''}` : t('copyIntro.tabMatch'), content: text },
+    { key: 'match-all', label: getTeamName(match.value?.homeTeam) ? `${getTeamName(match.value?.homeTeam)} vs ${getTeamName(match.value?.awayTeam) || ''}` : t('copyIntro.tabMatch'), content: text },
   ]
 }
 
@@ -1986,6 +1986,12 @@ function normalizeDimKey(dimKey: string, key: string): string {
   if (dimKey === 'goal_first' || dimKey === 'goal_last') {
     if (kl === 'home' || kl === '主队') return 'home'
     if (kl === 'away' || kl === '客队') return 'away'
+  }
+  // corner_substitutions / card_yellow_compare: home → homeMore, away → awayMore
+  if (dimKey === 'corner_substitutions' || dimKey === 'card_yellow_compare') {
+    if (kl === 'home' || kl === '主队更多') return 'homeMore'
+    if (kl === 'away' || kl === '客队更多') return 'awayMore'
+    if (kl === 'equal' || kl === '相同') return 'equal'
   }
   // 其他维度：如果 key 在 optionsKeys 中存在，直接返回；否则原样返回
   const optKeys = DIMENSIONS[dimKey as DimensionKey]?.optionsKeys || []
@@ -2461,9 +2467,9 @@ const shareText = computed(() => {
   const hs = match.value.homeScore
   const as = match.value.awayScore
   const scorePart = (hs !== null && hs !== undefined && as !== null && as !== undefined)
-    ? ` ${hs}:${as} ` : ' VS '
-  const prefix = tournament ? `【${tournament}】` : ''
-  return `${prefix}${home}${scorePart}${away} — CupAI ${t('match.aiPrediction')}`
+    ? ` ${hs}:${as} ` : ` ${t('common.vs')} `
+  const prefix = tournament ? `[${tournament}]` : ''
+  return `${prefix}${home}${scorePart}${away} - CupAI ${t('match.aiPrediction')}`
 })
 
 const shareUrlX = computed(() =>

@@ -768,6 +768,7 @@ export default {
   },
 
   dim: {
+    analyze: 'Analisar',
     copy: 'Copiar',
     resultWdl: 'V/E/D no Final',
     resultWdlQ: 'Preveja o resultado final (vitória mandante / empate / vitória visitante).',

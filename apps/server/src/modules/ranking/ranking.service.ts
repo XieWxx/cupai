@@ -589,6 +589,7 @@ export class RankingService {
       .addSelect('MAX(s.createdAt)', 'lastActiveAt')
       .where('s.matchId = :matchId', { matchId })
       .andWhere('s.apiKeyHint IS NOT NULL')
+      .andWhere('s.isAutoAnalysis = :isAuto', { isAuto: false })
       .groupBy('s.apiKeyHint')
       .orderBy('COUNT(*)', 'DESC')
       .limit(limit)
@@ -615,18 +616,20 @@ export class RankingService {
       }
     }
 
-    const list = rows.map((r) => {
-      const user = hintUserMap.get(r.apiKeyHint)
-      return {
-        userId: user?.id || null,
-        username: user?.nickname || user?.username || 'Anonymous',
-        countryCode: user?.region || '',
-        lastModel: r.lastModel || '',
-        lastPlatform: r.lastPlatform || null,
-        totalPredictions: Number(r.totalPredictions) || 0,
-        lastActiveAt: r.lastActiveAt,
-      }
-    })
+    const list = rows
+      .filter((r) => r.apiKeyHint !== 'scheduler' && r.apiKeyHint !== 'auto-analysis')
+      .map((r) => {
+        const user = hintUserMap.get(r.apiKeyHint)
+        return {
+          userId: user?.id || null,
+          username: user?.nickname || user?.username || 'Anonymous',
+          countryCode: user?.region || '',
+          lastModel: r.lastModel || '',
+          lastPlatform: r.lastPlatform || null,
+          totalPredictions: Number(r.totalPredictions) || 0,
+          lastActiveAt: r.lastActiveAt,
+        }
+      })
 
     return { list, total: list.length }
   }

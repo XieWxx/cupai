@@ -535,10 +535,10 @@ ${dimensionList}
     { key: 'penalty_knockout_extra', options: ['extra', 'shootout', 'normal'], question: '淘汰赛加时/点球' },
     { key: 'card_red', options: ['yes', 'no'], question: '是否出现红牌' },
     { key: 'card_yellow_total', options: ['0', '1-2', '3+'], question: '黄牌总量' },
-    { key: 'card_yellow_compare', options: ['home', 'away', 'equal'], question: '两队黄牌数量对比' },
+    { key: 'card_yellow_compare', options: ['homeMore', 'awayMore', 'equal'], question: '两队黄牌数量对比' },
     { key: 'corner_total', options: ['0-3', '4-6', '7+'], question: '全场角球总数档位' },
     { key: 'corner_freekick_goal', options: ['yes', 'no'], question: '有无任意球直接得分' },
-    { key: 'corner_substitutions', options: ['home', 'away', 'equal'], question: '两队换人次数对比' },
+    { key: 'corner_substitutions', options: ['homeMore', 'awayMore', 'equal'], question: '两队换人次数对比' },
   ]
 
   /**

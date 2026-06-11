@@ -40,12 +40,17 @@ export class AgentSchedulerService {
   ) {}
 
   /**
-   * 每30分钟扫描即将开始的赛事
-   * 发现新赛事时自动调用 AI 生成分析报告
+   * 每小时扫描未开始的赛事，自动生成/更新维度预测
+   * 仅对 status = 'upcoming' 且 24h 内开始的赛事执行分析
+   * 每小时重新生成，覆盖旧的自动分析数据
    */
-  @Cron('*/30 * * * *')
+  @Cron('0 * * * *')
   async scanUpcomingMatches() {
-    this.logger.log('开始扫描即将开始的赛事...')
+    // 检查自动分析开关
+    const enabled = this.configService.get<string>('AGENT_AUTO_ANALYSIS_ENABLED') !== 'false'
+    if (!enabled) return
+
+    this.logger.log('[定时分析] 开始扫描未开始的赛事...')
 
     try {
       const now = new Date()
@@ -59,20 +64,44 @@ export class AgentSchedulerService {
         .andWhere('match.startTime BETWEEN :now AND :tomorrow', { now, tomorrow })
         .getMany()
 
-      this.logger.log(`发现 ${upcomingMatches.length} 场即将开始的赛事`)
+      this.logger.log(`[定时分析] 发现 ${upcomingMatches.length} 场未开始的赛事`)
+
+      const apiEndpoint = this.configService.get<string>('AGENT_AI_ENDPOINT')
+      const apiKey = this.configService.get<string>('AGENT_AI_KEY')
+      const modelName = this.configService.get<string>('AGENT_AI_MODEL', 'agnes-2.0-flash')
+
+      if (!apiEndpoint || !apiKey) {
+        this.logger.warn('[定时分析] 未配置 AGENT_AI_ENDPOINT/AGENT_AI_KEY，跳过')
+        return
+      }
 
       for (const match of upcomingMatches) {
+        // 检查该赛事最近1小时内是否已有自动分析（避免重复）
+        const recentAuto = await this.submissionRepo.findOne({
+          where: { matchId: match.id, isAutoAnalysis: true },
+          order: { createdAt: 'DESC' },
+        })
+        if (recentAuto) {
+          const elapsed = Date.now() - new Date(recentAuto.createdAt).getTime()
+          if (elapsed < 55 * 60 * 1000) {
+            this.logger.log(`[定时分析] 赛事 ${match.id} 最近 ${Math.round(elapsed / 60000)} 分钟前已分析，跳过`)
+            continue
+          }
+        }
+
+        // 生成分析报告（仅首次）
         const existingReport = await this.reportRepo.findOne({
           where: { matchId: match.id, source: 'agent' },
         })
-
         if (!existingReport) {
-          this.logger.log(`赛事 ${match.id} 尚无 Agent 分析，开始生成...`)
           await this.generateAgentReport(match)
         }
+
+        // 每小时重新生成维度预测
+        await this.generateUpcomingDimensionPredictions(match, modelName, apiEndpoint, apiKey)
       }
     } catch (error) {
-      this.logger.error('赛事扫描失败', error)
+      this.logger.error('[定时分析] 赛事扫描失败', error)
     }
   }
 
@@ -153,7 +182,8 @@ export class AgentSchedulerService {
         return
       }
 
-      for (const match of liveMatches) {
+      // 并发处理所有进行中的赛事（避免多场并行赛事串行等待）
+      const tasks = liveMatches.map(async (match) => {
         // 检查该赛事最近是否已有自动分析（避免频繁重复）
         const recentAutoAnalysis = await this.submissionRepo.findOne({
           where: { matchId: match.id, isAutoAnalysis: true },
@@ -165,12 +195,14 @@ export class AgentSchedulerService {
           const minIntervalMs = intervalMin * 60 * 1000
           if (elapsed < minIntervalMs) {
             this.logger.log(`[自动分析] 赛事 ${match.id} 最近 ${Math.round(elapsed / 1000)}s 前已分析，跳过`)
-            continue
+            return
           }
         }
 
         await this.generateAutoDimensionPredictions(match, modelName, apiEndpoint, apiKey)
-      }
+      })
+
+      await Promise.all(tasks)
     } catch (error) {
       this.logger.error('[自动分析] 执行失败', error)
     }
@@ -508,6 +540,133 @@ ${dimensionList}
     { key: 'corner_freekick_goal', options: ['yes', 'no'], question: '有无任意球直接得分' },
     { key: 'corner_substitutions', options: ['home', 'away', 'equal'], question: '两队换人次数对比' },
   ]
+
+  /**
+   * 为未开始的赛事每小时生成维度预测（标记 isAutoAnalysis = true）
+   * 每次生成前删除旧的自动分析数据，允许覆盖更新
+   * 不调用排行榜更新
+   */
+  private async generateUpcomingDimensionPredictions(
+    match: MatchEntity,
+    modelName: string,
+    apiEndpoint: string,
+    apiKey: string,
+  ) {
+    try {
+      const dimensionList = AgentSchedulerService.DIMENSION_DEFS.map(
+        (d, i) => `${i + 1}. ${d.key} (${d.question}): 候选项 [${d.options.join(', ')}${d.options.length === 0 ? '自由输出' : ''}]`,
+      ).join('\n')
+
+      const homeTeamName = (match as any).homeTeam?.name || match.homeTeamId || '主队'
+      const awayTeamName = (match as any).awayTeam?.name || match.awayTeamId || '客队'
+
+      const prompt = `你是一位专业的足球赛事分析师。请基于以下赛事信息，对每个维度给出概率分布预测。
+
+赛事: ${homeTeamName} vs ${awayTeamName}
+联赛: ${match.leagueName || ''}
+阶段: ${match.stage || ''}
+开赛时间: ${match.startTime || ''}
+
+维度列表:
+${dimensionList}
+
+请严格按以下 JSON 格式输出，不要包含任何其他文字:
+{
+  "dimensions": [
+    {"key": "result_wdl", "distribution": {"home": 0.45, "draw": 0.28, "away": 0.27}, "topOption": "home", "summary": "简要分析"},
+    {"key": "result_total_goals", "distribution": {"0": 0.08, "1": 0.22, "2": 0.35, "3": 0.22, "4+": 0.13}, "topOption": "2", "summary": "简要分析"},
+    ...
+  ]
+}
+
+要求:
+1. 每个维度的 distribution 中所有概率值之和必须等于 1
+2. topOption 必须是 distribution 中概率最高的选项
+3. summary 为 1-2 句简要分析理由
+4. result_exact_score 维度的 distribution 为常见比分概率分布
+5. 所有 21 个维度都必须包含`
+
+      const aiPayload = {
+        model: modelName,
+        messages: [
+          {
+            role: 'system',
+            content: '你是 CupAI 平台的自动赛事分析师。请严格按照用户要求的 JSON 格式输出维度预测数据，不要包含任何 markdown 标记或其他文字。',
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+      }
+
+      const aiResponse = await this.aiService.proxyAiRequest(apiEndpoint, apiKey, aiPayload)
+
+      const content =
+        (aiResponse as any)?.choices?.[0]?.message?.content ||
+        (aiResponse as any)?.output?.text ||
+        (typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse))
+
+      let jsonStr = content
+      const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim()
+      }
+
+      const parsed = JSON.parse(jsonStr)
+      const dimensions = parsed.dimensions || parsed.data || []
+
+      if (!Array.isArray(dimensions) || dimensions.length === 0) {
+        this.logger.warn(`[定时分析] 赛事 ${match.id} AI 返回的维度数据格式异常，跳过`)
+        return
+      }
+
+      // 删除该赛事之前的自动分析数据（避免重复堆积）
+      await this.submissionRepo.delete({
+        matchId: match.id,
+        isAutoAnalysis: true,
+      })
+
+      // 写入新的自动分析数据
+      let savedCount = 0
+      for (const dim of dimensions) {
+        if (!dim.key || !dim.distribution) continue
+
+        const entry = this.submissionRepo.create({
+          matchId: match.id,
+          dimKey: dim.key,
+          topOption: dim.topOption || null,
+          topProbability: dim.topOption
+            ? dim.distribution[dim.topOption] ?? null
+            : null,
+          distribution: dim.distribution,
+          summary: dim.summary || null,
+          model: modelName,
+          platform: 'cupai-scheduler',
+          apiKeyHint: 'scheduler',
+          isAutoAnalysis: true,
+        })
+        await this.submissionRepo.save(entry)
+        savedCount++
+      }
+
+      // 更新 Redis 缓存（合并用户提交 + 自动分析数据）
+      const cacheKey = `dimensions:${match.id}:all`
+      const userSubmissions = await this.submissionRepo.find({
+        where: { matchId: match.id, isAutoAnalysis: false },
+        order: { createdAt: 'DESC' },
+      })
+      const autoSubmissions = await this.submissionRepo.find({
+        where: { matchId: match.id, isAutoAnalysis: true },
+        order: { createdAt: 'DESC' },
+      })
+      const allSubmissions = [...userSubmissions, ...autoSubmissions]
+      await this.redisCache.set(cacheKey, allSubmissions, 3600)
+
+      this.logger.log(`[定时分析] 赛事 ${match.id} 已生成 ${savedCount} 条维度预测（自动分析，不进入排行榜）`)
+    } catch (error) {
+      this.logger.error(`[定时分析] 赛事 ${match.id} 维度预测生成失败: ${error}`)
+    }
+  }
 
   /**
    * 为单场赛事自动生成 21 维度预测数据
